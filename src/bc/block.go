@@ -1,19 +1,26 @@
 package bc
 
-import "hash"
-
 type Block struct {
-	hash hash.Hash32
-	prevHash hash.Hash32
-	timestamp int64
-	nrOfTransactions int
+	Hash [32]byte
+	PrevHash [32]byte
+	Version uint8
+	Timestamp int64
+	NrOfTransactions int32
 	data []Transaction
+	StateCopy map[[64]byte]int64
 }
 
-func (b *Block) addTransact(t Transaction) {
+func (b *Block) AddTx(tx *Transaction) {
+	if !tx.VerifyTx() || tx.Info.Amount > b.StateCopy[tx.Info.From] {
+		return
+	}
 
+	//state change
+	b.StateCopy[tx.Info.From] -= tx.Info.Amount
+	b.StateCopy[tx.Info.To] += tx.Info.Amount
+	b.NrOfTransactions++
 }
 
-func (b *Block) finalizeBlock(){
+func (b *Block) FinalizeBlock() {
 
 }
