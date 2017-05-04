@@ -41,11 +41,12 @@ func ConstrTx(nonce, amount int64, from, to Account, key *ecdsa.PrivateKey) (tx 
 	}
 
 	//encoding nonce,from,to,amount into byte array
-	serialized := encodeTxContent(nonce, amount, from.Id, to.Id)
-	tx.Hash = sha3.Sum256(serialized)
+	//serialized := encodeTxContent(nonce, amount, from.Id, to.Id)
+	tx.Hash = sha3.Sum256(serializeTxContent(TxInfo{nonce, amount, from.Id, to.Id}))
 
 	r,s, err := ecdsa.Sign(rand.Reader, key, tx.Hash[:])
 
+	//this will later be DER-encoded (also ECDSA pubkey)
 	copy(tx.Sig[:32],r.Bytes())
 	copy(tx.Sig[32:],s.Bytes())
 
@@ -56,12 +57,11 @@ func ConstrTx(nonce, amount int64, from, to Account, key *ecdsa.PrivateKey) (tx 
 	return
 }
 
-func encodeTxContent(nonce, amount int64, from, to [64]byte) (enc []byte) {
+func serializeTxContent(tx TxInfo) (enc []byte) {
 	// Create a struct and write it.
 	var buf bytes.Buffer
 
-	hash := TxInfo{nonce, amount, from, to}
-	binary.Write(&buf,binary.BigEndian, hash)
+	binary.Write(&buf,binary.LittleEndian, tx)
 
 	return buf.Bytes()
 }

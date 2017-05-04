@@ -1,12 +1,17 @@
 package main
 
 import (
-	//"fmt"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"bc"
 	"fmt"
+
+
+	"math/big"
+	"strconv"
+	"encoding/binary"
+	"bytes"
 )
 
 func main() {
@@ -33,7 +38,19 @@ func main() {
 
 	tx, err := bc.ConstrTx(0, 2, accA, accB, privA)
 
-	//b := bc.Block{StateCopy:state}
+	b := bc.Block{StateCopy:state}
+	b.AddTx(&tx)
+	b.FinalizeBlock()
+
+	//merkleRoot := sha3.Sum256([]byte{'a','b'})
+
+	c := big.NewInt(1)
+	for a := big.NewInt(0) ;; a.Add(a,c) {
+		fmt.Printf("%v\n", []byte(a) )
+	}
+
+
+
 
 	/*var buf bytes.Buffer
 	var rcvTx bc.Transaction
@@ -43,7 +60,5 @@ func main() {
 	dec := gob.NewDecoder(&buf)
 	dec.Decode(&rcvTx)
 	fmt.Printf("%x\n")*/
-
-	fmt.Printf("%t\n", tx.VerifyTx())
 }
 
