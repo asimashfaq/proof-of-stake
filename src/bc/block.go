@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 	"golang.org/x/crypto/sha3"
-	"strconv"
 )
 
 type Block struct {
@@ -13,8 +12,15 @@ type Block struct {
 	Version uint8
 	Timestamp int64
 	NrOfTransactions int32
-	Data []Transaction //slice
+	TxData map[[32]byte]Transaction //slice
 	StateCopy map[[64]byte]int64
+}
+
+//imitating constructor
+func NewBlock(stateCopy map[[64]byte]int64) *Block {
+	b := Block{StateCopy:stateCopy}
+	b.TxData = make(map[[32]byte]Transaction)
+	return &b
 }
 
 func (b *Block) AddTx(tx *Transaction) {
@@ -28,35 +34,32 @@ func (b *Block) AddTx(tx *Transaction) {
 	b.StateCopy[tx.Info.From] -= tx.Info.Amount
 	b.StateCopy[tx.Info.To] += tx.Info.Amount
 	b.NrOfTransactions++
-	b.Data = append(b.Data, *tx)
+
+	b.TxData[sha3.Sum256(serializeTxContent(tx.Info))] = *tx
 }
 
 func (b *Block) FinalizeBlock() {
 
-	fmt.Print("")
-	/*for _, j := range b.Data {
-		fmt.Printf("%x\n", j)
-	}
 
-	for j := range b.StateCopy {
-		fmt.Printf("%x: %d\n", j, b.StateCopy[j])
-	}*/
+	merkleRoot := buildMerkleTree(b.TxData)
+	fmt.Printf("%x\n", sha3.Sum256(append(proofOfWork(24, merkleRoot).Bytes(),merkleRoot[:]...)))
+
 }
 
 func proofOfWork(diff uint8, merkleRoot [32]byte) *big.Int {
 
 	var tmp [32]byte
-	var bits uint8
 	var byteNr uint8
 	var abort bool
+	//big int needed because int64 overflows if nonce too large
+	oneIncr := big.NewInt(1)
+	cnt := big.NewInt(0)
 
-	for i := 0 ;; i++ {
+	for ;; cnt.Add(cnt,oneIncr) {
 		abort = false
-		tmp = sha3.Sum256(append(merkleRoot[:],[]byte(strconv.Itoa(i))...))
 
-		fmt.Printf("%x\n", tmp)
-
-		for byteNr = 0; byteNr < (uint8)(bits/8); byteNr++ {
+		tmp = sha3.Sum256(append(cnt.Bytes(),merkleRoot[:]...))
+		for byteNr = 0; byteNr < (uint8)(diff/8); byteNr++ {
 			if tmp[byteNr] != 0 {
 				abort = true
 				break
@@ -66,15 +69,11 @@ func proofOfWork(diff uint8, merkleRoot [32]byte) *big.Int {
 			continue
 		}
 
-		if bits%8 != 0 && tmp[byteNr+1] >= 1<<(8-bits%8) {
+		if diff%8 != 0 && tmp[byteNr+1] >= 1<<(8-diff%8) {
 			continue
 		}
-
-		fmt.Printf("%x\n", tmp)
-
 		break
 	}
 
-
-	return nil
+	return cnt
 }

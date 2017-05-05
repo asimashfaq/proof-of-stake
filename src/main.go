@@ -5,19 +5,12 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"bc"
-	"fmt"
-
-
-	"math/big"
-	"strconv"
-	"encoding/binary"
-	"bytes"
 )
+
 
 func main() {
 
 	state := make(map[[64]byte]int64)
-
 	privA, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	privB, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 
@@ -36,20 +29,18 @@ func main() {
 	state[accA.Id] = accA.Balance
 	state[accB.Id] = accB.Balance
 
+	b := bc.NewBlock(state)
+
 	tx, err := bc.ConstrTx(0, 2, accA, accB, privA)
-
-	b := bc.Block{StateCopy:state}
 	b.AddTx(&tx)
-	b.FinalizeBlock()
+	tx2, err := bc.ConstrTx(0, 3, accB, accA, privB)
+	b.AddTx(&tx2)
 
-	//merkleRoot := sha3.Sum256([]byte{'a','b'})
-
-	c := big.NewInt(1)
-	for a := big.NewInt(0) ;; a.Add(a,c) {
-		fmt.Printf("%v\n", []byte(a) )
+	if err != nil {
+		return
 	}
 
-
+	b.FinalizeBlock()
 
 
 	/*var buf bytes.Buffer

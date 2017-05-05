@@ -4,15 +4,12 @@ import (
 	"math/big"
 	"reflect"
 	"crypto/ecdsa"
-	"bytes"
 	"crypto/rand"
-	"encoding/binary"
 	"golang.org/x/crypto/sha3"
 	"crypto/elliptic"
 )
 
 type Transaction struct {
-	Hash [32]byte
 	Sig [64]byte
 	Info TxInfo
 }
@@ -42,9 +39,9 @@ func ConstrTx(nonce, amount int64, from, to Account, key *ecdsa.PrivateKey) (tx 
 
 	//encoding nonce,from,to,amount into byte array
 	//serialized := encodeTxContent(nonce, amount, from.Id, to.Id)
-	tx.Hash = sha3.Sum256(serializeTxContent(TxInfo{nonce, amount, from.Id, to.Id}))
+	sigHash := sha3.Sum256(serializeTxContent(TxInfo{nonce, amount, from.Id, to.Id}))
 
-	r,s, err := ecdsa.Sign(rand.Reader, key, tx.Hash[:])
+	r,s, err := ecdsa.Sign(rand.Reader, key, sigHash[:])
 
 	//this will later be DER-encoded (also ECDSA pubkey)
 	copy(tx.Sig[:32],r.Bytes())
@@ -55,15 +52,6 @@ func ConstrTx(nonce, amount int64, from, to Account, key *ecdsa.PrivateKey) (tx 
 	tx.Info.Amount = amount
 
 	return
-}
-
-func serializeTxContent(tx TxInfo) (enc []byte) {
-	// Create a struct and write it.
-	var buf bytes.Buffer
-
-	binary.Write(&buf,binary.LittleEndian, tx)
-
-	return buf.Bytes()
 }
 
 func (tx *Transaction) VerifyTx() bool {
@@ -77,7 +65,9 @@ func (tx *Transaction) VerifyTx() bool {
 	r.SetBytes(tx.Sig[:32])
 	s.SetBytes(tx.Sig[32:])
 
-	correct := ecdsa.Verify(&pubKey,tx.Hash[:],r,s)
+	sigHash := sha3.Sum256(serializeTxContent(tx.Info))
+
+	correct := ecdsa.Verify(&pubKey,sigHash[:],r,s)
 
 	return correct
 }
