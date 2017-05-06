@@ -22,7 +22,7 @@ type TxInfo struct {
 func ConstrTx(nonce, amount int64, from, to [64]byte, key *ecdsa.PrivateKey) (tx Transaction, err error) {
 
 	//checking legal balance
-	if amount > 0 {
+	if amount <= 0 {
 		return
 	}
 
@@ -31,14 +31,9 @@ func ConstrTx(nonce, amount int64, from, to [64]byte, key *ecdsa.PrivateKey) (tx
 		return
 	}
 
-	//protecting against replay attacks
-	if nonce != from.Nonce {
-		return
-	}
-
 	//encoding nonce,from,to,amount into byte array
 	//serialized := encodeTxContent(nonce, amount, from.Id, to.Id)
-	sigHash := serializeHashTxContent(TxInfo{nonce, amount, from, to})
+	sigHash := serializeHashContent(TxInfo{nonce, amount, from, to})
 
 	r,s, err := ecdsa.Sign(rand.Reader, key, sigHash[:])
 
@@ -64,7 +59,7 @@ func (tx *Transaction) VerifyTx() bool {
 	r.SetBytes(tx.Sig[:32])
 	s.SetBytes(tx.Sig[32:])
 
-	sigHash := serializeHashTxContent(tx.Info)
+	sigHash := serializeHashContent(tx.Info)
 
 	correct := ecdsa.Verify(&pubKey,sigHash[:],r,s)
 

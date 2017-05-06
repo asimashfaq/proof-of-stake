@@ -4,22 +4,20 @@ import (
 	"math/big"
 	"golang.org/x/crypto/sha3"
 	"time"
-	"fmt"
 )
 
 type Block struct {
 	Hash [32]byte
 	PrevHash [32]byte
-	Version uint8
+	Version uint8 //future updates
 	Timestamp int64
 	MerkleRoot [32]byte
-	nrOfTransactions int32 //won't be exported
-	TxData map[[32]byte]Transaction //slice
-	StateCopy map[[64]byte]int64
+	TxData map[[32]byte]Transaction
+	StateCopy map[[64]byte]Account
 }
 
 //imitating constructor
-func NewBlock(prevBlock [32]byte, stateCopy map[[64]byte]int64) *Block {
+func NewBlock(prevBlock [32]byte, stateCopy map[[64]byte]Account) *Block {
 	b := Block{StateCopy:stateCopy}
 	b.TxData = make(map[[32]byte]Transaction)
 	b.Version = 0x01
@@ -30,24 +28,29 @@ func NewBlock(prevBlock [32]byte, stateCopy map[[64]byte]int64) *Block {
 func (b *Block) AddTx(tx *Transaction) {
 
 	//check if transaction is well-formed and enough funds are available
-	if !(*tx).VerifyTx() || tx.Info.Amount > b.StateCopy[tx.Info.From] {
+	if !(*tx).VerifyTx() || tx.Info.Amount > b.StateCopy[tx.Info.From].Balance {
 		return
 	}
 
-	//state change
-	b.StateCopy[tx.Info.From] -= tx.Info.Amount
-	b.StateCopy[tx.Info.To] += tx.Info.Amount
-	b.nrOfTransactions++
+	//state change, only the sender's txcnt is increased
+	b.StateCopy[tx.Info.From] = Account{
+		b.StateCopy[tx.Info.From].TxCnt + 1,
+		b.StateCopy[tx.Info.From].Balance - tx.Info.Amount,
+	}
 
-	b.TxData[serializeHashTxContent(tx.Info)] = *tx
+	b.StateCopy[tx.Info.To] = Account{
+		b.StateCopy[tx.Info.To].TxCnt,
+		b.StateCopy[tx.Info.To].Balance + tx.Info.Amount,
+	}
+	b.TxData[serializeHashContent(tx.Info)] = *tx
 }
 
 func (b *Block) FinalizeBlock() {
 
 	b.MerkleRoot = buildMerkleTree(b.TxData)
-	proof := proofOfWork(20, b.MerkleRoot)
+	//proof := proofOfWork(24, b.MerkleRoot)
 	b.Timestamp = time.Now().Unix()
-	fmt.Printf("%x\n", sha3.Sum256(append(proof.Bytes(),b.MerkleRoot[:]...)))
+
 }
 
 func proofOfWork(diff uint8, merkleRoot [32]byte) *big.Int {

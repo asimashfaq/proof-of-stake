@@ -1,6 +1,8 @@
 package bc
 
-import "golang.org/x/crypto/sha3"
+import (
+	"golang.org/x/crypto/sha3"
+)
 
 type merkleNode struct {
 	right, left *merkleNode
@@ -16,7 +18,7 @@ func prepareMerkleTree(txData map[[32]byte]Transaction) []merkleNode {
 		//construct leaf nodes
 		parentChild = new(merkleNode)
 		//here we need the hash of the tx
-		parentChild.hash = serializeHashTxContent(txData[key].Info)
+		parentChild.hash = serializeHashContent(txData[key].Info)
 		levelNodes = append(levelNodes, *parentChild)
 	}
 
@@ -33,6 +35,10 @@ func prepareMerkleTree(txData map[[32]byte]Transaction) []merkleNode {
 }
 
 func buildMerkleTree(txData map[[32]byte]Transaction) ([32]byte) {
+
+	if len(txData) == 0 {
+		return [32]byte{}
+	}
 
 	stepOver := -1
 	var leftChild, rightChild, parentChild *merkleNode
@@ -71,6 +77,9 @@ func buildMerkleTree(txData map[[32]byte]Transaction) ([32]byte) {
 }
 
 func nextTwoExponent(start, nrTransact int) int {
+	if nrTransact == 0 {
+		return 0
+	}
 	if start < nrTransact {
 		return nextTwoExponent(start*2,nrTransact)
 	}
