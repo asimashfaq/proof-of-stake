@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"golang.org/x/crypto/sha3"
 	"crypto/elliptic"
 )
 
@@ -20,10 +19,10 @@ type TxInfo struct {
 }
 
 
-func ConstrTx(nonce, amount int64, from, to Account, key *ecdsa.PrivateKey) (tx Transaction, err error) {
+func ConstrTx(nonce, amount int64, from, to [64]byte, key *ecdsa.PrivateKey) (tx Transaction, err error) {
 
 	//checking legal balance
-	if amount > from.Balance && amount > 0 {
+	if amount > 0 {
 		return
 	}
 
@@ -39,7 +38,7 @@ func ConstrTx(nonce, amount int64, from, to Account, key *ecdsa.PrivateKey) (tx 
 
 	//encoding nonce,from,to,amount into byte array
 	//serialized := encodeTxContent(nonce, amount, from.Id, to.Id)
-	sigHash := sha3.Sum256(serializeTxContent(TxInfo{nonce, amount, from.Id, to.Id}))
+	sigHash := serializeHashTxContent(TxInfo{nonce, amount, from, to})
 
 	r,s, err := ecdsa.Sign(rand.Reader, key, sigHash[:])
 
@@ -47,8 +46,8 @@ func ConstrTx(nonce, amount int64, from, to Account, key *ecdsa.PrivateKey) (tx 
 	copy(tx.Sig[:32],r.Bytes())
 	copy(tx.Sig[32:],s.Bytes())
 
-	tx.Info.From = from.Id
-	tx.Info.To = to.Id
+	tx.Info.From = from
+	tx.Info.To = to
 	tx.Info.Amount = amount
 
 	return
@@ -65,7 +64,7 @@ func (tx *Transaction) VerifyTx() bool {
 	r.SetBytes(tx.Sig[:32])
 	s.SetBytes(tx.Sig[32:])
 
-	sigHash := sha3.Sum256(serializeTxContent(tx.Info))
+	sigHash := serializeHashTxContent(tx.Info)
 
 	correct := ecdsa.Verify(&pubKey,sigHash[:],r,s)
 

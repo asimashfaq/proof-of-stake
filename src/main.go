@@ -5,8 +5,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"bc"
+	"fmt"
 )
-
 
 func main() {
 
@@ -29,12 +29,22 @@ func main() {
 	state[accA.Id] = accA.Balance
 	state[accB.Id] = accB.Balance
 
-	b := bc.NewBlock(state)
+	b := bc.NewBlock([32]byte{}, state)
 
 	tx, err := bc.ConstrTx(0, 2, accA, accB, privA)
-	b.AddTx(&tx)
 	tx2, err := bc.ConstrTx(0, 3, accB, accA, privB)
+	tx3, err := bc.ConstrTx(0, 1, accA, accB, privA)
+	tx4, err := bc.ConstrTx(0, 4, accB, accA, privB)
+	tx5, err := bc.ConstrTx(0, 3, accA, accB, privA)
+	tx6, err := bc.ConstrTx(0, 1, accB, accA, privB)
+
+
+	b.AddTx(&tx)
 	b.AddTx(&tx2)
+	b.AddTx(&tx3)
+	b.AddTx(&tx4)
+	b.AddTx(&tx5)
+	b.AddTx(&tx6)
 
 	if err != nil {
 		return
@@ -42,6 +52,7 @@ func main() {
 
 	b.FinalizeBlock()
 
+	fmt.Printf("%x\n", b)
 
 	/*var buf bytes.Buffer
 	var rcvTx bc.Transaction
@@ -50,6 +61,6 @@ func main() {
 	fmt.Printf("%d\n", len(buf.Bytes()))
 	dec := gob.NewDecoder(&buf)
 	dec.Decode(&rcvTx)
-	fmt.Printf("%x\n")*/
+	fmt.Printf("%x\n", rcvTx)*/
 }
 

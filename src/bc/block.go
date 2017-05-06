@@ -1,9 +1,10 @@
 package bc
 
 import (
-	"fmt"
 	"math/big"
 	"golang.org/x/crypto/sha3"
+	"time"
+	"fmt"
 )
 
 type Block struct {
@@ -11,15 +12,18 @@ type Block struct {
 	PrevHash [32]byte
 	Version uint8
 	Timestamp int64
-	NrOfTransactions int32
+	MerkleRoot [32]byte
+	nrOfTransactions int32 //won't be exported
 	TxData map[[32]byte]Transaction //slice
 	StateCopy map[[64]byte]int64
 }
 
 //imitating constructor
-func NewBlock(stateCopy map[[64]byte]int64) *Block {
+func NewBlock(prevBlock [32]byte, stateCopy map[[64]byte]int64) *Block {
 	b := Block{StateCopy:stateCopy}
 	b.TxData = make(map[[32]byte]Transaction)
+	b.Version = 0x01
+	b.PrevHash = prevBlock
 	return &b
 }
 
@@ -33,17 +37,17 @@ func (b *Block) AddTx(tx *Transaction) {
 	//state change
 	b.StateCopy[tx.Info.From] -= tx.Info.Amount
 	b.StateCopy[tx.Info.To] += tx.Info.Amount
-	b.NrOfTransactions++
+	b.nrOfTransactions++
 
-	b.TxData[sha3.Sum256(serializeTxContent(tx.Info))] = *tx
+	b.TxData[serializeHashTxContent(tx.Info)] = *tx
 }
 
 func (b *Block) FinalizeBlock() {
 
-
-	merkleRoot := buildMerkleTree(b.TxData)
-	fmt.Printf("%x\n", sha3.Sum256(append(proofOfWork(24, merkleRoot).Bytes(),merkleRoot[:]...)))
-
+	b.MerkleRoot = buildMerkleTree(b.TxData)
+	proof := proofOfWork(20, b.MerkleRoot)
+	b.Timestamp = time.Now().Unix()
+	fmt.Printf("%x\n", sha3.Sum256(append(proof.Bytes(),b.MerkleRoot[:]...)))
 }
 
 func proofOfWork(diff uint8, merkleRoot [32]byte) *big.Int {
