@@ -5,57 +5,54 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"bc"
+
+	"golang.org/x/crypto/sha3"
 	"fmt"
 )
 
 func main() {
 
-	state := make(map[[64]byte]bc.Account)
+	bc.InitSystem()
+
 	privA, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	privB, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 
 	if err != nil {
 		return
 	}
+
+	//This is the client's account
 	accA := bc.Account{Balance: 15}
-	var idA [64]byte
-	copy(idA[0:32], privA.PublicKey.X.Bytes())
-	copy(idA[32:64], privA.PublicKey.Y.Bytes())
+	copy(accA.Address[0:32], privA.PublicKey.X.Bytes())
+	copy(accA.Address[32:64], privA.PublicKey.Y.Bytes())
+	hashA := sha3.Sum256(accA.Address[:])
 
+
+	//This one is just for testing purposes
 	accB := bc.Account{Balance: 12}
-	var idB [64]byte
-	copy(idB[0:32], privB.PublicKey.X.Bytes())
-	copy(idB[32:64], privB.PublicKey.Y.Bytes())
+	copy(accB.Address[0:32], privB.PublicKey.X.Bytes())
+	copy(accB.Address[32:64], privB.PublicKey.Y.Bytes())
+	hashB := sha3.Sum256(accB.Address[:])
 
-	state[idA] = accA
-	state[idB] = accB
+	bc.AddAcc(hashA, accA)
+	bc.AddAcc(hashB, accB)
 
-	b := bc.NewBlock([32]byte{}, state)
+	bc.AddTx(0, hashA, hashB, 2, privA)
+	bc.AddTx(0, hashB, hashA, 3, privB)
+	bc.AddTx(1, hashA, hashB, 1, privA)
+	bc.AddTx(1, hashB, hashA, 4, privB)
+	bc.AddTx(2, hashA, hashB, 3, privA)
+	bc.AddTx(2, hashB, hashA, 2, privB)
 
-	tx, err := bc.ConstrTx(0, 2, idA, idB, privA)
-	tx2, err := bc.ConstrTx(0, 3, idB, idA, privB)
-	tx3, err := bc.ConstrTx(0, 1, idA, idB, privA)
-	tx4, err := bc.ConstrTx(0, 4, idB, idA, privB)
-	tx5, err := bc.ConstrTx(0, 3, idA, idB, privA)
-	tx6, err := bc.ConstrTx(0, 1, idB, idA, privB)
+	bc.FinalizeBlock()
 
-	b.AddTx(&tx)
-	b.AddTx(&tx2)
-	b.AddTx(&tx3)
-	b.AddTx(&tx4)
-	b.AddTx(&tx5)
-	b.AddTx(&tx6)
+	bc.ValidateBlock()
 
-	if err != nil {
-		return
-	}
 
-	b.FinalizeBlock()
-
-	toSend := bc.EncodeForSend(tx)
+	/*toSend := bc.EncodeForSend(tx)
 	fmt.Printf("%x\n", toSend)
 	toRcv := bc.DecodeForReceive(toSend)
-	fmt.Printf("%x\n", toRcv.(bc.Transaction))
+	fmt.Printf("%x\n", toRcv.(bc.Transaction))*/
 
 }
 

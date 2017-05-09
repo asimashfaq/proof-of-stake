@@ -1,6 +1,6 @@
 package bc
 
 type Account struct {
-	TxCnt, Balance int64
+	Address [64]byte
+	TxCnt, Balance uint64
 }
-
