@@ -79,11 +79,11 @@ Calculate merkle tree and proof of work, before broadcasting to the network
 
 - Validate block
 
-Block validation consists of the following
+Block validation consists of the following:
 
 	* Checking if prevHash makes sense
 	* Checking if correct proof of work
 	* Recalculate merkle root and check if identical
 	* Check if all transactions are well-formed
 
-If all checks were successful, the state is updated by going through each transaction sequentially. If there is an illegal transaction, all changes are reverted and "rolled back" to the state before the block validation.
+If all checks were successful, the state is updated by going through each transaction sequentially. If there is an illegal transaction (e.g., sending money from an account not posessing the needed funds), all changes are reverted and "rolled back" to the state before the block validation.
