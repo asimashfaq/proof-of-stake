@@ -15,8 +15,34 @@ P-256 (see FIPS 186-3, section D.2.3) is used as elliptic curve. The _Address_ i
 
 ### State
 
-The cryptocurrency is account-based (compared to unspent transaction-based, cf. Bitcoin), the state is saved in 
+The cryptocurrency is account-based (compared to unspent transaction-based, cf. Bitcoin), the state of all accounts are maintained and stored in a hashmap:
+```go
+var State map[[32]byte]Account
+```
+The key _[32]byte_ is the SHA3-256 hash of the account's public key.
 
 ### Transaction
+
+Because the state maintains a mapping from key to hash(key), transactions use the hash as an account specifier which saves 64 Bytes per transaction (compared to sending full public keys with every transaction). The transaction structure is as follows:
+```go
+type Transaction struct {
+	Sig [64]byte
+	Info TxInfo
+}
+
+type TxInfo struct {
+	Nonce uint64
+	Amount uint32
+	From, To [32]byte
+}
+```
+_Sig_ is the signature (using the private key of the _from_ Account)
+
+- Creating a transaction
+
+The method signature to create a transaction that sends funds from one account to another looks as follows:
+```go
+constrTx(txCnt uint64, amount uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx Transaction, err error)
+```
 
 ### Block
