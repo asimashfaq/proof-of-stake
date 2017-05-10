@@ -5,7 +5,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"bc"
-
 	"golang.org/x/crypto/sha3"
 	"fmt"
 )
@@ -37,7 +36,7 @@ func main() {
 	bc.AddAcc(hashA, accA)
 	bc.AddAcc(hashB, accB)
 
-	bc.AddTx(0, hashA, hashB, 2, privA)
+	bc.AddTx(0, hashA, hashB, 10, privA)
 	bc.AddTx(0, hashB, hashA, 3, privB)
 	bc.AddTx(1, hashA, hashB, 1, privA)
 	bc.AddTx(1, hashB, hashA, 4, privB)
@@ -45,14 +44,12 @@ func main() {
 	bc.AddTx(2, hashB, hashA, 2, privB)
 
 	bc.FinalizeBlock()
-
 	bc.ValidateBlock()
-
 
 	/*toSend := bc.EncodeForSend(tx)
 	fmt.Printf("%x\n", toSend)
 	toRcv := bc.DecodeForReceive(toSend)
-	fmt.Printf("%x\n", toRcv.(bc.Transaction))*/
+	fmt.Printf("%x\n", toRcv.(bc.fundsTx))*/
 
 }
 

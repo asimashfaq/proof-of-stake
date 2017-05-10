@@ -14,11 +14,11 @@ func prepareMerkleTree(txData []Transaction) []merkleNode {
 	var levelNodes []merkleNode
 	var parentChild *merkleNode
 
-	for _, acc := range txData {
+	for _, tx := range txData {
 		//construct leaf nodes
 		parentChild = new(merkleNode)
 		//here we need the hash of the tx
-		parentChild.hash = serializeHashContent(acc.Info)
+		parentChild.hash = serializeHashContent(tx.Payload)
 		levelNodes = append(levelNodes, *parentChild)
 	}
 

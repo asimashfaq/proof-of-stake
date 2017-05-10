@@ -24,18 +24,23 @@ func AddTx(localTxCnt uint64, from, to [32]byte, amount uint32, key *ecdsa.Priva
 	tx, err := constrTx(localTxCnt, amount, from, to, key)
 	//localTxCnt++
 	if err != nil {
-		return err
+		fmt.Printf("%v\n", err)
 	}
-	block.addTx(tx)
+	err = block.addTx(tx)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+	}
 	return nil
 }
 
 //temporary
 func FinalizeBlock() {
 	block.finalizeBlock()
+	fmt.Printf("%x\n", block)
 }
 
 func ValidateBlock() {
 
 	fmt.Printf("%v\n", validateBlock(block))
+	fmt.Printf("%x\n", State)
 }
