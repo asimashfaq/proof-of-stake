@@ -49,7 +49,7 @@ The signature to verify a transaction is the following
 ```go
 (tx Transaction) verifyTx() bool
 ```
-Checks whether the signature matches the public key of the sender (proof that the sender was in posession of the corresponding private key)
+Checks whether the signature matches the public key of the sender (proof that the sender was in posession of the corresponding private key).
 
 - Transaction Types (tbd)
 
@@ -71,8 +71,19 @@ _Hash_ is the global identifier of the block, _prevHash_ is the hash of the prev
 
 - Add transaction to block
 
-
+Check if well-formed transaction and legal in terms of state change
 
 - Finalize block
 
+Calculate merkle tree and proof of work, before broadcasting to the network
+
 - Validate block
+
+Block validation consists of the following
+
+	* Checking if prevHash makes sense
+	* Checking if correct proof of work
+	* Recalculate merkle root and check if identical
+	* Check if all transactions are well-formed
+
+If all checks were successful, the state is updated by going through each transaction sequentially. If there is an illegal transaction, all changes are reverted and "rolled back" to the state before the block validation.
