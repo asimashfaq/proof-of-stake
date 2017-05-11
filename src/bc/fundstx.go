@@ -8,18 +8,19 @@ import (
 	"crypto/elliptic"
 )
 
+//when we broadcast transactions we need a way to distinguish with a type
 type fundsTx struct {
 	Sig [64]byte
-	Payload TxPayload
+	Payload txPayload
 }
 
-type TxPayload struct {
+type txPayload struct {
 	Nonce uint64
 	Amount uint32
 	From, To [32]byte
 }
 
-func constrTx(txCnt uint64, amount uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
+func constrFundsTx(txCnt uint64, amount uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
 
 	//avoid sending money to its own acc, doesn't make sense with account-based money
 	if reflect.DeepEqual(from,to) {
@@ -28,7 +29,7 @@ func constrTx(txCnt uint64, amount uint32, from, to [32]byte, key *ecdsa.Private
 
 	//encoding nonce,from,to,amount into byte array
 	//serialized := encodeTxContent(nonce, amount, from.Id, to.Id)
-	sigHash := serializeHashContent(TxPayload{txCnt, amount, from, to})
+	sigHash := serializeHashContent(txPayload{txCnt, amount, from, to})
 
 	r,s, err := ecdsa.Sign(rand.Reader, key, sigHash[:])
 
@@ -46,7 +47,7 @@ func constrTx(txCnt uint64, amount uint32, from, to [32]byte, key *ecdsa.Private
 }
 
 //state access should be avoided, thus the public key
-func (tx fundsTx) VerifyTx() bool {
+func (tx fundsTx) verify() bool {
 	pub1,pub2 := new(big.Int), new(big.Int)
 	r,s := new(big.Int), new(big.Int)
 

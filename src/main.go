@@ -6,10 +6,12 @@ import (
 	"crypto/rand"
 	"bc"
 	"golang.org/x/crypto/sha3"
-	"fmt"
 )
 
 func main() {
+
+
+
 
 	bc.InitSystem()
 
@@ -36,12 +38,12 @@ func main() {
 	bc.AddAcc(hashA, accA)
 	bc.AddAcc(hashB, accB)
 
-	bc.AddTx(0, hashA, hashB, 10, privA)
-	bc.AddTx(0, hashB, hashA, 3, privB)
-	bc.AddTx(1, hashA, hashB, 1, privA)
-	bc.AddTx(1, hashB, hashA, 4, privB)
-	bc.AddTx(2, hashA, hashB, 3, privA)
-	bc.AddTx(2, hashB, hashA, 2, privB)
+	bc.AddFundsTx(0, hashA, hashB, 10, privA)
+	bc.AddFundsTx(0, hashB, hashA, 3, privB)
+	bc.AddFundsTx(1, hashA, hashB, 1, privA)
+	bc.AddFundsTx(1, hashB, hashA, 4, privB)
+	bc.AddFundsTx(2, hashA, hashB, 3, privA)
+	bc.AddFundsTx(2, hashB, hashA, 2, privB)
 
 	bc.FinalizeBlock()
 	bc.ValidateBlock()

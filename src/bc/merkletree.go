@@ -9,7 +9,7 @@ type merkleNode struct {
 	hash [32]byte
 }
 
-func prepareMerkleTree(txData []Transaction) []merkleNode {
+func prepareMerkleTree(txData []fundsTx) []merkleNode {
 
 	var levelNodes []merkleNode
 	var parentChild *merkleNode
@@ -34,7 +34,7 @@ func prepareMerkleTree(txData []Transaction) []merkleNode {
 	return levelNodes
 }
 
-func buildMerkleTree(txData []Transaction) ([32]byte) {
+func buildMerkleTree(txData []fundsTx) ([32]byte) {
 
 	if len(txData) == 0 {
 		return [32]byte{}

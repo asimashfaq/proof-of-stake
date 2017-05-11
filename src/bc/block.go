@@ -10,7 +10,9 @@ const (
 	ProofSize = 19
 )
 
-type transaction bool {}
+type transaction interface {
+	verify() bool
+}
 
 type Block struct {
 	Hash [32]byte
@@ -23,7 +25,7 @@ type Block struct {
 	MerkleRoot [32]byte
 	//this field will not be exported, this is just to avoid race conditions for the global state
 	stateCopy map[[32]byte]Account
-	txData []transaction
+	FundsTxData []fundsTx
 	AccTxData []accTx
 }
 
@@ -39,43 +41,72 @@ func newBlock(prevBlock [32]byte) *Block {
 //this method is to validate transactions, a copy of the state
 // is used for every instead of manipulating the global state
 //because we the work might get interrupted by receiving a block
-func (b *Block) addTx(tx Transaction) error {
+func (b *Block) addTx(tx transaction) error {
 
-	if _,exists := b.stateCopy[tx.Payload.To]; !exists {
-		b.stateCopy[tx.Payload.To] = State[tx.Payload.To]
+	//verifies correctness for the specific transaction
+	//i'd actually like to use !(&tx).verify to pass by pointer, but golang doesn't allow this
+	if !(tx).verify() {
+		return errors.New("Transaction could not be verified.")
 	}
 
-	if _,exists := b.stateCopy[tx.Payload.From]; !exists {
-		b.stateCopy[tx.Payload.From] = State[tx.Payload.From]
+	switch tx.(type) {
+	case *fundsTx:
+		b.addFundsTx(tx)
+	case *accTx:
+		b.addAccTx(tx)
+	default:
+		return errors.New("Transaction type not recognized.")
 	}
 
-	//check if transaction is well-formed and enough funds are available
-	if !(tx).VerifyTx() {
-		return errors.New("fundsTx could not be verified.")
+	return nil
+}
+
+func (b *Block) addAccTx(tx transaction) error {
+
+	//accTx := tx.(*accTx)
+
+	//at this point the tx has already been verified
+	//if _,exists := State[]
+
+	return nil
+}
+
+func (b *Block) addFundsTx(tx transaction) error {
+
+	fundsTx := tx.(*fundsTx)
+
+	if _,exists := b.stateCopy[fundsTx.Payload.To]; !exists {
+		b.stateCopy[fundsTx.Payload.To] = State[fundsTx.Payload.To]
 	}
 
-	if uint64(tx.Payload.Amount) > State[tx.Payload.From].Balance {
+	if _,exists := b.stateCopy[fundsTx.Payload.From]; !exists {
+		b.stateCopy[fundsTx.Payload.From] = State[fundsTx.Payload.From]
+	}
+
+	if uint64(fundsTx.Payload.Amount) > State[fundsTx.Payload.From].Balance {
 		return errors.New("Not enough funds to complete the transaction")
 	}
 
-	accSender := b.stateCopy[tx.Payload.From]
+	accSender := b.stateCopy[fundsTx.Payload.From]
 	accSender.TxCnt += 1
-	accSender.Balance -= uint64(tx.Payload.Amount)
-	b.stateCopy[tx.Payload.From] = accSender
+	accSender.Balance -= uint64(fundsTx.Payload.Amount)
+	b.stateCopy[fundsTx.Payload.From] = accSender
 
-	b.stateCopy[tx.Payload.To] = State[tx.Payload.To]
-	accReceiver := b.stateCopy[tx.Payload.To]
-	accReceiver.Balance += uint64(tx.Payload.Amount)
-	b.stateCopy[tx.Payload.To] = accReceiver
+	b.stateCopy[fundsTx.Payload.To] = State[fundsTx.Payload.To]
+	accReceiver := b.stateCopy[fundsTx.Payload.To]
+	accReceiver.Balance += uint64(fundsTx.Payload.Amount)
+	b.stateCopy[fundsTx.Payload.To] = accReceiver
 
 	//b.TxData[serializeHashContent(tx.Info)] = *tx
-	b.TxData = append(b.TxData, tx)
+	b.FundsTxData = append(b.FundsTxData, *fundsTx)
 	return nil
+
 }
 
 func (b *Block) finalizeBlock() {
 
-	b.MerkleRoot = buildMerkleTree(b.TxData)
+	//merkle tree only built from funds transactions
+	b.MerkleRoot = buildMerkleTree(b.FundsTxData)
 	b.Timestamp = time.Now().Unix()
 	b.Difficulty = 8
 
@@ -134,71 +165,31 @@ func validateBlock(b *Block) error {
 	}
 
 	//cmp merkle tree
-	if buildMerkleTree(b.TxData) != b.MerkleRoot {
+	if buildMerkleTree(b.FundsTxData) != b.MerkleRoot {
 		return errors.New("Merkle Root incorrect.")
 	}
 
-	//check if transaction is syntactically well-formed and signature is correct
-	for _, tx := range b.TxData {
-		if !tx.VerifyTx() {
+	//check if fundsTxs is syntactically well-formed and signature is correct
+	for _, tx := range b.FundsTxData {
+		if !tx.verify() {
+			return errors.New("Malformed transaction.")
+		}
+	}
+
+	//check if accTxs are syntactically well-formed and signature is correct
+	for _, tx := range b.AccTxData {
+		if !tx.verify() {
 			return errors.New("Malformed transaction.")
 		}
 	}
 
 	//apply to State
-	for index, tx := range b.TxData {
+	/*for index, tx := range b.FundsTxData {
 		if stateChange(&tx) != nil {
-			stateRollBack(index-1, b.TxData)
+			stateRollBack(index-1, b.FundsTxData)
 			return errors.New("Invalid State Transition. Roll back.")
 		}
-	}
+	}*/
 
 	return nil
-}
-
-func stateChange(tx *Transaction) error {
-
-	if _, exists := State[tx.Payload.From]; !exists {
-		return errors.New("Sender does not exist in the State.")
-	}
-
-	if _, exists := State[tx.Payload.To]; !exists {
-		return errors.New("Receiver does not exist in the State.")
-	}
-
-	if uint64(tx.Payload.Amount) > State[tx.Payload.From].Balance {
-		return errors.New("Sender does not have enough funds for the transaction.")
-	}
-
-	accSender := State[tx.Payload.From]
-	accSender.TxCnt += 1
-	accSender.Balance -= uint64(tx.Payload.Amount)
-	State[tx.Payload.From] = accSender
-
-	accReceiver := State[tx.Payload.To]
-	accReceiver.Balance += uint64(tx.Payload.Amount)
-	State[tx.Payload.To] = accReceiver
-
-	//all good
-	return nil
-}
-
-func stateRollBack(index int, txData []Transaction) {
-
-	//in case the first entry failed we don't need to rollback
-	if index == -1 {
-		return
-	}
-
-	for cnt := index; cnt >= 0; cnt-- {
-		tx := txData[cnt]
-		accSender := State[tx.Payload.From]
-		accSender.TxCnt -= 1
-		accSender.Balance += uint64(tx.Payload.Amount)
-		State[tx.Payload.From] = accSender
-
-		accReceiver := State[tx.Payload.To]
-		accReceiver.Balance -= uint64(tx.Payload.Amount)
-		State[tx.Payload.To] = accReceiver
-	}
 }
