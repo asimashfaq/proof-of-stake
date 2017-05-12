@@ -3,45 +3,27 @@ package bc
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"bytes"
-	"encoding/gob"
+	"log"
+	"os"
+	"time"
+	"errors"
 )
 
 //will act as interface to bc package
 var State map[[32]byte]Account
+var LogFile *os.File
 var block *Block
 
 func InitSystem() {
 
+	LogFile, _ = os.OpenFile("log "+time.Now().String(), os.O_RDWR | os.O_CREATE , 0666)
+	log.SetOutput(LogFile)
 
-	foo := accTx{Sig:[64]byte{'1'}}
-	var tx transaction
-	tx = &foo
-
-	var rcv transaction
-	var buf bytes.Buffer
-	//var tx transaction
-	enc := gob.NewEncoder(&buf)
-	enc.Encode(tx)
-	dec := gob.NewDecoder(&buf)
-	fmt.Printf("%x\n", buf.Bytes())
-	gob.Register()
-	dec.Decode(&rcv)
-	fmt.Printf("%T\n", rcv)
-
-
-
-
-
-
+	log.Println("Starting system, initializing state map")
 	State = make(map[[32]byte]Account)
 	//temporary
 	block = newBlock([32]byte{})
 	//this is the responsibility of the client to send the right txCnt
-}
-
-func AddAcc(hash [32]byte, acc Account) {
-	State[hash] = acc
 }
 
 func AddFundsTx(localTxCnt uint64, from, to [32]byte, amount uint32, key *ecdsa.PrivateKey) error {
@@ -60,8 +42,10 @@ func AddFundsTx(localTxCnt uint64, from, to [32]byte, amount uint32, key *ecdsa.
 func AddAccTx() error {
 
 	tx,err := constrAccTx()
+
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		log.Printf("%v\n", err)
+		return errors.New("Failed to construct account tx.")
 	}
 	block.addTx(&tx)
 	return nil

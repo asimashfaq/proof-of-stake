@@ -11,8 +11,6 @@ import (
 func main() {
 
 
-
-
 	bc.InitSystem()
 
 	privA, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -35,8 +33,11 @@ func main() {
 	copy(accB.Address[32:64], privB.PublicKey.Y.Bytes())
 	hashB := sha3.Sum256(accB.Address[:])
 
-	bc.AddAcc(hashA, accA)
-	bc.AddAcc(hashB, accB)
+	//just to bootstrap
+	bc.State[hashA] = accA
+	bc.State[hashB] = accB
+
+	bc.PrintState()
 
 	bc.AddFundsTx(0, hashA, hashB, 10, privA)
 	bc.AddFundsTx(0, hashB, hashA, 3, privB)

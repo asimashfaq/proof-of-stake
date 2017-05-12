@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"fmt"
 )
 
 //just for test cases
@@ -64,4 +65,13 @@ func (tx *accTx) verify() bool {
 	correct := ecdsa.Verify(&pubKey,tx.PubKey[:],r,s)
 
 	return correct
+}
+
+func (tx accTx) String() string {
+	return fmt.Sprintf(
+		"\nSig: %x\n" +
+		"PubKey: %x\n",
+		tx.Sig[0:4],
+		tx.PubKey[0:4],
+	)
 }

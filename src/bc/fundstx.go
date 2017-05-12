@@ -6,6 +6,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/elliptic"
+	"fmt"
 )
 
 //when we broadcast transactions we need a way to distinguish with a type
@@ -47,7 +48,7 @@ func constrFundsTx(txCnt uint64, amount uint32, from, to [32]byte, key *ecdsa.Pr
 }
 
 //state access should be avoided, thus the public key
-func (tx fundsTx) verify() bool {
+func (tx *fundsTx) verify() bool {
 	pub1,pub2 := new(big.Int), new(big.Int)
 	r,s := new(big.Int), new(big.Int)
 
@@ -64,4 +65,22 @@ func (tx fundsTx) verify() bool {
 
 	correct := ecdsa.Verify(&pubKey,sigHash[:],r,s)
 	return correct
+}
+
+func (tx fundsTx) String() string {
+	txHash := serializeHashContent(tx.Payload)
+	return fmt.Sprintf(
+		"\nSig: %x\n" +
+			"Payload.Nonce: %v\n" +
+			"Payload.Amount: %v\n" +
+			"Payload.From: %x\n" +
+			"Payload.To: %x\n" +
+			"Tx Hash: %x\n",
+		tx.Sig[0:4],
+		tx.Payload.Nonce,
+		tx.Payload.Amount,
+		tx.Payload.From[0:4],
+		tx.Payload.To[0:4],
+		txHash[0:4],
+	)
 }
