@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"time"
-	"errors"
 )
 
 //will act as interface to bc package
@@ -39,26 +38,29 @@ func AddFundsTx(localTxCnt uint64, from, to [32]byte, amount uint32, key *ecdsa.
 	return nil
 }
 
-func AddAccTx() error {
+func AddAccTx() *accTx {
 
 	tx,err := constrAccTx()
 
 	if err != nil {
 		log.Printf("%v\n", err)
-		return errors.New("Failed to construct account tx.")
+		//return errors.New("Failed to construct account tx.")
 	}
 	block.addTx(&tx)
-	return nil
+	//return nil
+	return &tx
 }
 
 //temporary
 func FinalizeBlock() {
 	block.finalizeBlock()
-	fmt.Printf("%x\n", block)
 }
 
 func ValidateBlock() {
 
-	fmt.Printf("%v\n", validateBlock(block))
-	fmt.Printf("%x\n", State)
+	if validateBlock(block) != nil {
+		return
+	}
+	prevBlock := block
+	block = newBlock(prevBlock.Hash)
 }

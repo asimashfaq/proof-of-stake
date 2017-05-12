@@ -32,10 +32,10 @@ type Block struct {
 }
 
 //imitating constructor
-func newBlock(prevBlock [32]byte) *Block {
+func newBlock(prevBlockHash [32]byte) *Block {
 	b := Block{}
 	b.Version = 0x01
-	b.PrevHash = prevBlock
+	b.PrevHash = prevBlockHash
 	b.stateCopy = make(map[[32]byte]Account)
 	return &b
 }
@@ -56,7 +56,7 @@ func (b *Block) addTx(tx transaction) error {
 	case *fundsTx:
 		err := b.addFundsTx(tx.(*fundsTx))
 		if err != nil {
-			log.Printf("Adding fundsTx tx failed: %x, because %v\n", tx.(*fundsTx),err)
+			log.Printf("Adding fundsTx tx failed (%v): %v\n",err, tx.(*fundsTx))
 		}
 	case *accTx:
 		err := b.addAccTx(tx.(*accTx))
@@ -78,8 +78,8 @@ func (b *Block) addAccTx(tx *accTx) error {
 
 	}
 
+	b.AccTxData = append(b.AccTxData,*tx)
 	log.Printf("Added tx to the AccTxData slice: %v", *tx)
-
 	return nil
 }
 
@@ -214,6 +214,9 @@ func validateBlock(b *Block) error {
 	for _,tx := range b.AccTxData {
 		accStateChange(&tx)
 	}
+
+	//delete the local state copy to prevent mem leaks
+	
 
 	return nil
 }

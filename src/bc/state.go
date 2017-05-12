@@ -10,7 +10,6 @@ import (
 //1) exchange funds from tx
 //2) revert funds from previous tx
 //3) this doesn't need a rollback, because digitally signed
-
 func accStateChange(acctx *accTx) {
 
 	addressHash := sha3.Sum256(acctx.PubKey[:])
@@ -18,8 +17,8 @@ func accStateChange(acctx *accTx) {
 		log.Printf("Address already exists in the state: %x\n", addressHash[0:4])
 		return
 	}
-	log.Printf("Added hash to state: %x\n", addressHash)
 	State[addressHash] = Account{}
+	PrintState()
 }
 
 func fundsStateChange(tx *fundsTx) error {

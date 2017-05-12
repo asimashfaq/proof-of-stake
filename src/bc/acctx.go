@@ -36,13 +36,17 @@ func constrAccTx() (tx accTx, err error) {
 		_rootPriv,
 	}
 
-	var pubKey [64]byte
+	//var pubKey [64]byte
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 
 	copy(tx.PubKey[:32],priv.PublicKey.X.Bytes())
 	copy(tx.PubKey[32:],priv.PublicKey.Y.Bytes())
 
-	r,s, err := ecdsa.Sign(rand.Reader, &rootPrivKey, pubKey[:])
+
+	//r,s, err := ecdsa.Sign(rand.Reader, &rootPrivKey, pubKey[:])
+
+	r,s, err := ecdsa.Sign(rand.Reader, &rootPrivKey, tx.PubKey[:])
+
 	copy(tx.Sig[:32],r.Bytes())
 	copy(tx.Sig[32:],s.Bytes())
 
