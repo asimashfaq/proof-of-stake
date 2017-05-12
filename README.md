@@ -23,26 +23,43 @@ The key _[32]byte_ is the SHA3-256 hash of the account's public key.
 
 ### Transaction
 
-Because the state maintains a mapping from key to hash(key), transactions use the hash as an account specifier which saves 64 Bytes per transaction (compared to sending full public keys with every transaction). The transaction structure is as follows:
+Because the state maintains a mapping from key to hash(key), transactions use the hash as an account specifier which saves 64 Bytes per transaction (compared to sending full public keys with every transaction).
+
+- Transaction Types
+
+Two transaction types exist, namely _fundsTx_ (moving funds around) and _accTx_ (creating new addresses), both implementing the _transaction_ interface (not really sure about that yet, but I think it simplifies encoding and saves some code): 
 ```go
-type Transaction struct {
+type transaction interface {
+	verify() bool
+}
+```
+The _fundsTx_ structure is as follows:
+```go
+type fundsTx struct {
 	Sig [64]byte
-	Info TxInfo
+	Payload txPayload
 }
 
-type TxInfo struct {
+type txPayload struct {
 	Nonce uint64
 	Amount uint32
 	From, To [32]byte
 }
 ```
-A transaction consists of a signature (_Sig_) and the relevant transaction data: _Nonce_ is the _TxCnt_ from the sender account. _Amount_ is a 32-bit number (might be changed to 64-bit later), speicifying the amount of money and _From_, _To_ are the hashes of the participating accounts. _Sig_ is the signature (using the private key of the _from_ Account) of a Sha3-256 hash of the _TxInfo_. The total size of a transaction is fixed at 140 Bytes.
+A _fundsTx_ consists of a signature (_Sig_) and the relevant transaction data: _Nonce_ is the _TxCnt_ from the sender account. _Amount_ is a 32-bit number (might be changed to 64-bit later), speicifying the amount of money and _From_, _To_ are the hashes of the participating accounts. _Sig_ is the signature (using the private key of the _from_ Account) of a Sha3-256 hash of the _TxInfo_. The total size of a transaction is fixed at 140 Bytes (or 144 Bytes if we allow 64-bit _Amount_).
 
-- Creating a transaction
-The method signature to create a transaction that sends funds from one account to another looks as follows:
+The method signature to create a _fundsTx_ that sends funds from one account to another looks as follows:
 ```go
 constrTx(txCnt uint64, amount uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx Transaction, err error)
 ```
+The _accTx_ is the transaction type that adds a new account to the system:
+```go
+type accTx struct {
+	Sig [64]byte
+	PubKey [64]byte
+}
+```
+_PubKey_ is the public key of the new account that has been generated
 
 - Verifying a transaction
 The signature to verify a transaction is the following
@@ -51,7 +68,6 @@ The signature to verify a transaction is the following
 ```
 Checks whether the signature matches the public key of the sender (proof that the sender was in posession of the corresponding private key).
 
-- Transaction Types (tbd)
 
 ### Block
 The structure of a block is as follows:
