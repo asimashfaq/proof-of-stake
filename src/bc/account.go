@@ -3,6 +3,7 @@ package bc
 import "fmt"
 
 type Account struct {
+	Hash [32]byte
 	Address [64]byte
 	TxCnt, Balance uint64
 }

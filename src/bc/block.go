@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"fmt"
+	"bytes"
 )
 
 const (
@@ -73,9 +74,13 @@ func (b *Block) addTx(tx transaction) error {
 func (b *Block) addAccTx(tx *accTx) error {
 
 	//at this point the tx has already been verified
+	var mapId [8]byte
 	accHash := sha3.Sum256(tx.PubKey[:])
-	if _,exists := State[accHash]; exists {
-
+	copy(mapId[:],accHash[0:8])
+	for _,j := range State[mapId] {
+		if bytes.Compare(tx.PubKey[:],j.Address[:]) {
+			return errors.New("Account already exists.")
+		}
 	}
 
 	b.AccTxData = append(b.AccTxData,*tx)
@@ -85,8 +90,7 @@ func (b *Block) addAccTx(tx *accTx) error {
 
 func (b *Block) addFundsTx(tx *fundsTx) error {
 
-
-	if _,exists := b.stateCopy[tx.Payload.To]; !exists {
+	/*if _,exists := b.stateCopy[tx.Payload.To]; !exists {
 		b.stateCopy[tx.Payload.To] = State[tx.Payload.To]
 	}
 
@@ -110,7 +114,7 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 
 	//b.TxData[serializeHashContent(tx.Info)] = *tx
 	b.FundsTxData = append(b.FundsTxData, *tx)
-	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)
+	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)*/
 	return nil
 }
 

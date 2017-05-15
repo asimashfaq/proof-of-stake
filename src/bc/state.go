@@ -1,8 +1,6 @@
 package bc
 
 import (
-	"errors"
-	"golang.org/x/crypto/sha3"
 	"log"
 )
 
@@ -12,19 +10,19 @@ import (
 //3) this doesn't need a rollback, because digitally signed
 func accStateChange(acctx *accTx) {
 
-	addressHash := sha3.Sum256(acctx.PubKey[:])
+	/*addressHash := sha3.Sum256(acctx.PubKey[:])
 	if _,exists := State[addressHash]; exists {
 		log.Printf("Address already exists in the state: %x\n", addressHash[0:4])
 		return
 	}
 	State[addressHash] = Account{}
-	PrintState()
+	PrintState()*/
 }
 
 func fundsStateChange(tx *fundsTx) error {
 
 	//rollback
-	if _, exists := State[tx.Payload.From]; !exists {
+	/*if _, exists := State[tx.Payload.From]; !exists {
 		log.Printf("Sender does not exist in the State: %x\n", tx.Payload.From[0:4])
 		return errors.New("Sender does not exist in the State.")
 	}
@@ -50,13 +48,13 @@ func fundsStateChange(tx *fundsTx) error {
 	accReceiver.Balance += uint64(tx.Payload.Amount)
 	State[tx.Payload.To] = accReceiver
 
-	PrintState()
+	PrintState()*/
 	return nil
 }
 
 func fundsStateRollback(txSlice []fundsTx, index int) {
 
-	for cnt := index; index >= 0; index-- {
+	/*for cnt := index; index >= 0; index-- {
 		tx := txSlice[cnt]
 		accSender := State[tx.Payload.From]
 		accSender.TxCnt -= 1
@@ -67,12 +65,14 @@ func fundsStateRollback(txSlice []fundsTx, index int) {
 		accReceiver.Balance -= uint64(tx.Payload.Amount)
 		State[tx.Payload.To] = accReceiver
 	}
-	PrintState()
+	PrintState()*/
 }
 
 func PrintState() {
 	log.Println("State updated: ")
 	for key,val := range State {
-		log.Printf("%x: %v\n", key[0:4], val)
+		for _,acc := range val {
+			log.Printf("%x: %v\n", key[0:4], acc)
+		}
 	}
 }

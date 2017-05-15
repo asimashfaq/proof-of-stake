@@ -6,10 +6,12 @@ import (
 	"log"
 	"os"
 	"time"
+	"bytes"
+	"encoding/binary"
 )
 
 //will act as interface to bc package
-var State map[[32]byte]Account
+var State map[[8]byte][]Account
 var LogFile *os.File
 var block *Block
 
@@ -19,14 +21,25 @@ func InitSystem() {
 	log.SetOutput(LogFile)
 
 	log.Println("Starting system, initializing state map")
-	State = make(map[[32]byte]Account)
+	State = make(map[[8]byte][]Account)
 	//temporary
 	block = newBlock([32]byte{})
 	//this is the responsibility of the client to send the right txCnt
 }
 
 func AddFundsTx(localTxCnt uint64, from, to [32]byte, amount uint32, key *ecdsa.PrivateKey) error {
-	tx, err := constrFundsTx(localTxCnt, amount, from, to, key)
+	var header byte
+	//constrFundsTx(header, amount [4]byte, txCnt [3]byte, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
+	var buf bytes.Buffer
+	var amountBuf [4]byte
+	binary.Write(&buf, binary.BigEndian, amount)
+
+	copy(amountBuf[:],buf.Bytes())
+	buf.Reset()
+	var txCntBuf [3]byte
+	binary.Write(&buf,binary.BigEndian, localTxCnt)
+	copy(txCntBuf[:],buf.Bytes())
+	tx,err := constrFundsTx(header, amountBuf,txCntBuf, from,to, key)
 	//localTxCnt++
 	if err != nil {
 		fmt.Printf("%v\n", err)

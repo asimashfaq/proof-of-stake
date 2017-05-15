@@ -11,7 +11,7 @@ type merkleNode struct {
 
 func prepareMerkleTree(txData []fundsTx) []merkleNode {
 
-	var levelNodes []merkleNode
+	/*var levelNodes []merkleNode
 	var parentChild *merkleNode
 
 	for _, tx := range txData {
@@ -31,7 +31,8 @@ func prepareMerkleTree(txData []fundsTx) []merkleNode {
 		levelNodes = append(levelNodes, *parentChild)
 	}
 
-	return levelNodes
+	return levelNodes*/
+	return nil
 }
 
 func buildMerkleTree(txData []fundsTx) ([32]byte) {

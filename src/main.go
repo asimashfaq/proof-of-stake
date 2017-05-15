@@ -10,8 +10,8 @@ import (
 
 func main() {
 
-
 	bc.InitSystem()
+
 
 	privA, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	privB, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -24,41 +24,46 @@ func main() {
 	accA := bc.Account{Balance: 928}
 	copy(accA.Address[0:32], privA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], privA.PublicKey.Y.Bytes())
-	hashA := sha3.Sum256(accA.Address[:])
+	accA.Hash = sha3.Sum256(accA.Address[:])
 
 
 	//This one is just for testing purposes
 	accB := bc.Account{Balance: 702}
 	copy(accB.Address[0:32], privB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], privB.PublicKey.Y.Bytes())
-	hashB := sha3.Sum256(accB.Address[:])
+	accB.Hash = sha3.Sum256(accB.Address[:])
 
 	//just to bootstrap
-	bc.State[hashA] = accA
-	bc.State[hashB] = accB
+	var shortHashA [8]byte
+	var shortHashB [8]byte
+	copy(shortHashA[:], accA.Hash[0:8])
+	copy(shortHashB[:], accB.Hash[0:8])
 
-	bc.PrintState()
+	var foo,bar []bc.Account
+	bc.State[shortHashA] = foo
+	bc.State[shortHashB] = bar
+	bc.State[shortHashA] = append(bc.State[shortHashA],accA)
+	bc.State[shortHashB] = append(bc.State[shortHashB],accB)
 
-	bc.AddFundsTx(0, hashA, hashB, 10, privA)
-	bc.AddFundsTx(0, hashB, hashA, 2, privB)
-	bc.AddFundsTx(1, hashA, hashB, 1, privA)
+
+	bc.AddFundsTx(0, accA.Hash, accB.Hash, 10, privA)
+	/*bc.AddFundsTx(0, accB.Hash, accA.Hash, 2, privB)
+	bc.AddFundsTx(1, accA.Hash, accB.Hash, 1, privA)
 
 	newAddr := bc.AddAccTx()
 	newHash := sha3.Sum256(newAddr.PubKey[:])
 
-	bc.AddFundsTx(1, hashB, hashA, 4, privB)
-	bc.AddFundsTx(2, hashA, hashB, 3, privA)
-	bc.AddFundsTx(2, hashB, hashA, 2, privB)
+	bc.AddFundsTx(1, accB.Hash, accA.Hash, 4, privB)
+	bc.AddFundsTx(2, accA.Hash, accB.Hash, 3, privA)
+	bc.AddFundsTx(2, accB.Hash, accA.Hash, 2, privB)
 
 	bc.FinalizeBlock()
 	bc.ValidateBlock()
 
-	bc.AddFundsTx(3, hashA, hashB, 32, privA)
-	bc.AddFundsTx(3, hashB, hashA, 64, privB)
-	bc.AddFundsTx(4, hashA, newHash, 1, privA)
-	bc.AddFundsTx(4, hashB, newHash, 4, privB)
-	bc.AddFundsTx(5, hashA, newHash, 3, privA)
-	bc.AddFundsTx(5, hashB, newHash, 2, privB)
+	bc.AddFundsTx(3, accA.Hash, accB.Hash, 32, privA)
+	bc.AddFundsTx(3, accB.Hash, accA.Hash, 64, privB)
+	bc.AddFundsTx(4, accA.Hash, accB.Hash, 10000, privA)
+	bc.AddFundsTx(4, accA.Hash, newHash, 1, privA)
 
 	bc.AddAccTx()
 	bc.AddAccTx()
@@ -66,15 +71,12 @@ func main() {
 	bc.AddAccTx()
 
 	bc.FinalizeBlock()
-	bc.ValidateBlock()
-
-
+	bc.ValidateBlock()*/
 
 
 	/*toSend := bc.EncodeForSend(tx)
 	fmt.Printf("%x\n", toSend)
 	toRcv := bc.DecodeForReceive(toSend)
 	fmt.Printf("%x\n", toRcv.(bc.fundsTx))*/
-
 }
 
