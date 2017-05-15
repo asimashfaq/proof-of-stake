@@ -19,7 +19,7 @@ The cryptocurrency is account-based (compared to unspent transaction-based, cf. 
 ```go
 var State map[[32]byte]Account
 ```
-The key _[32]byte_ is the SHA3-256 hash of the account's public key.
+The key _[32]byte_ is the SHA3-256 hash of the account's public key. State manipulation is only done in the file _state.go_. The state is updated when funds are transferred (or rolled back) and if new accounts are added.
 
 ### Transaction
 
@@ -48,7 +48,7 @@ type txPayload struct {
 ```
 A _fundsTx_ consists of a signature (_Sig_) and the relevant transaction data: _Nonce_ is the _TxCnt_ from the sender account. _Amount_ is a 32-bit number (might be changed to 64-bit later), speicifying the amount of money and _From_, _To_ are the hashes of the participating accounts. _Sig_ is the signature (using the private key of the _from_ Account) of a Sha3-256 hash of the _TxInfo_. The total size of a transaction is fixed at 140 Bytes (or 144 Bytes if we allow 64-bit _Amount_).
 
-The method signature to create a _fundsTx_ that sends funds from one account to another looks as follows:
+The method signature to create a _fundsTx_ transaction that sends funds from one account to another looks as follows:
 ```go
 constrTx(txCnt uint64, amount uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx Transaction, err error)
 ```
@@ -59,15 +59,14 @@ type accTx struct {
 	PubKey [64]byte
 }
 ```
-_PubKey_ is the public key of the new account that has been generated
+_PubKey_ is the public key of the new account that has been generated. In a first version of the system, the validity of a new account is checked against the company's public key (company signs with pubkey and broadcast ths tx to the network). And only if the signature matches, the account is included into the state.
 
 - Verifying a transaction
 The signature to verify a transaction is the following
 ```go
 (tx Transaction) verifyTx() bool
 ```
-Checks whether the signature matches the public key of the sender (proof that the sender was in posession of the corresponding private key).
-
+Both transaction types (_fundsTx_ and _accTx_) implement the _verifyTx()_ method and check whether the transaction is syntactically well-formed and makes sense in the state context (e.g., does the sender have enough funds, does the sender and receiver exist etc.)
 
 ### Block
 The structure of a block is as follows:
@@ -80,25 +79,23 @@ type Block struct {
 	Timestamp int64
 	Difficulty uint8
 	MerkleRoot [32]byte
-	TxData []Transaction
+	stateCopy map[[32]byte]Account
+	FundsTxData []fundsTx
+	AccTxData []accTx
 }
 ```
-_Hash_ is the global identifier of the block, _prevHash_ is the hash of the previous block. _Version_ is by default set to 1, this allows to make protocol changes later on. _Proof_ is a fixed byte array of size _ProofSize_, acting as a PoW (Proof of Work). This byte array, appended by the hash of several other fields and hashed again has to fulfill the properties that the first _Difficulty_ of bits of the resulting hash (which is equal the _Hash_ field) will be 0. _ProofSize_ is a constant set to 9, which, based on some calculations, is a good trade-off between memory and future network hash rate (e.g., even at Bitcoin's network hash rate, 9 Bytes is enough). _Merkleroot_ is the hash of the merkle tree consisting of all transactions. This will be used by light clients to verify if certain transactions took place by querying full nodes for the relevant merkle path. _TxData_ is a slice, consisting of all transactions within this block.
+_Hash_ is the global identifier of the block, _prevHash_ is the hash of the previous block. _Version_ is by default set to 1, this allows to make protocol changes later on. _Proof_ is a fixed byte array of size _ProofSize_, acting as a PoW (Proof of Work). This byte array, appended by the hash of several other fields and hashed again has to fulfill the properties that the first _Difficulty_ of bits of the resulting hash (which is equal the _Hash_ field) will be 0. _ProofSize_ is a constant set to 9, which, based on some calculations, is a good trade-off between memory and future network hash rate (e.g., even at Bitcoin's network hash rate, 9 Bytes is enough). _Merkleroot_ is the hash of the merkle tree consisting of all transactions. This will be used by light clients to verify if certain transactions took place by querying full nodes for the relevant merkle path. _FundsTxData_ is a slice, consisting of all _fundsTx_ transactions within this block (vice versa with _AccTxdata_).
 
-- Add transaction to block
+- Adding transactions
 
-Check if well-formed transaction and legal in terms of state change
+Received transactions are verified and added to the current block if all checks pass.
 
-- Finalize block
-
-Calculate merkle tree and proof of work, before broadcasting to the network
-
-- Validate block
+- Block Validation
 
 Block validation consists of the following:
 
 	* Checking if prevHash makes sense
-	* Checking if correct proof of work
+	* Checking if correct proof of work depending on the level of difficulty
 	* Recalculate merkle root and check if identical
 	* Check if all transactions are well-formed
 
