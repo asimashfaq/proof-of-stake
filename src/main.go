@@ -6,12 +6,26 @@ import (
 	"crypto/rand"
 	"bc"
 	"golang.org/x/crypto/sha3"
+	"fmt"
 )
+
+var foo bc.Account
+
+
+func somefunc() (*bc.Account) {
+	return &foo
+}
+
 
 func main() {
 
 	bc.InitSystem()
 
+	foo.Balance = 5
+	bar := somefunc()
+
+	bar.Balance = 2
+	fmt.Printf("%v, %v\n", foo, bar)
 
 	privA, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	privB, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -39,15 +53,13 @@ func main() {
 	copy(shortHashA[:], accA.Hash[0:8])
 	copy(shortHashB[:], accB.Hash[0:8])
 
-	var foo,bar []bc.Account
-	bc.State[shortHashA] = foo
-	bc.State[shortHashB] = bar
 	bc.State[shortHashA] = append(bc.State[shortHashA],accA)
 	bc.State[shortHashB] = append(bc.State[shortHashB],accB)
 
+	bc.PrintState()
 
 	bc.AddFundsTx(0, accA.Hash, accB.Hash, 10, privA)
-	/*bc.AddFundsTx(0, accB.Hash, accA.Hash, 2, privB)
+	bc.AddFundsTx(0, accB.Hash, accA.Hash, 2, privB)
 	bc.AddFundsTx(1, accA.Hash, accB.Hash, 1, privA)
 
 	newAddr := bc.AddAccTx()
@@ -71,7 +83,7 @@ func main() {
 	bc.AddAccTx()
 
 	bc.FinalizeBlock()
-	bc.ValidateBlock()*/
+	bc.ValidateBlock()
 
 
 	/*toSend := bc.EncodeForSend(tx)

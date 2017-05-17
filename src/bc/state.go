@@ -2,7 +2,24 @@ package bc
 
 import (
 	"log"
+	"golang.org/x/crypto/sha3"
+	"bytes"
+	"errors"
+	"encoding/binary"
+	"fmt"
 )
+
+func getAccountFromShortHash(hash [32]byte) (*Account) {
+
+	var fixedHash [8]byte
+	copy(fixedHash[:],hash[0:8])
+	for _,acc := range State[fixedHash] {
+		if bytes.Compare(acc.Hash[:],hash[:]) == 0 {
+			return &acc
+		}
+	}
+	return nil
+}
 
 //possibility of state change
 //1) exchange funds from tx
@@ -10,45 +27,71 @@ import (
 //3) this doesn't need a rollback, because digitally signed
 func accStateChange(acctx *accTx) {
 
-	/*addressHash := sha3.Sum256(acctx.PubKey[:])
-	if _,exists := State[addressHash]; exists {
+	var fixedHash [8]byte
+	addressHash := sha3.Sum256(acctx.PubKey[:])
+	acc := getAccountFromShortHash(addressHash)
+	if acc != nil {
 		log.Printf("Address already exists in the state: %x\n", addressHash[0:4])
 		return
 	}
-	State[addressHash] = Account{}
-	PrintState()*/
+	copy(fixedHash[:],addressHash[0:8])
+	State[fixedHash] = make([]Account)
+	newAcc := Account{Hash:addressHash}
+	State[fixedHash] = append(State[fixedHash],newAcc)
+	PrintState()
 }
 
 func fundsStateChange(tx *fundsTx) error {
 
-	//rollback
-	/*if _, exists := State[tx.Payload.From]; !exists {
-		log.Printf("Sender does not exist in the State: %x\n", tx.Payload.From[0:4])
+	accSender, accReceiver := getAccountFromShortHash(tx.fromHash), getAccountFromShortHash(tx.toHash)
+
+	if accSender == nil {
+		log.Printf("Sender does not exist in the State: %x\n", tx.fromHash[0:8])
 		return errors.New("Sender does not exist in the State.")
 	}
 
-	if _, exists := State[tx.Payload.To]; !exists {
-		log.Printf("Receiver does not exist in the State: %x\n", tx.Payload.To[0:4])
+	if accReceiver == nil {
+		log.Printf("Receiver does not exist in the State: %x\n", tx.toHash[0:8])
 		return errors.New("Receiver does not exist in the State.")
 	}
 
-	if tx.Payload.Amount > 0 {
-		if uint64(tx.Payload.Amount) > State[tx.Payload.From].Balance {
-			log.Printf("Sender does not have enough balance: %x\n", State[tx.Payload.From].Balance)
-			return errors.New("Sender does not have enough funds for the transaction.")
-		}
+	amount := binary.BigEndian.Uint32(tx.Amount[:])
+	if uint64(amount) > accSender.Balance {
+		log.Printf("Sender does not have enough balance: %x\n", accSender.Balance)
+		return errors.New("Sender does not have enough funds for the transaction.")
 	}
 
-	accSender := State[tx.Payload.From]
+	//we're manipulating pointer, no need to write back
 	accSender.TxCnt += 1
-	accSender.Balance -= uint64(tx.Payload.Amount)
-	State[tx.Payload.From] = accSender
+	accSender.Balance -= uint64(amount)
 
-	accReceiver := State[tx.Payload.To]
-	accReceiver.Balance += uint64(tx.Payload.Amount)
-	State[tx.Payload.To] = accReceiver
+	//fmt.Printf("%v\n", State)
+	var fixedHash [8]byte
+	copy(fixedHash[:],tx.fromHash[0:8])
+	fmt.Printf("%v\n", State)
+	for _,i := range State {
+		fmt.Printf("%T: %p\n", i,&i)
+		for _,j := range i {
+			fmt.Printf("%T: %p\n", j,&j)
+		}
 
-	PrintState()*/
+
+		/*if bytes.Compare(acc.Hash[:],tx.fromHash[:]) == 0 {
+			//accSender = &acc
+			fmt.Printf("*%p\n", &acc)
+		}*/
+	}
+	fmt.Print("\n")
+
+
+	for _,acc := range State[fixedHash] {
+		if bytes.Compare(acc.Hash[:],tx.fromHash[:]) == 0 {
+			//fmt.Printf("#%p\n", &acc)
+		}
+	}
+	accReceiver.Balance += uint64(amount)
+
+	PrintState()
 	return nil
 }
 

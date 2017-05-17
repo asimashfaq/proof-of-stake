@@ -11,14 +11,29 @@ type merkleNode struct {
 
 func prepareMerkleTree(txData []fundsTx) []merkleNode {
 
-	/*var levelNodes []merkleNode
+	var levelNodes []merkleNode
 	var parentChild *merkleNode
 
 	for _, tx := range txData {
 		//construct leaf nodes
 		parentChild = new(merkleNode)
 		//here we need the hash of the tx
-		parentChild.hash = serializeHashContent(tx.Payload)
+
+		txToHash := struct {
+			Header byte
+			Amount [4]byte
+			TxCnt [3]byte
+			From [32]byte
+			To [32]byte
+		} {
+			tx.Header,
+			tx.Amount,
+			tx.TxCnt,
+			tx.fromHash,
+			tx.toHash,
+		}
+
+		parentChild.hash = serializeHashContent(txToHash)
 		levelNodes = append(levelNodes, *parentChild)
 	}
 
@@ -31,7 +46,7 @@ func prepareMerkleTree(txData []fundsTx) []merkleNode {
 		levelNodes = append(levelNodes, *parentChild)
 	}
 
-	return levelNodes*/
+	return levelNodes
 	return nil
 }
 

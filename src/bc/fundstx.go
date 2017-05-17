@@ -8,6 +8,7 @@ import (
 	"crypto/elliptic"
 	"reflect"
 	"fmt"
+	"encoding/binary"
 )
 
 //when we broadcast transactions we need a way to distinguish with a type
@@ -17,7 +18,9 @@ type fundsTx struct {
 	Amount [4]byte
 	TxCnt [3]byte
 	From [8]byte
+	fromHash [32]byte
 	To [8]byte
+	toHash [32]byte
 	Xored [24]byte
 	Sig [40]byte
 }
@@ -41,11 +44,8 @@ func constrFundsTx(header byte, amount [4]byte, txCnt [3]byte, from, to [32]byte
 
 	sigHash := serializeHashContent(txToHash)
 
-	fmt.Printf("Constr. Hash: %x\n", sigHash)
-
 	r,s, err := ecdsa.Sign(rand.Reader, key, sigHash[:])
 
-	fmt.Printf("r, s: %x, %x\n", r,s)
 	var sig [64]byte
 	copy(sig[0:32],r.Bytes())
 	copy(sig[32:],s.Bytes())
@@ -66,7 +66,8 @@ func constrFundsTx(header byte, amount [4]byte, txCnt [3]byte, from, to [32]byte
 	return
 }
 
-//state access should be avoided, thus the public key
+//I believe sender balance check here is a bad idea. This limits to receive and send funds within the same block
+//But if receiving and sending along funds within the same block, transaction ordering is important
 func (tx *fundsTx) verify() bool {
 
 	var sig [24]byte
@@ -74,6 +75,12 @@ func (tx *fundsTx) verify() bool {
 	pub1,pub2 := new(big.Int), new(big.Int)
 	r,s := new(big.Int), new(big.Int)
 
+	//fundstx only makes sense if amount > 0
+	if binary.BigEndian.Uint32(tx.Amount[:]) == 0 {
+		return false
+	}
+
+	//check if accounts are present in the actual state
 	for _,accFrom := range State[tx.From] {
 		for _,accTo := range State[tx.To] {
 			sig = [24]byte{}
@@ -106,6 +113,8 @@ func (tx *fundsTx) verify() bool {
 
 			pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
 			if ecdsa.Verify(&pubKey,sigHash[:],r,s) == true && !reflect.DeepEqual(accFrom,accTo) {
+				tx.fromHash = accFrom.Hash
+				tx.toHash = accTo.Hash
 				return true
 			}
 		}
@@ -120,14 +129,18 @@ func (tx fundsTx) String() string {
 			"Amount: %v\n" +
 			"TxCnt: %v\n" +
 			"From: %x\n" +
+			"From Full Hash: %x\n" +
 			"To: %x\n" +
+			"To Full Hash: %x\n" +
 			"Xored: %x\n" +
 			"Sig: %x\n",
 		tx.Header,
 		tx.Amount,
 		tx.TxCnt,
 		tx.From,
+		tx.fromHash[0:12],
 		tx.To,
+		tx.toHash[0:12],
 		tx.Xored[0:8],
 		tx.Sig[0:8],
 	)

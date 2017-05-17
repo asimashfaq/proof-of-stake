@@ -7,6 +7,7 @@ import (
 	"log"
 	"fmt"
 	"bytes"
+	"encoding/binary"
 )
 
 const (
@@ -78,7 +79,7 @@ func (b *Block) addAccTx(tx *accTx) error {
 	accHash := sha3.Sum256(tx.PubKey[:])
 	copy(mapId[:],accHash[0:8])
 	for _,j := range State[mapId] {
-		if bytes.Compare(tx.PubKey[:],j.Address[:]) {
+		if bytes.Compare(tx.PubKey[:],j.Address[:]) == 0 {
 			return errors.New("Account already exists.")
 		}
 	}
@@ -90,31 +91,42 @@ func (b *Block) addAccTx(tx *accTx) error {
 
 func (b *Block) addFundsTx(tx *fundsTx) error {
 
-	/*if _,exists := b.stateCopy[tx.Payload.To]; !exists {
-		b.stateCopy[tx.Payload.To] = State[tx.Payload.To]
+	//checking if the sender account is already in the local state copy
+	if _,exists := b.stateCopy[tx.fromHash]; !exists {
+		for _,acc := range State[tx.From] {
+			if bytes.Compare(acc.Hash[:],tx.fromHash[:]) == 0 {
+				b.stateCopy[tx.fromHash] = acc
+			}
+		}
 	}
 
-	if _,exists := b.stateCopy[tx.Payload.From]; !exists {
-		b.stateCopy[tx.Payload.From] = State[tx.Payload.From]
+	//vice versa for receiver account
+	if _,exists := b.stateCopy[tx.toHash]; !exists {
+		for _,acc := range State[tx.To] {
+			if bytes.Compare(acc.Hash[:],tx.toHash[:]) == 0 {
+				b.stateCopy[tx.toHash] = acc
+			}
+		}
 	}
 
-	if uint64(tx.Payload.Amount) > State[tx.Payload.From].Balance {
+	amount := binary.BigEndian.Uint32(tx.Amount[:])
+	if uint64(amount) > b.stateCopy[tx.fromHash].Balance {
 		return errors.New("Not enough funds to complete the transaction")
 	}
 
-	accSender := b.stateCopy[tx.Payload.From]
+	accSender := b.stateCopy[tx.fromHash]
 	accSender.TxCnt += 1
-	accSender.Balance -= uint64(tx.Payload.Amount)
-	b.stateCopy[tx.Payload.From] = accSender
+	accSender.Balance -= uint64(amount)
+	b.stateCopy[tx.fromHash] = accSender
 
-	b.stateCopy[tx.Payload.To] = State[tx.Payload.To]
-	accReceiver := b.stateCopy[tx.Payload.To]
-	accReceiver.Balance += uint64(tx.Payload.Amount)
-	b.stateCopy[tx.Payload.To] = accReceiver
+	accReceiver := b.stateCopy[tx.toHash]
+	accReceiver.Balance += uint64(amount)
+	b.stateCopy[tx.toHash] = accReceiver
 
 	//b.TxData[serializeHashContent(tx.Info)] = *tx
 	b.FundsTxData = append(b.FundsTxData, *tx)
-	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)*/
+
+	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)
 	return nil
 }
 
@@ -218,9 +230,6 @@ func validateBlock(b *Block) error {
 	for _,tx := range b.AccTxData {
 		accStateChange(&tx)
 	}
-
-	//delete the local state copy to prevent mem leaks
-	
 
 	return nil
 }
