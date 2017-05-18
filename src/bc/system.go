@@ -11,7 +11,7 @@ import (
 )
 
 //will act as interface to bc package
-var State map[[8]byte][]Account
+var State map[[8]byte][]*Account
 var LogFile *os.File
 var block *Block
 
@@ -21,7 +21,7 @@ func InitSystem() {
 	log.SetOutput(LogFile)
 
 	log.Println("Starting system, initializing state map")
-	State = make(map[[8]byte][]Account)
+	State = make(map[[8]byte][]*Account)
 	//temporary
 	block = newBlock([32]byte{})
 	//this is the responsibility of the client to send the right txCnt

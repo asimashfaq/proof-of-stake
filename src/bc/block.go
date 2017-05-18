@@ -63,7 +63,7 @@ func (b *Block) addTx(tx transaction) error {
 	case *accTx:
 		err := b.addAccTx(tx.(*accTx))
 		if err != nil {
-			log.Printf("Adding accTx tx failed: %x, because %v\n", tx.(*accTx),err)
+			log.Printf("Adding accTx tx failed: %v, because %v\n", tx.(*accTx),err)
 		}
 	default:
 		return errors.New("Transaction type not recognized.")
@@ -95,7 +95,9 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	if _,exists := b.stateCopy[tx.fromHash]; !exists {
 		for _,acc := range State[tx.From] {
 			if bytes.Compare(acc.Hash[:],tx.fromHash[:]) == 0 {
-				b.stateCopy[tx.fromHash] = acc
+				newAcc := Account{}
+				newAcc = *acc
+				b.stateCopy[tx.fromHash] = newAcc
 			}
 		}
 	}
@@ -104,7 +106,9 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	if _,exists := b.stateCopy[tx.toHash]; !exists {
 		for _,acc := range State[tx.To] {
 			if bytes.Compare(acc.Hash[:],tx.toHash[:]) == 0 {
-				b.stateCopy[tx.toHash] = acc
+				newAcc := Account{}
+				newAcc = *acc
+				b.stateCopy[tx.toHash] = newAcc
 			}
 		}
 	}

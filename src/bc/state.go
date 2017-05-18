@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"errors"
 	"encoding/binary"
-	"fmt"
 )
 
 func getAccountFromShortHash(hash [32]byte) (*Account) {
@@ -15,7 +14,7 @@ func getAccountFromShortHash(hash [32]byte) (*Account) {
 	copy(fixedHash[:],hash[0:8])
 	for _,acc := range State[fixedHash] {
 		if bytes.Compare(acc.Hash[:],hash[:]) == 0 {
-			return &acc
+			return acc
 		}
 	}
 	return nil
@@ -35,9 +34,8 @@ func accStateChange(acctx *accTx) {
 		return
 	}
 	copy(fixedHash[:],addressHash[0:8])
-	State[fixedHash] = make([]Account)
 	newAcc := Account{Hash:addressHash}
-	State[fixedHash] = append(State[fixedHash],newAcc)
+	State[fixedHash] = append(State[fixedHash],&newAcc)
 	PrintState()
 }
 
@@ -65,30 +63,6 @@ func fundsStateChange(tx *fundsTx) error {
 	accSender.TxCnt += 1
 	accSender.Balance -= uint64(amount)
 
-	//fmt.Printf("%v\n", State)
-	var fixedHash [8]byte
-	copy(fixedHash[:],tx.fromHash[0:8])
-	fmt.Printf("%v\n", State)
-	for _,i := range State {
-		fmt.Printf("%T: %p\n", i,&i)
-		for _,j := range i {
-			fmt.Printf("%T: %p\n", j,&j)
-		}
-
-
-		/*if bytes.Compare(acc.Hash[:],tx.fromHash[:]) == 0 {
-			//accSender = &acc
-			fmt.Printf("*%p\n", &acc)
-		}*/
-	}
-	fmt.Print("\n")
-
-
-	for _,acc := range State[fixedHash] {
-		if bytes.Compare(acc.Hash[:],tx.fromHash[:]) == 0 {
-			//fmt.Printf("#%p\n", &acc)
-		}
-	}
 	accReceiver.Balance += uint64(amount)
 
 	PrintState()

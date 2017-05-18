@@ -6,26 +6,13 @@ import (
 	"crypto/rand"
 	"bc"
 	"golang.org/x/crypto/sha3"
-	"fmt"
 )
 
 var foo bc.Account
 
-
-func somefunc() (*bc.Account) {
-	return &foo
-}
-
-
 func main() {
 
 	bc.InitSystem()
-
-	foo.Balance = 5
-	bar := somefunc()
-
-	bar.Balance = 2
-	fmt.Printf("%v, %v\n", foo, bar)
 
 	privA, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	privB, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -53,8 +40,8 @@ func main() {
 	copy(shortHashA[:], accA.Hash[0:8])
 	copy(shortHashB[:], accB.Hash[0:8])
 
-	bc.State[shortHashA] = append(bc.State[shortHashA],accA)
-	bc.State[shortHashB] = append(bc.State[shortHashB],accB)
+	bc.State[shortHashA] = append(bc.State[shortHashA],&accA)
+	bc.State[shortHashB] = append(bc.State[shortHashB],&accB)
 
 	bc.PrintState()
 
