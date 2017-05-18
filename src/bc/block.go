@@ -22,11 +22,12 @@ type Block struct {
 	Hash [32]byte
 	PrevHash [32]byte
 	Version uint8 //future updates
-	//72-bit, enough even if the network gets really large
-	Proof [ProofSize]byte
+	Proof [ProofSize]byte //72-bit, enough even if the network gets really large
 	Timestamp int64
 	Difficulty uint8
 	MerkleRoot [32]byte
+	Beneficiary [32]byte
+	MinerSig [64]byte
 	//this field will not be exported, this is just to avoid race conditions for the global state
 	stateCopy map[[32]byte]Account
 	FundsTxData []fundsTx
@@ -114,9 +115,15 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	}
 
 	amount := binary.BigEndian.Uint32(tx.Amount[:])
-	if uint64(amount) > b.stateCopy[tx.fromHash].Balance {
-		return errors.New("Not enough funds to complete the transaction")
+	for rootHash,_ := range RootKeys {
+		if rootHash == tx.fromHash {
+			continue
+		}
+		if uint64(amount) > b.stateCopy[tx.fromHash].Balance {
+			return errors.New("Not enough funds to complete the transaction")
+		}
 	}
+
 
 	accSender := b.stateCopy[tx.fromHash]
 	accSender.TxCnt += 1
@@ -139,7 +146,7 @@ func (b *Block) finalizeBlock() {
 	//merkle tree only built from funds transactions
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData)
 	b.Timestamp = time.Now().Unix()
-	b.Difficulty = 18
+	b.Difficulty = 12
 
 	//anonymous struct
 	partialToHash := struct{
@@ -221,9 +228,21 @@ func validateBlock(b *Block) error {
 		}
 	}
 
+
+
 	//apply to State
 	for index, tx := range b.FundsTxData {
-		if fundsStateChange(&tx) != nil {
+
+		if b.Version == 0x01 {
+			//check if we have to issue new coins
+			for hash,rootAcc := range RootKeys {
+				if hash == tx.fromHash {
+					log.Printf("Root Key Transaction: %x\n", hash[0:8])
+					rootAcc.Balance += uint64(binary.BigEndian.Uint32(tx.Amount[:]))
+					rootAcc.Balance += uint64(binary.BigEndian.Uint16(tx.Fee[:]))
+				}
+			}
+		} else if fundsStateChange(&tx) != nil {
 			//don't use pointer here
 			log.Println("Starting rollback")
 			fundsStateRollback(b.FundsTxData,index-1)
@@ -248,13 +267,13 @@ func (b Block) String() string {
 		"MerkleRoot: %x\n" +
 		"Amount of fundsTx: %v\n" +
 		"Amount of txData: %v\n",
-		b.Hash[0:4],
-		b.PrevHash[0:4],
+		b.Hash[0:8],
+		b.PrevHash[0:8],
 		b.Version,
 		b.Proof,
 		b.Timestamp,
 		b.Difficulty,
-		b.MerkleRoot[0:4],
+		b.MerkleRoot[0:8],
 		len(b.FundsTxData),
 		len(b.AccTxData),
 	)

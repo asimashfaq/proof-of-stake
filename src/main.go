@@ -6,13 +6,32 @@ import (
 	"crypto/rand"
 	"bc"
 	"golang.org/x/crypto/sha3"
+	"math/big"
 )
 
-var foo bc.Account
+
 
 func main() {
 
 	bc.InitSystem()
+
+	_rootPub1,_ := new(big.Int).SetString(bc.RootPub1,16)
+	_rootPub2,_ := new(big.Int).SetString(bc.RootPub2,16)
+	_rootPriv,_ := new(big.Int).SetString(bc.RootPriv,16)
+	rootPubKey := ecdsa.PublicKey{
+		elliptic.P256(),
+		_rootPub1,
+		_rootPub2,
+	}
+	rootPrivKey := ecdsa.PrivateKey{
+		rootPubKey,
+		_rootPriv,
+	}
+	var rootPubKeyHash [32]byte
+	var tmp [64]byte
+	copy(tmp[:32],_rootPub1.Bytes())
+	copy(tmp[32:],_rootPub2.Bytes())
+	rootPubKeyHash = sha3.Sum256(tmp[:])
 
 	privA, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	privB, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -44,7 +63,10 @@ func main() {
 	bc.State[shortHashB] = append(bc.State[shortHashB],&accB)
 
 	bc.PrintState()
+	bc.AddFundsTx(0, rootPubKeyHash, accA.Hash, 100, &rootPrivKey)
+	bc.AddFundsTx(0, accA.Hash, accB.Hash, 10, privA)
 
+	bc.AddFundsTx(0, accA.Hash, accB.Hash, 10, privA)
 	bc.AddFundsTx(0, accA.Hash, accB.Hash, 10, privA)
 	bc.AddFundsTx(0, accB.Hash, accA.Hash, 2, privB)
 	bc.AddFundsTx(1, accA.Hash, accB.Hash, 1, privA)

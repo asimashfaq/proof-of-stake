@@ -9,5 +9,5 @@ type Account struct {
 }
 
 func (acc Account) String() string {
-	return fmt.Sprintf("Hash: %x, TxCnt: %v, Balance: %v", acc.Address[0:4], acc.TxCnt, acc.Balance)
+	return fmt.Sprintf("Hash: %x, Address: %x, TxCnt: %v, Balance: %v", acc.Hash[0:8], acc.Address[0:8], acc.TxCnt, acc.Balance)
 }

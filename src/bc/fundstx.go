@@ -16,6 +16,7 @@ import (
 type fundsTx struct {
 	Header byte
 	Amount [4]byte
+	Fee [2]byte
 	TxCnt [3]byte
 	From [8]byte
 	fromHash [32]byte
@@ -25,18 +26,20 @@ type fundsTx struct {
 	Sig [40]byte
 }
 
-func constrFundsTx(header byte, amount [4]byte, txCnt [3]byte, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
+func constrFundsTx(header byte, amount [4]byte, fee [2]byte, txCnt [3]byte, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
 
 	//avoid sending money to its own acc, doesn't make sense with account-based money
 	txToHash := struct {
 		Header byte
 		Amount [4]byte
+		Fee [2]byte
 		TxCnt [3]byte
 		From [32]byte
 		To [32]byte
 	} {
 		header,
 		amount,
+		fee,
 		txCnt,
 		from,
 		to,
@@ -47,11 +50,12 @@ func constrFundsTx(header byte, amount [4]byte, txCnt [3]byte, from, to [32]byte
 	r,s, err := ecdsa.Sign(rand.Reader, key, sigHash[:])
 
 	var sig [64]byte
-	copy(sig[0:32],r.Bytes())
+	copy(sig[:32],r.Bytes())
 	copy(sig[32:],s.Bytes())
 
 	tx.Header = header
 	tx.Amount = amount
+	tx.Fee = fee
 	tx.TxCnt = txCnt
 
 	copy(tx.From[0:8],from[0:8])
@@ -99,12 +103,14 @@ func (tx *fundsTx) verify() bool {
 			txHash := struct {
 				Header byte
 				Amount [4]byte
+				Fee [2]byte
 				TxCnt [3]byte
 				From [32]byte
 				To [32]byte
 			} {
 				tx.Header,
 				tx.Amount,
+				tx.Fee,
 				tx.TxCnt,
 				accFrom.Hash,
 				accTo.Hash,
@@ -127,6 +133,7 @@ func (tx fundsTx) String() string {
 	return fmt.Sprintf(
 		"Header: %x\n" +
 			"Amount: %v\n" +
+			"Fee: %v\n" +
 			"TxCnt: %v\n" +
 			"From: %x\n" +
 			"From Full Hash: %x\n" +
@@ -136,6 +143,7 @@ func (tx fundsTx) String() string {
 			"Sig: %x\n",
 		tx.Header,
 		tx.Amount,
+		tx.Fee,
 		tx.TxCnt,
 		tx.From,
 		tx.fromHash[0:12],

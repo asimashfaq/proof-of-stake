@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"errors"
 	"encoding/binary"
+	"fmt"
 )
 
 func getAccountFromShortHash(hash [32]byte) (*Account) {
@@ -24,6 +25,7 @@ func getAccountFromShortHash(hash [32]byte) (*Account) {
 //1) exchange funds from tx
 //2) revert funds from previous tx
 //3) this doesn't need a rollback, because digitally signed
+//https://golang.org/doc/faq#stack_or_heap
 func accStateChange(acctx *accTx) {
 
 	var fixedHash [8]byte
@@ -53,6 +55,9 @@ func fundsStateChange(tx *fundsTx) error {
 		return errors.New("Receiver does not exist in the State.")
 	}
 
+	//also check for txCnt!
+
+
 	amount := binary.BigEndian.Uint32(tx.Amount[:])
 	if uint64(amount) > accSender.Balance {
 		log.Printf("Sender does not have enough balance: %x\n", accSender.Balance)
@@ -62,6 +67,7 @@ func fundsStateChange(tx *fundsTx) error {
 	//we're manipulating pointer, no need to write back
 	accSender.TxCnt += 1
 	accSender.Balance -= uint64(amount)
+	fmt.Printf("###%x\n", accSender)
 
 	accReceiver.Balance += uint64(amount)
 
