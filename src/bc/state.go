@@ -80,7 +80,7 @@ func fundsStateChange(tx *fundsTx) error {
 	return nil
 }
 
-func transferFees(txSlice []fundsTx, minerHash [32]byte) {
+func collectFundsTxFees(txSlice []fundsTx, minerHash [32]byte) {
 	miner := getAccountFromHash(minerHash)
 
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
@@ -92,6 +92,19 @@ func transferFees(txSlice []fundsTx, minerHash [32]byte) {
 		senderAcc.Balance -= uint64(fee)
 	}
 }
+
+func collectAcctTxFees(txSlice []accTx, minerHash [32]byte) {
+	miner := getAccountFromHash(minerHash)
+
+	//subtract fees from sender (check if that is allowed has already been done in the block validation)
+	for _,tx := range txSlice {
+		//money gets created from thin air
+		//no need to subtract money from root key
+		fee := binary.BigEndian.Uint16(tx.Fee[:])
+		miner.Balance += uint64(fee)
+	}
+}
+
 
 func fundsStateRollback(txSlice []fundsTx, index int) {
 

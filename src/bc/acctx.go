@@ -6,6 +6,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
+	"encoding/binary"
+	"bytes"
 )
 
 //just for test cases
@@ -18,12 +20,20 @@ const (
 
 type accTx struct {
 	Issuer [32]byte
-	Fee [3]byte
+	Fee [2]byte
 	Sig [64]byte
 	PubKey [64]byte
 }
 
 func constrAccTx() (tx accTx, err error) {
+
+	//fixed fee for now
+	var buf bytes.Buffer
+	var fee uint16
+	fee = 5
+
+	binary.Write(&buf,binary.BigEndian,fee)
+	copy(tx.Fee[:],buf.Bytes())
 
 	_rootPub1,_ := new(big.Int).SetString(RootPub1,16)
 	_rootPub2,_ := new(big.Int).SetString(RootPub2,16)
@@ -45,6 +55,14 @@ func constrAccTx() (tx accTx, err error) {
 	copy(tx.PubKey[32:],priv.PublicKey.Y.Bytes())
 
 	r,s, err := ecdsa.Sign(rand.Reader, &rootPrivKey, tx.PubKey[:])
+
+
+	var rootPublicKey [64]byte
+	copy(rootPublicKey[:32],_rootPub1.Bytes())
+	copy(rootPublicKey[32:],_rootPub2.Bytes())
+	issuerHash := serializeHashContent(rootPublicKey)
+
+	copy(tx.Issuer[:], issuerHash[:])
 
 	copy(tx.Sig[:32],r.Bytes())
 	copy(tx.Sig[32:],s.Bytes())
@@ -72,9 +90,14 @@ func (tx *accTx) verify() bool {
 
 func (tx accTx) String() string {
 	return fmt.Sprintf(
-		"\nSig: %x\n" +
-		"PubKey: %x\n",
-		tx.Sig[0:4],
-		tx.PubKey[0:4],
+		"\n" +
+			"Issuer: %x\n" +
+			"Fee: %x\n" +
+			"Sig: %x\n" +
+			"PubKey: %x\n",
+		tx.Issuer[0:8],
+		tx.Fee,
+		tx.Sig[0:8],
+		tx.PubKey[0:8],
 	)
 }
