@@ -5,7 +5,8 @@ import "fmt"
 type Account struct {
 	Hash [32]byte
 	Address [64]byte
-	TxCnt, Balance uint64
+	Balance uint64
+	TxCnt uint32
 }
 
 func (acc Account) String() string {

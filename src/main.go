@@ -66,25 +66,25 @@ func main() {
 	bc.AddFundsTx(0, rootPubKeyHash, accA.Hash, 100, &rootPrivKey)
 	bc.AddFundsTx(0, accA.Hash, accB.Hash, 10, privA)
 
-	bc.AddFundsTx(0, accA.Hash, accB.Hash, 10, privA)
-	bc.AddFundsTx(0, accA.Hash, accB.Hash, 10, privA)
+	bc.AddFundsTx(1, accA.Hash, accB.Hash, 500, privA)
+	bc.AddFundsTx(2, accA.Hash, accB.Hash, 200, privA)
 	bc.AddFundsTx(0, accB.Hash, accA.Hash, 2, privB)
-	bc.AddFundsTx(1, accA.Hash, accB.Hash, 1, privA)
+	bc.AddFundsTx(3, accA.Hash, accB.Hash, 1, privA)
 
 	newAddr := bc.AddAccTx()
 	newHash := sha3.Sum256(newAddr.PubKey[:])
 
 	bc.AddFundsTx(1, accB.Hash, accA.Hash, 4, privB)
-	bc.AddFundsTx(2, accA.Hash, accB.Hash, 3, privA)
+	bc.AddFundsTx(4, accA.Hash, accB.Hash, 3, privA)
 	bc.AddFundsTx(2, accB.Hash, accA.Hash, 2, privB)
 
 	bc.FinalizeBlock()
 	bc.ValidateBlock()
 
-	bc.AddFundsTx(3, accA.Hash, accB.Hash, 32, privA)
+	bc.AddFundsTx(5, accA.Hash, accB.Hash, 32, privA)
 	bc.AddFundsTx(3, accB.Hash, accA.Hash, 64, privB)
-	bc.AddFundsTx(4, accA.Hash, accB.Hash, 10000, privA)
-	bc.AddFundsTx(4, accA.Hash, newHash, 1, privA)
+	bc.AddFundsTx(6, accA.Hash, accB.Hash, 10000, privA)
+	bc.AddFundsTx(6, accA.Hash, newHash, 1, privA)
 
 	bc.AddAccTx()
 	bc.AddAccTx()

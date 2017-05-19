@@ -27,9 +27,8 @@ type Block struct {
 	Difficulty uint8
 	MerkleRoot [32]byte
 	Beneficiary [32]byte
-	MinerSig [64]byte
 	//this field will not be exported, this is just to avoid race conditions for the global state
-	stateCopy map[[32]byte]Account
+	stateCopy map[[32]byte]*Account
 	FundsTxData []fundsTx
 	AccTxData []accTx
 }
@@ -39,7 +38,7 @@ func newBlock(prevBlockHash [32]byte) *Block {
 	b := Block{}
 	b.Version = 0x01
 	b.PrevHash = prevBlockHash
-	b.stateCopy = make(map[[32]byte]Account)
+	b.stateCopy = make(map[[32]byte]*Account)
 	return &b
 }
 
@@ -98,7 +97,7 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 			if bytes.Compare(acc.Hash[:],tx.fromHash[:]) == 0 {
 				newAcc := Account{}
 				newAcc = *acc
-				b.stateCopy[tx.fromHash] = newAcc
+				b.stateCopy[tx.fromHash] = &newAcc
 			}
 		}
 	}
@@ -109,12 +108,13 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 			if bytes.Compare(acc.Hash[:],tx.toHash[:]) == 0 {
 				newAcc := Account{}
 				newAcc = *acc
-				b.stateCopy[tx.toHash] = newAcc
+				b.stateCopy[tx.toHash] = &newAcc
 			}
 		}
 	}
 
 	amount := binary.BigEndian.Uint32(tx.Amount[:])
+
 	for rootHash,_ := range RootKeys {
 		if rootHash == tx.fromHash {
 			continue
@@ -124,20 +124,19 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 		}
 	}
 
-
 	accSender := b.stateCopy[tx.fromHash]
 	accSender.TxCnt += 1
 	accSender.Balance -= uint64(amount)
-	b.stateCopy[tx.fromHash] = accSender
+	//b.stateCopy[tx.fromHash] = accSender
 
 	accReceiver := b.stateCopy[tx.toHash]
 	accReceiver.Balance += uint64(amount)
-	b.stateCopy[tx.toHash] = accReceiver
+	//b.stateCopy[tx.toHash] = accReceiver
 
 	//b.TxData[serializeHashContent(tx.Info)] = *tx
 	b.FundsTxData = append(b.FundsTxData, *tx)
 
-	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)
+	log.Printf("Added tx to the block FundsTxData slice: \n%v", *tx)
 	return nil
 }
 
@@ -147,6 +146,7 @@ func (b *Block) finalizeBlock() {
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData)
 	b.Timestamp = time.Now().Unix()
 	b.Difficulty = 12
+	copy(b.Beneficiary[:],MinerHash[:])
 
 	//anonymous struct
 	partialToHash := struct{
@@ -154,11 +154,13 @@ func (b *Block) finalizeBlock() {
 		version uint8
 		timestamp int64
 		merkleRoot [32]byte
+		beneficiary [32]byte
 	}{
 		b.PrevHash,
 		b.Version,
 		b.Timestamp,
 		b.MerkleRoot,
+		b.Beneficiary,
 	}
 
 	partialHashed := serializeHashContent(partialToHash)
@@ -170,6 +172,7 @@ func (b *Block) finalizeBlock() {
 	for index,val := range proof.Bytes() {
 		b.Proof[ProofSize-len(proof.Bytes())+index] = val
 	}
+
 	log.Printf("Finalized block: %v", b)
 }
 
@@ -187,17 +190,19 @@ func validateBlock(b *Block) error {
 	}
 	proof := b.Proof[startIndex:]
 
-	//anonymous struct17
+	//anonymous struct
 	partialToHash := struct{
 		prevHash [32]byte
 		version uint8
 		timestamp int64
 		merkleRoot [32]byte
+		beneficiary [32]byte
 	}{
 		b.PrevHash,
 		b.Version,
 		b.Timestamp,
 		b.MerkleRoot,
+		b.Beneficiary,
 	}
 	partialHashed := serializeHashContent(partialToHash)
 	if b.Hash != sha3.Sum256(append(proof,partialHashed[:]...)) || !validateProofOfWork(b.Difficulty, b.Hash) {
@@ -228,8 +233,6 @@ func validateBlock(b *Block) error {
 		}
 	}
 
-
-
 	//apply to State
 	for index, tx := range b.FundsTxData {
 
@@ -242,7 +245,8 @@ func validateBlock(b *Block) error {
 					rootAcc.Balance += uint64(binary.BigEndian.Uint16(tx.Fee[:]))
 				}
 			}
-		} else if fundsStateChange(&tx) != nil {
+		}
+		if fundsStateChange(&tx) != nil {
 			//don't use pointer here
 			log.Println("Starting rollback")
 			fundsStateRollback(b.FundsTxData,index-1)
@@ -253,6 +257,10 @@ func validateBlock(b *Block) error {
 	for _,tx := range b.AccTxData {
 		accStateChange(&tx)
 	}
+
+	transferFees(b.FundsTxData, b.Beneficiary)
+	log.Print("Block validated and state changed accordingly: \n")
+	PrintState()
 
 	return nil
 }
@@ -265,6 +273,7 @@ func (b Block) String() string {
 		"Timestamp: %v\n" +
 		"Difficulty: %v\n" +
 		"MerkleRoot: %x\n" +
+		"Beneficiary: %x\n" +
 		"Amount of fundsTx: %v\n" +
 		"Amount of txData: %v\n",
 		b.Hash[0:8],
@@ -274,6 +283,7 @@ func (b Block) String() string {
 		b.Timestamp,
 		b.Difficulty,
 		b.MerkleRoot[0:8],
+		b.Beneficiary[0:8],
 		len(b.FundsTxData),
 		len(b.AccTxData),
 	)

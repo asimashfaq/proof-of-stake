@@ -44,9 +44,6 @@ func constrAccTx() (tx accTx, err error) {
 	copy(tx.PubKey[:32],priv.PublicKey.X.Bytes())
 	copy(tx.PubKey[32:],priv.PublicKey.Y.Bytes())
 
-
-	//r,s, err := ecdsa.Sign(rand.Reader, &rootPrivKey, pubKey[:])
-
 	r,s, err := ecdsa.Sign(rand.Reader, &rootPrivKey, tx.PubKey[:])
 
 	copy(tx.Sig[:32],r.Bytes())

@@ -6,10 +6,9 @@ import (
 	"bytes"
 	"errors"
 	"encoding/binary"
-	"fmt"
 )
 
-func getAccountFromShortHash(hash [32]byte) (*Account) {
+func getAccountFromHash(hash [32]byte) (*Account) {
 
 	var fixedHash [8]byte
 	copy(fixedHash[:],hash[0:8])
@@ -30,20 +29,20 @@ func accStateChange(acctx *accTx) {
 
 	var fixedHash [8]byte
 	addressHash := sha3.Sum256(acctx.PubKey[:])
-	acc := getAccountFromShortHash(addressHash)
+	acc := getAccountFromHash(addressHash)
 	if acc != nil {
 		log.Printf("Address already exists in the state: %x\n", addressHash[0:4])
 		return
 	}
 	copy(fixedHash[:],addressHash[0:8])
-	newAcc := Account{Hash:addressHash}
+	newAcc := Account{Hash:addressHash,Address:acctx.PubKey}
 	State[fixedHash] = append(State[fixedHash],&newAcc)
 	PrintState()
 }
 
 func fundsStateChange(tx *fundsTx) error {
 
-	accSender, accReceiver := getAccountFromShortHash(tx.fromHash), getAccountFromShortHash(tx.toHash)
+	accSender, accReceiver := getAccountFromHash(tx.fromHash), getAccountFromHash(tx.toHash)
 
 	if accSender == nil {
 		log.Printf("Sender does not exist in the State: %x\n", tx.fromHash[0:8])
@@ -56,10 +55,17 @@ func fundsStateChange(tx *fundsTx) error {
 	}
 
 	//also check for txCnt!
-
+	var cntBuf [4]byte
+	copy(cntBuf[1:],tx.TxCnt[:])
+	txCnt := binary.BigEndian.Uint32(cntBuf[:])
+	if txCnt != accSender.TxCnt {
+		log.Printf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)\n", txCnt, accSender.TxCnt)
+		return errors.New("Sender does not have enough funds for the transaction.")
+	}
 
 	amount := binary.BigEndian.Uint32(tx.Amount[:])
-	if uint64(amount) > accSender.Balance {
+	fee := binary.BigEndian.Uint16(tx.Fee[:])
+	if uint64(amount+uint32(fee)) > accSender.Balance {
 		log.Printf("Sender does not have enough balance: %x\n", accSender.Balance)
 		return errors.New("Sender does not have enough funds for the transaction.")
 	}
@@ -67,7 +73,6 @@ func fundsStateChange(tx *fundsTx) error {
 	//we're manipulating pointer, no need to write back
 	accSender.TxCnt += 1
 	accSender.Balance -= uint64(amount)
-	fmt.Printf("###%x\n", accSender)
 
 	accReceiver.Balance += uint64(amount)
 
@@ -75,20 +80,33 @@ func fundsStateChange(tx *fundsTx) error {
 	return nil
 }
 
+func transferFees(txSlice []fundsTx, minerHash [32]byte) {
+	miner := getAccountFromHash(minerHash)
+
+	//subtract fees from sender (check if that is allowed has already been done in the block validation)
+	for _,tx := range txSlice {
+		fee := binary.BigEndian.Uint16(tx.Fee[:])
+		miner.Balance += uint64(fee)
+
+		senderAcc := getAccountFromHash(tx.fromHash)
+		senderAcc.Balance -= uint64(fee)
+	}
+}
+
 func fundsStateRollback(txSlice []fundsTx, index int) {
 
-	/*for cnt := index; index >= 0; index-- {
+	for cnt := index; index >= 0; index-- {
 		tx := txSlice[cnt]
-		accSender := State[tx.Payload.From]
-		accSender.TxCnt -= 1
-		accSender.Balance += uint64(tx.Payload.Amount)
-		State[tx.Payload.From] = accSender
 
-		accReceiver := State[tx.Payload.To]
-		accReceiver.Balance -= uint64(tx.Payload.Amount)
-		State[tx.Payload.To] = accReceiver
+		accSender, accReceiver := getAccountFromHash(tx.fromHash), getAccountFromHash(tx.toHash)
+
+		amount := binary.BigEndian.Uint32(tx.Amount[:])
+		accSender.TxCnt -= 1
+		accSender.Balance += uint64(amount)
+
+		accReceiver.Balance -= uint64(amount)
 	}
-	PrintState()*/
+	PrintState()
 }
 
 func PrintState() {
