@@ -47,6 +47,8 @@ func constrFundsTx(header byte, amount [4]byte, fee [2]byte, txCnt [3]byte, from
 
 	sigHash := serializeHashContent(txToHash)
 
+	fmt.Printf("%x\n", sigHash)
+
 	r,s, err := ecdsa.Sign(rand.Reader, key, sigHash[:])
 
 	var sig [64]byte
@@ -128,6 +130,51 @@ func (tx *fundsTx) verify() bool {
 
 	return false
 }
+
+
+/*Header byte
+Amount [4]byte
+Fee [2]byte
+TxCnt [3]byte
+From [8]byte
+fromHash [32]byte
+To [8]byte
+toHash [32]byte
+Xored [24]byte
+Sig [40]byte*/
+
+//when we serialize the struct with binary.Write, unexported field get serialized as well, undesired
+//behavior. Therefore, writing own encoder/decoder
+func encodeFundsTx(tx fundsTx) (encodedTx []byte) {
+	encodedTx = make([]byte,90)
+
+	fmt.Printf("%x\n", tx.Fee[:])
+	encodedTx[0] = tx.Header
+	copy(encodedTx[1:5], tx.Amount[:])
+	copy(encodedTx[5:7], tx.Fee[:])
+	copy(encodedTx[7:10], tx.TxCnt[:])
+	copy(encodedTx[10:18], tx.From[:])
+	copy(encodedTx[18:26], tx.To[:])
+	copy(encodedTx[26:50], tx.Xored[:])
+	copy(encodedTx[50:90], tx.Sig[:])
+
+	return encodedTx
+}
+
+func decodeFundsTx(encodedTx []byte) (tx *fundsTx) {
+	tx = new(fundsTx)
+	tx.Header = encodedTx[0]
+	copy(tx.Amount[:], encodedTx[1:5])
+	copy(tx.Fee[:], encodedTx[5:7])
+	copy(tx.TxCnt[:], encodedTx[7:10])
+	copy(tx.From[:], encodedTx[10:18])
+	copy(tx.To[:], encodedTx[18:26])
+	copy(tx.Xored[:], encodedTx[26:50])
+	copy(tx.Sig[:], encodedTx[50:90])
+
+	return tx
+}
+
 
 func (tx fundsTx) String() string {
 	return fmt.Sprintf(

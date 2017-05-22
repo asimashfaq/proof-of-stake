@@ -60,7 +60,7 @@ func InitSystem() {
 	RootKeys[rootHash] = &rootAcc
 }
 
-func AddFundsTx(localTxCnt uint32, from, to [32]byte, amount uint32, key *ecdsa.PrivateKey) error {
+func AddFundsTx(localTxCnt uint32, from, to [32]byte, amount uint32, key *ecdsa.PrivateKey) (error) {
 	var header byte
 	var buf bytes.Buffer
 	var amountBuf [4]byte
@@ -85,16 +85,22 @@ func AddFundsTx(localTxCnt uint32, from, to [32]byte, amount uint32, key *ecdsa.
 	copy(amountBuf[:],buf.Bytes())
 	buf.Reset()
 
-	tx,err := constrFundsTx(header, amountBuf, feeBuf, txCntBuf, from,to, key)
+	tx, err := constrFundsTx(header, amountBuf, feeBuf, txCntBuf, from,to, key)
+	fmt.Printf("%v\n", tx)
+	//serialize tx
+
+	data := encodeFundsTx(tx)
+	decodeData(data)
+
 	//localTxCnt++
-	if err != nil {
+	/*if err != nil {
 		fmt.Printf("%v\n", err)
 	}
 	err = block.addTx(&tx)
 	if err != nil {
 		fmt.Printf("%v\n", err)
-	}
-	return nil
+	}*/
+	return err
 }
 
 func AddAccTx() *accTx {
@@ -122,4 +128,13 @@ func ValidateBlock() {
 	}
 	prevBlock := block
 	block = newBlock(prevBlock.Hash)
+}
+
+//gets called from the main network receiver loop
+func decodeData(payload []byte) {
+
+	switch(len(payload)){
+	case 90:
+		//_fundsTx := decodeFundsTx(payload)
+	}
 }
