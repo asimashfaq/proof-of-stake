@@ -26,7 +26,7 @@ type fundsTx struct {
 	Sig [40]byte
 }
 
-func constrFundsTx(header byte, amount [4]byte, fee [2]byte, txCnt [3]byte, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
+func ConstrFundsTx(header byte, amount [4]byte, fee [2]byte, txCnt [3]byte, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
 
 	//avoid sending money to its own acc, doesn't make sense with account-based money
 	txToHash := struct {
@@ -46,8 +46,6 @@ func constrFundsTx(header byte, amount [4]byte, fee [2]byte, txCnt [3]byte, from
 	}
 
 	sigHash := serializeHashContent(txToHash)
-
-	fmt.Printf("%x\n", sigHash)
 
 	r,s, err := ecdsa.Sign(rand.Reader, key, sigHash[:])
 
@@ -145,10 +143,8 @@ Sig [40]byte*/
 
 //when we serialize the struct with binary.Write, unexported field get serialized as well, undesired
 //behavior. Therefore, writing own encoder/decoder
-func encodeFundsTx(tx fundsTx) (encodedTx []byte) {
+func EncodeFundsTx(tx fundsTx) (encodedTx []byte) {
 	encodedTx = make([]byte,90)
-
-	fmt.Printf("%x\n", tx.Fee[:])
 	encodedTx[0] = tx.Header
 	copy(encodedTx[1:5], tx.Amount[:])
 	copy(encodedTx[5:7], tx.Fee[:])

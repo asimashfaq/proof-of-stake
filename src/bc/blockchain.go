@@ -2,12 +2,9 @@ package bc
 
 import (
 	"crypto/ecdsa"
-	"fmt"
 	"log"
 	"os"
 	"time"
-	"bytes"
-	"encoding/binary"
 	"math/big"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -21,6 +18,10 @@ var block *Block
 
 var MinerHash [32]byte
 var MinerPrivKey *ecdsa.PrivateKey
+
+func Sync(){
+
+}
 
 func InitSystem() {
 
@@ -61,7 +62,26 @@ func InitSystem() {
 }
 
 func AddFundsTx(localTxCnt uint32, from, to [32]byte, amount uint32, key *ecdsa.PrivateKey) (error) {
-	var header byte
+	/*var header byte
+	var buf bytes.Buffer
+	var amountBuf [4]byte
+	var txCntBuf [3]byte
+	var feeBuf [2]byte
+	var fee uint16
+	fee = 1
+
+	//this has to be easier
+	var tmpTxCntBuf [4]byte
+
+	binary.Write(&buf, binary.BigEndian, localTxCnt)
+	copy(tmpTxCntBuf[:],buf.Bytes())
+	copy(txCntBuf[:],tmpTxCntBuf[1:])
+	buf.Reset()
+
+	binary.Write(&buf, binary.BigEndian, fee)
+	copy(feeBuf[:],buf.Bytes())
+	buf.Reset()
+/*var header byte
 	var buf bytes.Buffer
 	var amountBuf [4]byte
 	var txCntBuf [3]byte
@@ -90,17 +110,28 @@ func AddFundsTx(localTxCnt uint32, from, to [32]byte, amount uint32, key *ecdsa.
 	//serialize tx
 
 	data := encodeFundsTx(tx)
+	binary.Write(&buf, binary.BigEndian, amount)
+	copy(amountBuf[:],buf.Bytes())
+	buf.Reset()
+
+	tx, err := constrFundsTx(header, amountBuf, feeBuf, txCntBuf, from,to, key)
+	fmt.Printf("%v\n", tx)
+	//serialize tx
+
+	data := encodeFundsTx(tx)
+
+
 	decodeData(data)
 
 	//localTxCnt++
-	/*if err != nil {
+	if err != nil {
 		fmt.Printf("%v\n", err)
 	}
 	err = block.addTx(&tx)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}*/
-	return err
+	return nil
 }
 
 func AddAccTx() *accTx {
@@ -133,8 +164,12 @@ func ValidateBlock() {
 //gets called from the main network receiver loop
 func decodeData(payload []byte) {
 
-	switch(len(payload)){
+	switch(len(payload)) {
+	//fixed length input packets
 	case 90:
 		//_fundsTx := decodeFundsTx(payload)
+
 	}
+
+
 }
