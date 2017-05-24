@@ -129,18 +129,6 @@ func (tx *fundsTx) verify() bool {
 	return false
 }
 
-
-/*Header byte
-Amount [4]byte
-Fee [2]byte
-TxCnt [3]byte
-From [8]byte
-fromHash [32]byte
-To [8]byte
-toHash [32]byte
-Xored [24]byte
-Sig [40]byte*/
-
 //when we serialize the struct with binary.Write, unexported field get serialized as well, undesired
 //behavior. Therefore, writing own encoder/decoder
 func EncodeFundsTx(tx fundsTx) (encodedTx []byte) {
@@ -157,7 +145,7 @@ func EncodeFundsTx(tx fundsTx) (encodedTx []byte) {
 	return encodedTx
 }
 
-func decodeFundsTx(encodedTx []byte) (tx *fundsTx) {
+func DecodeFundsTx(encodedTx []byte) (tx *fundsTx) {
 	tx = new(fundsTx)
 	tx.Header = encodedTx[0]
 	copy(tx.Amount[:], encodedTx[1:5])
@@ -174,7 +162,7 @@ func decodeFundsTx(encodedTx []byte) (tx *fundsTx) {
 
 func (tx fundsTx) String() string {
 	return fmt.Sprintf(
-		"Header: %x\n" +
+		"\nHeader: %x\n" +
 			"Amount: %v\n" +
 			"Fee: %v\n" +
 			"TxCnt: %v\n" +

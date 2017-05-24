@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/binary"
 	"bytes"
-	"fmt"
 	"math/big"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -62,8 +61,6 @@ func prepAccs() {
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
 	accB.Hash = sha3.Sum256(accB.Address[:])
-
-
 }
 
 var accA, accB bc.Account
@@ -78,16 +75,16 @@ func main() {
 	var feeBuf [2]byte
 	var fee uint16
 	var amount uint32
+	var localTxCnt uint32
 	fee = 1
 	amount = 10
-	localTxCnt := 0
+	localTxCnt = 0
+
+	prepAccs()
 
 	//this has to be easier
 	var tmpTxCntBuf [4]byte
-	binary.Write(&buf, binary.BigEndian, localTxCnt)
-	copy(tmpTxCntBuf[:],buf.Bytes())
-	copy(txCntBuf[:],tmpTxCntBuf[1:])
-	buf.Reset()
+
 
 	binary.Write(&buf, binary.BigEndian, fee)
 	copy(feeBuf[:],buf.Bytes())
@@ -97,23 +94,22 @@ func main() {
 	copy(amountBuf[:],buf.Bytes())
 	buf.Reset()
 
-	prepAccs()
-	tx, err := bc.ConstrFundsTx(header, amountBuf, feeBuf, txCntBuf, accA.Hash,accB.Hash, &PrivKeyA)
-
-	fmt.Printf("%v\n", tx)
-
-	data := bc.EncodeFundsTx(tx)
-
-	fmt.Printf("%x\n", data)
-
 	conn, _ := net.Dial("tcp", "127.0.0.1:8081")
 
-	toSend := make([]byte, len(data)+1)
-	toSend[0] = byte(len(data))
-	copy(toSend[1:],data)
-	for i := 0; i < 10; i++ {
-		conn.Write(toSend)
+	for i := 0; i < 100; i++ {
 
+		binary.Write(&buf, binary.BigEndian, localTxCnt)
+		copy(tmpTxCntBuf[:],buf.Bytes())
+		copy(txCntBuf[:],tmpTxCntBuf[1:])
+		buf.Reset()
+		localTxCnt+=1
+
+		tx, err := bc.ConstrFundsTx(header, amountBuf, feeBuf, txCntBuf, accA.Hash,accB.Hash, &PrivKeyA)
+		data := bc.EncodeFundsTx(tx)
+		toSend := make([]byte, len(data)+1)
+		toSend[0] = byte(len(data))
+		copy(toSend[1:],data)
+		conn.Write(toSend)
 
 		//err := bc.AddFundsTx(uint32(i), accA.Hash, accB.Hash, 3, privA)
 		if err != nil {

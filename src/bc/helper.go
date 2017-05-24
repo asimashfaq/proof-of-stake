@@ -61,23 +61,3 @@ func proofOfWork(diff uint8, merkleRoot [32]byte) *big.Int {
 
 	return cnt
 }
-
-//gob.Register for interface implementations
-func EncodeForSend(data interface{}) []byte {
-
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	enc.Encode(data)
-	return buf.Bytes()
-}
-
-
-/*func DecodeForReceive(payload []byte) Block {
-
-	var decoded
-	var buf bytes.Buffer
-
-	dec := gob.NewDecoder(&buf)
-	dec.Decode(decoded)
-	return Block(buf.Bytes())
-}*/

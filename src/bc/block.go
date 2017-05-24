@@ -34,10 +34,9 @@ type Block struct {
 }
 
 //imitating constructor
-func newBlock(prevBlockHash [32]byte) *Block {
+func newBlock() *Block {
 	b := Block{}
 	b.Version = 0x01
-	b.PrevHash = prevBlockHash
 	b.stateCopy = make(map[[32]byte]*Account)
 	return &b
 }
@@ -145,7 +144,7 @@ func (b *Block) finalizeBlock() {
 	//merkle tree only built from funds transactions
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData)
 	b.Timestamp = time.Now().Unix()
-	b.Difficulty = 12
+	b.Difficulty = 22
 	copy(b.Beneficiary[:],MinerHash[:])
 
 	//anonymous struct
@@ -207,6 +206,8 @@ func validateBlock(b *Block) error {
 	partialHashed := serializeHashContent(partialToHash)
 	if b.Hash != sha3.Sum256(append(proof,partialHashed[:]...)) || !validateProofOfWork(b.Difficulty, b.Hash) {
 		return errors.New("Proof of work is incorrect.")
+		log.Println("Proof of work is incorrect.")
+
 	}
 
 	log.Println("Proof of work validation passed.")
@@ -214,6 +215,7 @@ func validateBlock(b *Block) error {
 	//cmp merkle tree
 	if buildMerkleTree(b.FundsTxData) != b.MerkleRoot {
 		return errors.New("Merkle Root incorrect.")
+		log.Println("Merkle Root incorrect.")
 	}
 
 	log.Println("Merkle root hash passed.")
