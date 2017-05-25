@@ -9,7 +9,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"golang.org/x/crypto/sha3"
-	"fmt"
+	"sync"
 )
 
 const (
@@ -30,6 +30,8 @@ var currentBlock, nextBlock *Block
 var MinerHash [32]byte
 var MinerPrivKey *ecdsa.PrivateKey
 
+var nextBlockAccess sync.Mutex
+
 var txQueue,blockQueue *Queue
 
 func Sync(){
@@ -43,7 +45,7 @@ func InitSystem() {
 	State = make(map[[8]byte][]*Account)
 	RootKeys = make(map[[32]byte]*Account)
 
-	testing()
+	testing_setup()
 
 	LogFile, _ = os.OpenFile("log "+time.Now().String(), os.O_RDWR | os.O_CREATE , 0666)
 	log.SetOutput(LogFile)
@@ -53,7 +55,34 @@ func InitSystem() {
 	log.Println("Starting system, initializing state map")
 	currentBlock = newBlock()
 	nextBlock = newBlock()
+
+	go consumeBlock()
+	go consumeTx()
 	mining()
+}
+
+func consumeBlock() {
+
+}
+
+func consumeTx() {
+
+	for {
+		if txQueue.Size() != 0 {
+			nextBlockAccess.Lock()
+			nextBlock.addTx(txQueue.Dequeue().(transaction))
+			nextBlockAccess.Unlock()
+		}
+		time.Sleep(200*time.Millisecond)
+	}
+}
+
+func publishBlock() {
+
+}
+
+func publishTx() {
+
 }
 
 func mining() {
@@ -61,21 +90,22 @@ func mining() {
 	for {
 		currentBlock.finalizeBlock()
 
-		fmt.Printf("%v\n", currentBlock)
-		fmt.Printf("tx in the current block:")
-		for _,j := range currentBlock.FundsTxData {
-			fmt.Printf("%v\n", j)
-		}
 		validateBlock(currentBlock)
-		tmpPointer := currentBlock
+
+		nextBlockAccess.Lock()
+		prevHash := currentBlock.Hash
 		currentBlock = nextBlock
-		nextBlock = tmpPointer
+		currentBlock.PrevHash = prevHash
+		//please no memory leaks :/
+		nextBlock = newBlock()
+		nextBlockAccess.Unlock()
 	}
 }
 
 func ProcessInput(data []byte) {
 
 	//inspect header
+	//parse input (what kind of tx, block etc.)
 	tx := DecodeFundsTx(data[1:])
 	processFundsTx(tx)
 }
@@ -83,7 +113,7 @@ func ProcessInput(data []byte) {
 func processFundsTx(tx* fundsTx) {
 
 	txQueue.Enqueue(tx)
-	nextBlock.addTx(tx)
+	//nextBlock.addTx(tx)
 }
 
 func AddFundsTx(localTxCnt uint32, from, to [32]byte, amount uint32, key *ecdsa.PrivateKey) (error) {
@@ -106,7 +136,7 @@ func decodeData(payload []byte) {
 }
 
 //some testing code
-func testing() {
+func testing_setup() {
 	MinerPrivKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	var pubKey [64]byte
 	var shortMiner [8]byte
@@ -130,7 +160,6 @@ func testing() {
 	rootAcc := Account{Hash:rootHash, Address:pubKey}
 	State[shortRootHash] = append(State[shortRootHash], &rootAcc)
 	RootKeys[rootHash] = &rootAcc
-
 	var accA, accB Account
 
 	puba1,_ := new(big.Int).SetString(pubA1,16)
@@ -178,5 +207,6 @@ func testing() {
 
 	State[shortHashA] = append(State[shortHashA],&accA)
 	State[shortHashB] = append(State[shortHashB],&accB)
+
 
 }

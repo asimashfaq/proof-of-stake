@@ -46,6 +46,8 @@ func newBlock() *Block {
 //because we the work might get interrupted by receiving a block
 func (b *Block) addTx(tx transaction) error {
 
+	//fmt.Printf("%v\n", tx)
+
 	//verifies correctness for the specific transaction
 	//i'd actually like to use !(&tx).verify to pass by pointer, but golang doesn't allow this
 	if !(tx).verify() {
@@ -144,7 +146,7 @@ func (b *Block) finalizeBlock() {
 	//merkle tree only built from funds transactions
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData)
 	b.Timestamp = time.Now().Unix()
-	b.Difficulty = 22
+	b.Difficulty = 23
 	copy(b.Beneficiary[:],MinerHash[:])
 
 	//anonymous struct

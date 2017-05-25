@@ -22,12 +22,14 @@ func prepareMerkleTree(txData []fundsTx) []merkleNode {
 		txToHash := struct {
 			Header byte
 			Amount [4]byte
+			Fee [2]byte
 			TxCnt [3]byte
 			From [32]byte
 			To [32]byte
 		} {
 			tx.Header,
 			tx.Amount,
+			tx.Fee,
 			tx.TxCnt,
 			tx.fromHash,
 			tx.toHash,
@@ -47,7 +49,6 @@ func prepareMerkleTree(txData []fundsTx) []merkleNode {
 	}
 
 	return levelNodes
-	return nil
 }
 
 func buildMerkleTree(txData []fundsTx) ([32]byte) {
@@ -93,6 +94,10 @@ func buildMerkleTree(txData []fundsTx) ([32]byte) {
 }
 
 func nextTwoExponent(start, nrTransact int) int {
+	//it there is only one tx we don't want it to be the merkle root, but being hashed with itself
+	if nrTransact == 1 {
+		return 2
+	}
 	if nrTransact == 0 {
 		return 0
 	}

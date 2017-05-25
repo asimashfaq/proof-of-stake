@@ -1,15 +1,13 @@
 package main
 
 import (
-	"encoding/binary"
-	"bytes"
 	"math/big"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"bc"
 	"golang.org/x/crypto/sha3"
-	"time"
 	"net"
+	"time"
 )
 
 const(
@@ -68,43 +66,23 @@ var PrivKeyA ecdsa.PrivateKey
 
 func main() {
 
-	var buf bytes.Buffer
 	var header byte
-	var amountBuf [4]byte
-	var txCntBuf [3]byte
-	var feeBuf [2]byte
 	var fee uint16
 	var amount uint32
-	var localTxCnt uint32
-	fee = 1
+	var txCnt uint32
+
 	amount = 10
-	localTxCnt = 0
+	fee = 1
+	header = 0x02
 
 	prepAccs()
 
-	//this has to be easier
-	var tmpTxCntBuf [4]byte
-
-
-	binary.Write(&buf, binary.BigEndian, fee)
-	copy(feeBuf[:],buf.Bytes())
-	buf.Reset()
-
-	binary.Write(&buf, binary.BigEndian, amount)
-	copy(amountBuf[:],buf.Bytes())
-	buf.Reset()
-
 	conn, _ := net.Dial("tcp", "127.0.0.1:8081")
+	for {
+		tx, err := bc.ConstrFundsTx(header, amount, fee, txCnt, accA.Hash,accB.Hash, &PrivKeyA)
 
-	for i := 0; i < 100; i++ {
+		txCnt++
 
-		binary.Write(&buf, binary.BigEndian, localTxCnt)
-		copy(tmpTxCntBuf[:],buf.Bytes())
-		copy(txCntBuf[:],tmpTxCntBuf[1:])
-		buf.Reset()
-		localTxCnt+=1
-
-		tx, err := bc.ConstrFundsTx(header, amountBuf, feeBuf, txCntBuf, accA.Hash,accB.Hash, &PrivKeyA)
 		data := bc.EncodeFundsTx(tx)
 		toSend := make([]byte, len(data)+1)
 		toSend[0] = byte(len(data))
@@ -116,6 +94,6 @@ func main() {
 			return
 		}
 
-		time.Sleep(time.Second)
+		time.Sleep(500*time.Millisecond)
 	}
 }

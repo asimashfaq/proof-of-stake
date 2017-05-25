@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"fmt"
 	"encoding/binary"
+	"bytes"
 )
 
 //when we broadcast transactions we need a way to distinguish with a type
@@ -26,9 +27,26 @@ type fundsTx struct {
 	Sig [40]byte
 }
 
-func ConstrFundsTx(header byte, amount [4]byte, fee [2]byte, txCnt [3]byte, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
+func ConstrFundsTx(header byte, amount uint32, fee uint16, txCnt uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
 
-	//avoid sending money to its own acc, doesn't make sense with account-based money
+	var buf bytes.Buffer
+	var amountBuf [4]byte
+	var tmpTxCntBuf [4]byte
+	var txCntBuf [3]byte
+	var feeBuf [2]byte
+
+	//transfer integer values to byte arrays
+	binary.Write(&buf, binary.BigEndian, fee)
+	copy(feeBuf[:],buf.Bytes())
+	buf.Reset()
+	binary.Write(&buf, binary.BigEndian, amount)
+	copy(amountBuf[:],buf.Bytes())
+	buf.Reset()
+	binary.Write(&buf, binary.BigEndian, txCnt)
+	copy(tmpTxCntBuf[:],buf.Bytes())
+	copy(txCntBuf[:],tmpTxCntBuf[1:])
+	buf.Reset()
+
 	txToHash := struct {
 		Header byte
 		Amount [4]byte
@@ -38,9 +56,9 @@ func ConstrFundsTx(header byte, amount [4]byte, fee [2]byte, txCnt [3]byte, from
 		To [32]byte
 	} {
 		header,
-		amount,
-		fee,
-		txCnt,
+		amountBuf,
+		feeBuf,
+		txCntBuf,
 		from,
 		to,
 	}
@@ -54,9 +72,9 @@ func ConstrFundsTx(header byte, amount [4]byte, fee [2]byte, txCnt [3]byte, from
 	copy(sig[32:],s.Bytes())
 
 	tx.Header = header
-	tx.Amount = amount
-	tx.Fee = fee
-	tx.TxCnt = txCnt
+	tx.Amount = amountBuf
+	tx.Fee = feeBuf
+	tx.TxCnt = txCntBuf
 
 	copy(tx.From[0:8],from[0:8])
 	copy(tx.To[0:8],to[0:8])

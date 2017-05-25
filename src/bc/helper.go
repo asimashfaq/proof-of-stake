@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"golang.org/x/crypto/sha3"
-	"encoding/gob"
 	"math/big"
 )
 

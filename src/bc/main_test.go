@@ -1,0 +1,67 @@
+package bc
+
+import (
+	"crypto/ecdsa"
+	"testing"
+	"os"
+	"math/big"
+	"crypto/elliptic"
+	"golang.org/x/crypto/sha3"
+)
+
+var accA, accB Account
+var PrivKeyA ecdsa.PrivateKey
+var PubKeyA ecdsa.PublicKey
+
+func TestMain(m *testing.M) {
+
+	State = make(map[[8]byte][]*Account)
+
+	puba1,_ := new(big.Int).SetString(pubA1,16)
+	puba2,_ := new(big.Int).SetString(pubA2,16)
+	priva,_ := new(big.Int).SetString(privA,16)
+	PubKeyA = ecdsa.PublicKey{
+		elliptic.P256(),
+		puba1,
+		puba2,
+	}
+	PrivKeyA = ecdsa.PrivateKey{
+		PubKeyA,
+		priva,
+	}
+
+	pubb1,_ := new(big.Int).SetString(pubB1,16)
+	pubb2,_ := new(big.Int).SetString(pubB2,16)
+	privb,_ := new(big.Int).SetString(privB,16)
+	PubKeyB := ecdsa.PublicKey{
+		elliptic.P256(),
+		pubb1,
+		pubb2,
+	}
+	PrivKeyB := ecdsa.PrivateKey{
+		PubKeyB,
+		privb,
+	}
+
+	accA = Account{Balance: 15000}
+	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
+	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
+	accA.Hash = sha3.Sum256(accA.Address[:])
+
+	//This one is just for testing purposes
+	accB = Account{Balance: 702}
+	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
+	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
+	accB.Hash = sha3.Sum256(accB.Address[:])
+
+	//just to bootstrap
+	var shortHashA [8]byte
+	var shortHashB [8]byte
+	copy(shortHashA[:], accA.Hash[0:8])
+	copy(shortHashB[:], accB.Hash[0:8])
+
+	State[shortHashA] = append(State[shortHashA],&accA)
+	State[shortHashB] = append(State[shortHashB],&accB)
+
+	os.Exit(m.Run())
+}
