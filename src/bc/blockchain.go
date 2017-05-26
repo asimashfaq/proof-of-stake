@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"golang.org/x/crypto/sha3"
 	"sync"
+	"fmt"
 )
 
 const (
@@ -89,7 +90,7 @@ func mining() {
 
 	for {
 		currentBlock.finalizeBlock()
-
+		fmt.Print("Block mined.\n")
 		validateBlock(currentBlock)
 
 		nextBlockAccess.Lock()

@@ -25,47 +25,37 @@ type accTx struct {
 	PubKey [64]byte
 }
 
-func constrAccTx() (tx accTx, err error) {
+func ConstrAccTx(rootPrivKey *ecdsa.PrivateKey) (tx accTx, err error) {
 
 	//fixed fee for now
 	var buf bytes.Buffer
 	var fee uint16
+
+	//fee will be discarded later
 	fee = 5
 
 	binary.Write(&buf,binary.BigEndian,fee)
 	copy(tx.Fee[:],buf.Bytes())
 
-	_rootPub1,_ := new(big.Int).SetString(RootPub1,16)
-	_rootPub2,_ := new(big.Int).SetString(RootPub2,16)
-	_rootPriv,_ := new(big.Int).SetString(RootPriv,16)
-	rootPubKey := ecdsa.PublicKey{
-		elliptic.P256(),
-		_rootPub1,
-		_rootPub2,
-	}
-	rootPrivKey := ecdsa.PrivateKey{
-		rootPubKey,
-		_rootPriv,
-	}
-
 	//var pubKey [64]byte
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	newAccAddress, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 
-	copy(tx.PubKey[:32],priv.PublicKey.X.Bytes())
-	copy(tx.PubKey[32:],priv.PublicKey.Y.Bytes())
+	newAccPub1,newAccPub2 := newAccAddress.PublicKey.X.Bytes(),newAccAddress.PublicKey.Y.Bytes()
+	copy(tx.PubKey[32-len(newAccPub1):32],newAccPub1)
+	copy(tx.PubKey[64-len(newAccPub2):],newAccPub2)
 
-	r,s, err := ecdsa.Sign(rand.Reader, &rootPrivKey, tx.PubKey[:])
-
+	r,s, err := ecdsa.Sign(rand.Reader, rootPrivKey, tx.PubKey[:])
 
 	var rootPublicKey [64]byte
-	copy(rootPublicKey[:32],_rootPub1.Bytes())
-	copy(rootPublicKey[32:],_rootPub2.Bytes())
-	issuerHash := serializeHashContent(rootPublicKey)
+	rootPubKey1,rootPubKey2 := rootPrivKey.PublicKey.X.Bytes(),rootPrivKey.PublicKey.Y.Bytes()
+	copy(rootPublicKey[32-len(rootPubKey1):32],rootPubKey1)
+	copy(rootPublicKey[64-len(rootPubKey2):],rootPubKey2)
 
-	copy(tx.Issuer[:], issuerHash[:])
+	issuer := serializeHashContent(rootPublicKey)
+	copy(tx.Issuer[:], issuer[:])
 
-	copy(tx.Sig[:32],r.Bytes())
-	copy(tx.Sig[32:],s.Bytes())
+	copy(tx.Sig[32-len(r.Bytes()):32],r.Bytes())
+	copy(tx.Sig[64-len(s.Bytes()):],s.Bytes())
 
 	return
 }
@@ -73,19 +63,23 @@ func constrAccTx() (tx accTx, err error) {
 func (tx *accTx) verify() bool {
 
 	//account creation can only be done with a valid priv/pub key which is hard-coded
-	pub1,_ := new(big.Int).SetString(RootPub1,16)
-	pub2,_ := new(big.Int).SetString(RootPub2,16)
-
 	r,s := new(big.Int), new(big.Int)
+	pub1,pub2 := new(big.Int), new(big.Int)
 
 	r.SetBytes(tx.Sig[:32])
 	s.SetBytes(tx.Sig[32:])
 
-	pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
+	for _,rootAcc := range RootKeys {
+		pub1.SetBytes(rootAcc.Address[:32])
+		pub2.SetBytes(rootAcc.Address[32:])
 
-	correct := ecdsa.Verify(&pubKey,tx.PubKey[:],r,s)
+		pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
+		if ecdsa.Verify(&pubKey,tx.PubKey[:],r,s) == true {
+			return true
+		}
+	}
 
-	return correct
+	return false
 }
 
 func (tx accTx) String() string {

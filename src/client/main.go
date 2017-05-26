@@ -81,8 +81,6 @@ func main() {
 	for {
 		tx, err := bc.ConstrFundsTx(header, amount, fee, txCnt, accA.Hash,accB.Hash, &PrivKeyA)
 
-		txCnt++
-
 		data := bc.EncodeFundsTx(tx)
 		toSend := make([]byte, len(data)+1)
 		toSend[0] = byte(len(data))
@@ -94,6 +92,6 @@ func main() {
 			return
 		}
 
-		time.Sleep(500*time.Millisecond)
+		time.Sleep(2*time.Millisecond)
 	}
 }

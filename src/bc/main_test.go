@@ -12,11 +12,10 @@ import (
 var accA, accB Account
 var PrivKeyA ecdsa.PrivateKey
 var PubKeyA ecdsa.PublicKey
+var RootPrivKey ecdsa.PrivateKey
 
-func TestMain(m *testing.M) {
 
-	State = make(map[[8]byte][]*Account)
-
+func addTestingAccounts() {
 	puba1,_ := new(big.Int).SetString(pubA1,16)
 	puba2,_ := new(big.Int).SetString(pubA2,16)
 	priva,_ := new(big.Int).SetString(privA,16)
@@ -43,13 +42,13 @@ func TestMain(m *testing.M) {
 		privb,
 	}
 
-	accA = Account{Balance: 15000}
+	accA = Account{Balance: 12345678}
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
 	accA.Hash = sha3.Sum256(accA.Address[:])
 
 	//This one is just for testing purposes
-	accB = Account{Balance: 702}
+	accB = Account{Balance: 87654321}
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
 	accB.Hash = sha3.Sum256(accB.Address[:])
@@ -62,6 +61,45 @@ func TestMain(m *testing.M) {
 
 	State[shortHashA] = append(State[shortHashA],&accA)
 	State[shortHashB] = append(State[shortHashB],&accB)
+}
+
+func addRootAccounts() {
+
+	var pubKey [64]byte
+
+	pub1,_ := new(big.Int).SetString(RootPub1,16)
+	pub2,_ := new(big.Int).SetString(RootPub2,16)
+	priv,_ := new(big.Int).SetString(RootPriv,16)
+	PubKeyA = ecdsa.PublicKey{
+		elliptic.P256(),
+		pub1,
+		pub2,
+	}
+	RootPrivKey = ecdsa.PrivateKey{
+		PubKeyA,
+		priv,
+	}
+
+	copy(pubKey[32-len(pub1.Bytes()):32],pub1.Bytes())
+	copy(pubKey[64-len(pub2.Bytes()):],pub2.Bytes())
+
+	rootHash := serializeHashContent(pubKey[:])
+
+	var shortRootHash [8]byte
+	copy(shortRootHash[:], rootHash[0:8])
+	rootAcc := Account{Hash:rootHash, Address:pubKey}
+	State[shortRootHash] = append(State[shortRootHash], &rootAcc)
+	RootKeys[rootHash] = &rootAcc
+}
+
+func TestMain(m *testing.M) {
+
+	//initialize states
+	State = make(map[[8]byte][]*Account)
+	RootKeys = make(map[[32]byte]*Account)
+
+	addTestingAccounts()
+	addRootAccounts()
 
 	os.Exit(m.Run())
 }

@@ -68,8 +68,8 @@ func ConstrFundsTx(header byte, amount uint32, fee uint16, txCnt uint32, from, t
 	r,s, err := ecdsa.Sign(rand.Reader, key, sigHash[:])
 
 	var sig [64]byte
-	copy(sig[:32],r.Bytes())
-	copy(sig[32:],s.Bytes())
+	copy(sig[32-len(r.Bytes()):32],r.Bytes())
+	copy(sig[64-len(s.Bytes()):],s.Bytes())
 
 	tx.Header = header
 	tx.Amount = amountBuf

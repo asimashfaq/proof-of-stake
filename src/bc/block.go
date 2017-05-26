@@ -146,7 +146,7 @@ func (b *Block) finalizeBlock() {
 	//merkle tree only built from funds transactions
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData)
 	b.Timestamp = time.Now().Unix()
-	b.Difficulty = 23
+	b.Difficulty = 24
 	copy(b.Beneficiary[:],MinerHash[:])
 
 	//anonymous struct
