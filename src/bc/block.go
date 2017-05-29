@@ -114,30 +114,29 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 		}
 	}
 
-	amount := binary.BigEndian.Uint32(tx.Amount[:])
+	amount := binary.BigEndian.Uint64(tx.Amount[:])
+	fee := binary.BigEndian.Uint64(tx.Fee[:])
 
 	for rootHash,_ := range RootKeys {
 		if rootHash == tx.fromHash {
 			continue
 		}
-		if uint64(amount) > b.stateCopy[tx.fromHash].Balance {
+		if (amount+fee) > b.stateCopy[tx.fromHash].Balance {
 			return errors.New("Not enough funds to complete the transaction")
 		}
 	}
 
 	accSender := b.stateCopy[tx.fromHash]
 	accSender.TxCnt += 1
-	accSender.Balance -= uint64(amount)
+	accSender.Balance -= amount
 	//b.stateCopy[tx.fromHash] = accSender
 
 	accReceiver := b.stateCopy[tx.toHash]
-	accReceiver.Balance += uint64(amount)
-	//b.stateCopy[tx.toHash] = accReceiver
+	accReceiver.Balance += amount
 
-	//b.TxData[serializeHashContent(tx.Info)] = *tx
 	b.FundsTxData = append(b.FundsTxData, *tx)
 
-	log.Printf("Added tx to the block FundsTxData slice: \n%v", *tx)
+	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)
 	return nil
 }
 
@@ -245,8 +244,8 @@ func validateBlock(b *Block) error {
 			for hash,rootAcc := range RootKeys {
 				if hash == tx.fromHash {
 					log.Printf("Root Key Transaction: %x\n", hash[0:8])
-					rootAcc.Balance += uint64(binary.BigEndian.Uint32(tx.Amount[:]))
-					rootAcc.Balance += uint64(binary.BigEndian.Uint16(tx.Fee[:]))
+					rootAcc.Balance += binary.BigEndian.Uint64(tx.Amount[:])
+					rootAcc.Balance += binary.BigEndian.Uint64(tx.Fee[:])
 				}
 			}
 		}

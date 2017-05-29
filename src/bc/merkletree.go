@@ -21,8 +21,8 @@ func prepareMerkleTree(txData []fundsTx) []merkleNode {
 
 		txToHash := struct {
 			Header byte
-			Amount [4]byte
-			Fee [2]byte
+			Amount [8]byte
+			Fee [8]byte
 			TxCnt [3]byte
 			From [32]byte
 			To [32]byte

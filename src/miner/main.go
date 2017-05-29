@@ -2,27 +2,9 @@ package main
 
 import (
 	"bc"
-	"net"
-	"bufio"
+	"network"
 )
 
-func listenForData() {
-	//for now mock data
-	//will be later exchanged with listening on a socket
-
-	ln, _ := net.Listen("tcp", ":8081")
-	conn, _ := ln.Accept()
-	var input []byte
-	input = make([]byte, 100)
-
-	for {
-		reader := bufio.NewReader(conn)
-		reader.Read(input)
-		bc.ProcessInput(input)
-		reader.Reset(conn)
-	}
-	conn.Close()
-}
 
 func setUpTestSystem() {
 
@@ -32,7 +14,7 @@ func setUpTestSystem() {
 func main() {
 
 	bc.Sync()
-	go listenForData()
+	go network.Init()
 	bc.InitSystem()
 	//setUpTestSystem()
 

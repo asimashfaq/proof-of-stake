@@ -63,20 +63,19 @@ func fundsStateChange(tx *fundsTx) error {
 		return errors.New("Sender does not have enough funds for the transaction.")
 	}
 
-	amount := binary.BigEndian.Uint32(tx.Amount[:])
-	fee := binary.BigEndian.Uint16(tx.Fee[:])
-	if uint64(amount+uint32(fee)) > accSender.Balance {
+	amount := binary.BigEndian.Uint64(tx.Amount[:])
+	fee := binary.BigEndian.Uint64(tx.Fee[:])
+	if (amount + fee) > accSender.Balance {
 		log.Printf("Sender does not have enough balance: %x\n", accSender.Balance)
 		return errors.New("Sender does not have enough funds for the transaction.")
 	}
 
 	//we're manipulating pointer, no need to write back
 	accSender.TxCnt += 1
-	accSender.Balance -= uint64(amount)
+	accSender.Balance -= amount
 
-	accReceiver.Balance += uint64(amount)
+	accReceiver.Balance += amount
 
-	PrintState()
 	return nil
 }
 
@@ -85,7 +84,7 @@ func collectFundsTxFees(txSlice []fundsTx, minerHash [32]byte) {
 
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
 	for _,tx := range txSlice {
-		fee := binary.BigEndian.Uint16(tx.Fee[:])
+		fee := binary.BigEndian.Uint64(tx.Fee[:])
 		miner.Balance += uint64(fee)
 
 		senderAcc := getAccountFromHash(tx.fromHash)
@@ -100,7 +99,7 @@ func collectAcctTxFees(txSlice []accTx, minerHash [32]byte) {
 	for _,tx := range txSlice {
 		//money gets created from thin air
 		//no need to subtract money from root key
-		fee := binary.BigEndian.Uint16(tx.Fee[:])
+		fee := binary.BigEndian.Uint64(tx.Fee[:])
 		miner.Balance += uint64(fee)
 	}
 }
@@ -113,13 +112,12 @@ func fundsStateRollback(txSlice []fundsTx, index int) {
 
 		accSender, accReceiver := getAccountFromHash(tx.fromHash), getAccountFromHash(tx.toHash)
 
-		amount := binary.BigEndian.Uint32(tx.Amount[:])
+		amount := binary.BigEndian.Uint64(tx.Amount[:])
 		accSender.TxCnt -= 1
-		accSender.Balance += uint64(amount)
+		accSender.Balance += amount
 
-		accReceiver.Balance -= uint64(amount)
+		accReceiver.Balance -= amount
 	}
-	PrintState()
 }
 
 func PrintState() {

@@ -19,8 +19,9 @@ const (
 )
 
 type accTx struct {
+	Header byte
 	Issuer [32]byte
-	Fee [2]byte
+	Fee [8]byte
 	Sig [64]byte
 	PubKey [64]byte
 }
@@ -29,7 +30,7 @@ func ConstrAccTx(rootPrivKey *ecdsa.PrivateKey) (tx accTx, err error) {
 
 	//fixed fee for now
 	var buf bytes.Buffer
-	var fee uint16
+	var fee uint64
 
 	//fee will be discarded later
 	fee = 5
@@ -82,13 +83,35 @@ func (tx *accTx) verify() bool {
 	return false
 }
 
+func EncodeAccTx(tx accTx) (encodedTx []byte) {
+	encodedTx = make([]byte,169)
+	encodedTx[0] = tx.Header
+	copy(encodedTx[1:33], tx.Issuer[:])
+	copy(encodedTx[33:41], tx.Fee[:])
+	copy(encodedTx[41:105], tx.Sig[:])
+	copy(encodedTx[105:169], tx.PubKey[:])
+
+	return encodedTx
+}
+
+func DecodeAccTx(encodedTx []byte) (tx *accTx) {
+	tx = new(accTx)
+	tx.Header = encodedTx[0]
+	copy(tx.Issuer[:],encodedTx[1:33])
+	copy(tx.Fee[:],encodedTx[33:41])
+	copy(tx.Sig[:],encodedTx[41:105])
+	copy(tx.PubKey[:],encodedTx[105:169])
+
+	return tx
+}
+
 func (tx accTx) String() string {
 	return fmt.Sprintf(
 		"\n" +
 			"Issuer: %x\n" +
 			"Fee: %x\n" +
 			"Sig: %x\n" +
-			"PubKey: %x\n",
+			"PubKey: %x\n\n",
 		tx.Issuer[0:8],
 		tx.Fee,
 		tx.Sig[0:8],

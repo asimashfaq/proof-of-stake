@@ -74,7 +74,7 @@ func consumeTx() {
 			nextBlock.addTx(txQueue.Dequeue().(transaction))
 			nextBlockAccess.Unlock()
 		}
-		time.Sleep(200*time.Millisecond)
+		time.Sleep(50*time.Millisecond)
 	}
 }
 
@@ -103,38 +103,30 @@ func mining() {
 	}
 }
 
-func ProcessInput(data []byte) {
+func InFundsTx(data []byte) {
 
-	//inspect header
-	//parse input (what kind of tx, block etc.)
-	tx := DecodeFundsTx(data[1:])
-	processFundsTx(tx)
+	tx := DecodeFundsTx(data)
+	txQueue.Enqueue(tx)
 }
 
-func processFundsTx(tx* fundsTx) {
+func InAccTx(data []byte) {
 
+	tx := DecodeAccTx(data)
 	txQueue.Enqueue(tx)
+}
+
+func InBlockTx(data []byte) {
+
+
+}
+
+
+func ProcessFundsTx(tx* fundsTx) {
+
 	//nextBlock.addTx(tx)
 }
 
-func AddFundsTx(localTxCnt uint32, from, to [32]byte, amount uint32, key *ecdsa.PrivateKey) (error) {
-	return nil
-}
 
-func ValidateBlock() {
-
-}
-
-//gets called from the main network receiver loop
-func decodeData(payload []byte) {
-
-	switch(len(payload)) {
-	//fixed length input packets
-	case 90:
-		//_fundsTx := decodeFundsTx(payload)
-
-	}
-}
 
 //some testing code
 func testing_setup() {
@@ -189,13 +181,13 @@ func testing_setup() {
 		privb,
 	}
 
-	accA = Account{Balance: 15000}
+	accA = Account{Balance: 1500000}
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
 	accA.Hash = sha3.Sum256(accA.Address[:])
 
 	//This one is just for testing purposes
-	accB = Account{Balance: 702}
+	accB = Account{Balance: 702000}
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
 	accB.Hash = sha3.Sum256(accB.Address[:])

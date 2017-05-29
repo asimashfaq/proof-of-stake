@@ -23,8 +23,8 @@ func TestBuildMerkleTree(t *testing.T) {
 	//testing with 1,2,3 nodes
 	toHash1 := struct{
 		Header byte
-		Amount [4]byte
-		Fee [2]byte
+		Amount [8]byte
+		Fee [8]byte
 		TxCnt [3]byte
 		From [32]byte
 		To [32]byte
@@ -40,8 +40,8 @@ func TestBuildMerkleTree(t *testing.T) {
 
 	toHash2 := struct{
 		Header byte
-		Amount [4]byte
-		Fee [2]byte
+		Amount [8]byte
+		Fee [8]byte
 		TxCnt [3]byte
 		From [32]byte
 		To [32]byte
@@ -57,8 +57,8 @@ func TestBuildMerkleTree(t *testing.T) {
 
 	toHash3 := struct{
 		Header byte
-		Amount [4]byte
-		Fee [2]byte
+		Amount [8]byte
+		Fee [8]byte
 		TxCnt [3]byte
 		From [32]byte
 		To [32]byte

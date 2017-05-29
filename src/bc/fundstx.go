@@ -16,8 +16,8 @@ import (
 
 type fundsTx struct {
 	Header byte
-	Amount [4]byte
-	Fee [2]byte
+	Amount [8]byte
+	Fee [8]byte
 	TxCnt [3]byte
 	From [8]byte
 	fromHash [32]byte
@@ -27,13 +27,13 @@ type fundsTx struct {
 	Sig [40]byte
 }
 
-func ConstrFundsTx(header byte, amount uint32, fee uint16, txCnt uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
+func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
 
 	var buf bytes.Buffer
-	var amountBuf [4]byte
+	var amountBuf [8]byte
+	var feeBuf [8]byte
 	var tmpTxCntBuf [4]byte
 	var txCntBuf [3]byte
-	var feeBuf [2]byte
 
 	//transfer integer values to byte arrays
 	binary.Write(&buf, binary.BigEndian, fee)
@@ -49,8 +49,8 @@ func ConstrFundsTx(header byte, amount uint32, fee uint16, txCnt uint32, from, t
 
 	txToHash := struct {
 		Header byte
-		Amount [4]byte
-		Fee [2]byte
+		Amount [8]byte
+		Fee [8]byte
 		TxCnt [3]byte
 		From [32]byte
 		To [32]byte
@@ -98,7 +98,7 @@ func (tx *fundsTx) verify() bool {
 	r,s := new(big.Int), new(big.Int)
 
 	//fundstx only makes sense if amount > 0
-	if binary.BigEndian.Uint32(tx.Amount[:]) == 0 {
+	if binary.BigEndian.Uint64(tx.Amount[:]) == 0 {
 		return false
 	}
 
@@ -120,8 +120,8 @@ func (tx *fundsTx) verify() bool {
 
 			txHash := struct {
 				Header byte
-				Amount [4]byte
-				Fee [2]byte
+				Amount [8]byte
+				Fee [8]byte
 				TxCnt [3]byte
 				From [32]byte
 				To [32]byte
@@ -150,15 +150,15 @@ func (tx *fundsTx) verify() bool {
 //when we serialize the struct with binary.Write, unexported field get serialized as well, undesired
 //behavior. Therefore, writing own encoder/decoder
 func EncodeFundsTx(tx fundsTx) (encodedTx []byte) {
-	encodedTx = make([]byte,90)
+	encodedTx = make([]byte,100)
 	encodedTx[0] = tx.Header
-	copy(encodedTx[1:5], tx.Amount[:])
-	copy(encodedTx[5:7], tx.Fee[:])
-	copy(encodedTx[7:10], tx.TxCnt[:])
-	copy(encodedTx[10:18], tx.From[:])
-	copy(encodedTx[18:26], tx.To[:])
-	copy(encodedTx[26:50], tx.Xored[:])
-	copy(encodedTx[50:90], tx.Sig[:])
+	copy(encodedTx[1:9], tx.Amount[:])
+	copy(encodedTx[9:17], tx.Fee[:])
+	copy(encodedTx[17:20], tx.TxCnt[:])
+	copy(encodedTx[20:28], tx.From[:])
+	copy(encodedTx[28:36], tx.To[:])
+	copy(encodedTx[36:60], tx.Xored[:])
+	copy(encodedTx[60:100], tx.Sig[:])
 
 	return encodedTx
 }
@@ -166,13 +166,13 @@ func EncodeFundsTx(tx fundsTx) (encodedTx []byte) {
 func DecodeFundsTx(encodedTx []byte) (tx *fundsTx) {
 	tx = new(fundsTx)
 	tx.Header = encodedTx[0]
-	copy(tx.Amount[:], encodedTx[1:5])
-	copy(tx.Fee[:], encodedTx[5:7])
-	copy(tx.TxCnt[:], encodedTx[7:10])
-	copy(tx.From[:], encodedTx[10:18])
-	copy(tx.To[:], encodedTx[18:26])
-	copy(tx.Xored[:], encodedTx[26:50])
-	copy(tx.Sig[:], encodedTx[50:90])
+	copy(tx.Amount[:],encodedTx[1:9])
+	copy(tx.Fee[:],encodedTx[9:17])
+	copy(tx.TxCnt[:],encodedTx[17:20])
+	copy(tx.From[:],encodedTx[20:28])
+	copy(tx.To[:],encodedTx[28:36])
+	copy(tx.Xored[:],encodedTx[36:60])
+	copy(tx.Sig[:],encodedTx[60:100])
 
 	return tx
 }
@@ -189,7 +189,7 @@ func (tx fundsTx) String() string {
 			"To: %x\n" +
 			"To Full Hash: %x\n" +
 			"Xored: %x\n" +
-			"Sig: %x\n",
+			"Sig: %x\n\n",
 		tx.Header,
 		tx.Amount,
 		tx.Fee,

@@ -8,6 +8,10 @@ import (
 	"golang.org/x/crypto/sha3"
 	"net"
 	"time"
+	"math/rand"
+	"network"
+	"bytes"
+	"encoding/binary"
 )
 
 const(
@@ -18,6 +22,51 @@ const(
 	pubB2 = "ab301a6a77b201c416ddc13a2d33fdf200a5302f6f687e0ea09085debaf8a1d9"
 	privB = "7a0a9babcc97ea7991ed67ed7f800f70c5e04e99718960ad8efab2ca052f00c7"
 )
+
+
+
+var accA, accB bc.Account
+var PrivKeyA ecdsa.PrivateKey
+var RootPrivKey ecdsa.PrivateKey
+
+func main() {
+
+	var header byte
+	var txCnt uint32
+
+	header = 0x02
+
+	prepAccs()
+
+	for {
+		conn, _ := net.Dial("tcp", "127.0.0.1:8081")
+
+		tx, _ := bc.ConstrFundsTx(header,rand.Uint64()%100+1, rand.Uint64()%50+1, txCnt, accA.Hash,accB.Hash, &PrivKeyA)
+
+		txCnt++
+		fundsData := bc.EncodeFundsTx(tx)
+		toSend := make([]byte, len(fundsData)+network.HEADER_LEN)
+		toSend[0] = byte(len(fundsData))
+		toSend[1] = network.FUNDSTX
+		copy(toSend[2:],fundsData)
+		conn.Write(toSend)
+
+
+		time.Sleep(100*time.Millisecond)
+
+		tx2,_ := bc.ConstrAccTx(&RootPrivKey)
+		accData := bc.EncodeAccTx(tx2)
+		toSend2 := make([]byte, len(accData)+network.HEADER_LEN)
+		toSend2[0] = byte(len(accData))
+		toSend2[1] = network.ACCTX
+		copy(toSend2[2:],accData)
+		conn.Write(toSend2)
+
+		time.Sleep(100*time.Millisecond)
+		conn.Close()
+	}
+}
+
 
 func prepAccs() {
 
@@ -33,8 +82,6 @@ func prepAccs() {
 		PubKeyA,
 		priva,
 	}
-
-	//fmt.Printf("%x\n", puba1)
 
 	pubb1,_ := new(big.Int).SetString(pubB1,16)
 	pubb2,_ := new(big.Int).SetString(pubB2,16)
@@ -59,39 +106,34 @@ func prepAccs() {
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
 	accB.Hash = sha3.Sum256(accB.Address[:])
-}
 
-var accA, accB bc.Account
-var PrivKeyA ecdsa.PrivateKey
 
-func main() {
+	var pubKey [64]byte
 
-	var header byte
-	var fee uint16
-	var amount uint32
-	var txCnt uint32
-
-	amount = 10
-	fee = 1
-	header = 0x02
-
-	prepAccs()
-
-	conn, _ := net.Dial("tcp", "127.0.0.1:8081")
-	for {
-		tx, err := bc.ConstrFundsTx(header, amount, fee, txCnt, accA.Hash,accB.Hash, &PrivKeyA)
-
-		data := bc.EncodeFundsTx(tx)
-		toSend := make([]byte, len(data)+1)
-		toSend[0] = byte(len(data))
-		copy(toSend[1:],data)
-		conn.Write(toSend)
-
-		//err := bc.AddFundsTx(uint32(i), accA.Hash, accB.Hash, 3, privA)
-		if err != nil {
-			return
-		}
-
-		time.Sleep(2*time.Millisecond)
+	pub1,_ := new(big.Int).SetString(bc.RootPub1,16)
+	pub2,_ := new(big.Int).SetString(bc.RootPub2,16)
+	priv,_ := new(big.Int).SetString(bc.RootPriv,16)
+	PubKeyA = ecdsa.PublicKey{
+		elliptic.P256(),
+		pub1,
+		pub2,
 	}
+	RootPrivKey = ecdsa.PrivateKey{
+		PubKeyA,
+		priv,
+	}
+
+	copy(pubKey[32-len(pub1.Bytes()):32],pub1.Bytes())
+	copy(pubKey[64-len(pub2.Bytes()):],pub2.Bytes())
+
+
+	var buf bytes.Buffer
+
+	binary.Write(&buf,binary.LittleEndian, pubKey[:])
+
+	rootHash :=  sha3.Sum256(buf.Bytes())
+
+	var shortRootHash [8]byte
+	copy(shortRootHash[:], rootHash[0:8])
+	//rootAcc := bc.Account{Hash:rootHash, Address:pubKey}
 }
