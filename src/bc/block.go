@@ -261,8 +261,9 @@ func validateBlock(b *Block) error {
 		accStateChange(&tx)
 	}
 
-	collectFundsTxFees(b.FundsTxData, b.Beneficiary)
-	collectAcctTxFees(b.AccTxData, b.Beneficiary)
+	//collect fees for both transaction types
+	collectTxFees(b.FundsTxData, b.AccTxData, b.Beneficiary)
+	
 	log.Print("Block validated and state changed accordingly: \n")
 	PrintState()
 
