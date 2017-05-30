@@ -51,7 +51,7 @@ func main() {
 		copy(toSend2[2:],accData)
 		conn.Write(toSend2)
 		conn.Close()
-		time.Sleep(1*time.Minute)
+		time.Sleep(20*time.Second)
 
 
 		conn, _ = net.Dial("tcp", "127.0.0.1:8081")
@@ -63,7 +63,6 @@ func main() {
 		toSend[1] = network.FUNDSTX
 		copy(toSend[2:],fundsData)
 		conn.Write(toSend)
-
 
 		time.Sleep(time.Second)
 

@@ -18,6 +18,10 @@ const (
 	RootPriv = "277ed539f56122c25a6fc115d07d632b47e71416c9aebf1beb54ee704f11842c"
 )
 
+const(
+	ACCTX_SIZE = 169
+)
+
 type accTx struct {
 	Header byte
 	Issuer [32]byte
@@ -82,7 +86,7 @@ func (tx *accTx) verify() bool {
 }
 
 func EncodeAccTx(tx accTx) (encodedTx []byte) {
-	encodedTx = make([]byte,169)
+	encodedTx = make([]byte,ACCTX_SIZE)
 	encodedTx[0] = tx.Header
 	copy(encodedTx[1:33], tx.Issuer[:])
 	copy(encodedTx[33:41], tx.Fee[:])

@@ -12,6 +12,10 @@ import (
 	"bytes"
 )
 
+const(
+	FUNDSTX_SIZE = 100
+)
+
 //when we broadcast transactions we need a way to distinguish with a type
 
 type fundsTx struct {
@@ -150,7 +154,7 @@ func (tx *fundsTx) verify() bool {
 //when we serialize the struct with binary.Write, unexported field get serialized as well, undesired
 //behavior. Therefore, writing own encoder/decoder
 func EncodeFundsTx(tx fundsTx) (encodedTx []byte) {
-	encodedTx = make([]byte,100)
+	encodedTx = make([]byte,FUNDSTX_SIZE)
 	encodedTx[0] = tx.Header
 	copy(encodedTx[1:9], tx.Amount[:])
 	copy(encodedTx[9:17], tx.Fee[:])

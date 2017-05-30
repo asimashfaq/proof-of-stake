@@ -11,7 +11,9 @@ import (
 )
 
 const (
-	ProofSize = 9
+	PROOF_SIZE = 9
+	BLOCKHEADER_SIZE = 150
+	FEE_THRESHOLD = 1
 )
 
 type transaction interface {
@@ -22,10 +24,12 @@ type Block struct {
 	Hash [32]byte
 	PrevHash [32]byte
 	Version uint8 //future updates
-	Proof [ProofSize]byte //72-bit, enough even if the network gets really large
+	Proof [PROOF_SIZE]byte //72-bit, enough even if the network gets really large
 	Timestamp int64
 	MerkleRoot [32]byte
 	Beneficiary [32]byte
+	NrFundsTx uint16
+	NrAccTx uint16
 	//this field will not be exported, this is just to avoid race conditions for the global state
 	stateCopy map[[32]byte]*Account
 	FundsTxData []fundsTx
@@ -52,6 +56,9 @@ func (b *Block) addTx(tx transaction) error {
 		return errors.New("Transaction could not be verified.")
 	}
 
+	//it would be much nicer if we could do a minimal fee check here, but this isn't so easy
+	//with the lack of OOP support from golang. It would require to access "parent data" (tx.Fee),
+	//so I'll just check for both FundsTx and AccTx
 	switch tx.(type) {
 	case *fundsTx:
 		err := b.addFundsTx(tx.(*fundsTx))
@@ -61,7 +68,7 @@ func (b *Block) addTx(tx transaction) error {
 	case *accTx:
 		err := b.addAccTx(tx.(*accTx))
 		if err != nil {
-			log.Printf("Adding accTx tx failed: %v, because %v\n", tx.(*accTx),err)
+			log.Printf("Adding accTx tx failed (%v): %v\n", err,tx.(*accTx))
 		}
 	default:
 		return errors.New("Transaction type not recognized.")
@@ -71,6 +78,12 @@ func (b *Block) addTx(tx transaction) error {
 }
 
 func (b *Block) addAccTx(tx *accTx) error {
+
+	fee := binary.BigEndian.Uint64(tx.Fee[:])
+	if fee <= FEE_THRESHOLD {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", fee, FEE_THRESHOLD)
+		return errors.New(err)
+	}
 
 	//at this point the tx has already been verified
 	var mapId [8]byte
@@ -88,6 +101,19 @@ func (b *Block) addAccTx(tx *accTx) error {
 }
 
 func (b *Block) addFundsTx(tx *fundsTx) error {
+
+	amount := binary.BigEndian.Uint64(tx.Amount[:])
+	fee := binary.BigEndian.Uint64(tx.Fee[:])
+
+	//this is needed because we cannot just parse a 3-byte value into a 32-bit integer
+	var txCntBuf [4]byte
+	copy(txCntBuf[1:],tx.TxCnt[:])
+	txCnt := binary.BigEndian.Uint32(txCntBuf[:])
+
+	if fee <= FEE_THRESHOLD {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", fee, FEE_THRESHOLD)
+		return errors.New(err)
+	}
 
 	//checking if the sender account is already in the local state copy
 	if _,exists := b.stateCopy[tx.fromHash]; !exists {
@@ -111,14 +137,6 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 			}
 		}
 	}
-
-	amount := binary.BigEndian.Uint64(tx.Amount[:])
-	fee := binary.BigEndian.Uint64(tx.Fee[:])
-
-	//this is needed because we cannot just parse a 3-byte value into a 32-bit integer
-	var txCntBuf [4]byte
-	copy(txCntBuf[1:],tx.TxCnt[:])
-	txCnt := binary.BigEndian.Uint32(txCntBuf[:])
 
 	//rootkey doesn't need to get checked for balance
 	//however, txcnt is still increased, makes things a little easiert in the state manipulation
@@ -177,7 +195,7 @@ func (b *Block) finalizeBlock() {
 	//we need to write the proof at the end of the fixed-size byte array of length 9
 	//needs to be decoded by the receiver
 	for index,val := range proof.Bytes() {
-		b.Proof[ProofSize-len(proof.Bytes())+index] = val
+		b.Proof[PROOF_SIZE-len(proof.Bytes())+index] = val
 	}
 
 	log.Printf("Finalized block: %v", b)
@@ -279,12 +297,36 @@ func validateBlock(b *Block) error {
 	return nil
 }
 
-func encodeBlock(block Block) (encodedBlock []byte) {
+func encodeBlock(b Block) (encodedBlock []byte) {
 
+	//reserve space
+	encodedBlock = make([]byte,
+		BLOCKHEADER_SIZE +
+		b.NrAccTx * ACCTX_SIZE +
+		b.NrFundsTx * FUNDSTX_SIZE)
 
+	copy(encodedBlock[0:32],b.Hash[:])
+	copy(encodedBlock[32:64],b.PrevHash[:])
+	encodedBlock[64] = byte(b.Version)
+	copy(encodedBlock[65:74],b.Proof[:])
+	copy(encodedBlock[74:82],b.Hash)
+	copy(encodedBlock[82:114],b.MerkleRoot[:])
+	copy(encodedBlock[114:146],b.Beneficiary[:])
 
 	return encodedBlock
 }
+
+Hash [32]byte
+PrevHash [32]byte
+Version uint8 //future updates
+Proof [PROOF_SIZE]byte //72-bit, enough even if the network gets really large
+Timestamp int64
+MerkleRoot [32]byte
+Beneficiary [32]byte
+//this field will not be exported, this is just to avoid race conditions for the global state
+stateCopy map[[32]byte]*Account
+FundsTxData []fundsTx
+AccTxData []accTx
 
 func (b Block) String() string {
 	return fmt.Sprintf("\nHash: %x\n" +
@@ -292,7 +334,6 @@ func (b Block) String() string {
 		"Version: %v\n" +
 		"Proof: %x\n" +
 		"Timestamp: %v\n" +
-		"Difficulty: %v\n" +
 		"MerkleRoot: %x\n" +
 		"Beneficiary: %x\n" +
 		"Amount of fundsTx: %v\n" +
@@ -302,7 +343,6 @@ func (b Block) String() string {
 		b.Version,
 		b.Proof,
 		b.Timestamp,
-		getDifficulty(),
 		b.MerkleRoot[0:8],
 		b.Beneficiary[0:8],
 		len(b.FundsTxData),

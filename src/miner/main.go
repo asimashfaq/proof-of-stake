@@ -5,9 +5,7 @@ import (
 	"network"
 )
 
-
 func setUpTestSystem() {
-
 
 }
 
