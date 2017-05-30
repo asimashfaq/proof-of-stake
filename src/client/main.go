@@ -23,7 +23,9 @@ const(
 	privB = "7a0a9babcc97ea7991ed67ed7f800f70c5e04e99718960ad8efab2ca052f00c7"
 )
 
-
+const (
+	HEADER_LEN = 2
+)
 
 var accA, accB bc.Account
 var PrivKeyA ecdsa.PrivateKey
@@ -39,31 +41,34 @@ func main() {
 	prepAccs()
 
 	for {
-		conn, _ := net.Dial("tcp", "127.0.0.1:8081")
+		var conn net.Conn
+		conn, _ = net.Dial("tcp", "127.0.0.1:8081")
+		tx2,_ := bc.ConstrAccTx(rand.Uint64()%100+1,&RootPrivKey)
+		accData := bc.EncodeAccTx(tx2)
+		toSend2 := make([]byte, len(accData)+HEADER_LEN)
+		toSend2[0] = byte(len(accData))
+		toSend2[1] = network.ACCTX
+		copy(toSend2[2:],accData)
+		conn.Write(toSend2)
+		conn.Close()
+		time.Sleep(1*time.Minute)
 
+
+		conn, _ = net.Dial("tcp", "127.0.0.1:8081")
 		tx, _ := bc.ConstrFundsTx(header,rand.Uint64()%100+1, rand.Uint64()%50+1, txCnt, accA.Hash,accB.Hash, &PrivKeyA)
-
 		txCnt++
 		fundsData := bc.EncodeFundsTx(tx)
-		toSend := make([]byte, len(fundsData)+network.HEADER_LEN)
+		toSend := make([]byte, len(fundsData)+HEADER_LEN)
 		toSend[0] = byte(len(fundsData))
 		toSend[1] = network.FUNDSTX
 		copy(toSend[2:],fundsData)
 		conn.Write(toSend)
 
 
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(time.Second)
 
-		tx2,_ := bc.ConstrAccTx(&RootPrivKey)
-		accData := bc.EncodeAccTx(tx2)
-		toSend2 := make([]byte, len(accData)+network.HEADER_LEN)
-		toSend2[0] = byte(len(accData))
-		toSend2[1] = network.ACCTX
-		copy(toSend2[2:],accData)
-		conn.Write(toSend2)
-
-		time.Sleep(100*time.Millisecond)
 		conn.Close()
+
 	}
 }
 

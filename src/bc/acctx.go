@@ -26,14 +26,12 @@ type accTx struct {
 	PubKey [64]byte
 }
 
-func ConstrAccTx(rootPrivKey *ecdsa.PrivateKey) (tx accTx, err error) {
+func ConstrAccTx(fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx accTx, err error) {
 
 	//fixed fee for now
 	var buf bytes.Buffer
-	var fee uint64
 
 	//fee will be discarded later
-	fee = 5
 
 	binary.Write(&buf,binary.BigEndian,fee)
 	copy(tx.Fee[:],buf.Bytes())
@@ -109,7 +107,7 @@ func (tx accTx) String() string {
 	return fmt.Sprintf(
 		"\n" +
 			"Issuer: %x\n" +
-			"Fee: %x\n" +
+			"Fee: %v\n" +
 			"Sig: %x\n" +
 			"PubKey: %x\n\n",
 		tx.Issuer[0:8],

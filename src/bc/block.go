@@ -24,7 +24,6 @@ type Block struct {
 	Version uint8 //future updates
 	Proof [ProofSize]byte //72-bit, enough even if the network gets really large
 	Timestamp int64
-	Difficulty uint8
 	MerkleRoot [32]byte
 	Beneficiary [32]byte
 	//this field will not be exported, this is just to avoid race conditions for the global state
@@ -45,8 +44,6 @@ func newBlock() *Block {
 // is used for every instead of manipulating the global state
 //because we the work might get interrupted by receiving a block
 func (b *Block) addTx(tx transaction) error {
-
-	//fmt.Printf("%v\n", tx)
 
 	//verifies correctness for the specific transaction
 	//i'd actually like to use !(&tx).verify to pass by pointer, but golang doesn't allow this
@@ -95,6 +92,7 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	//checking if the sender account is already in the local state copy
 	if _,exists := b.stateCopy[tx.fromHash]; !exists {
 		for _,acc := range State[tx.From] {
+			fmt.Printf("%v\n", acc)
 			if bytes.Compare(acc.Hash[:],tx.fromHash[:]) == 0 {
 				newAcc := Account{}
 				newAcc = *acc
@@ -117,13 +115,23 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	amount := binary.BigEndian.Uint64(tx.Amount[:])
 	fee := binary.BigEndian.Uint64(tx.Fee[:])
 
-	for rootHash,_ := range RootKeys {
-		if rootHash == tx.fromHash {
-			continue
-		}
+	//this is needed because we cannot just parse a 3-byte value into a 32-bit integer
+	var txCntBuf [4]byte
+	copy(txCntBuf[1:],tx.TxCnt[:])
+	txCnt := binary.BigEndian.Uint32(txCntBuf[:])
+
+	//rootkey doesn't need to get checked for balance
+	//however, txcnt is still increased, makes things a little easiert in the state manipulation
+	if !isRootKey(tx.fromHash) {
 		if (amount+fee) > b.stateCopy[tx.fromHash].Balance {
-			return errors.New("Not enough funds to complete the transaction")
+			return errors.New("Not enough funds to complete the transaction!")
 		}
+	}
+
+	//check if txcnt makes sense
+	if b.stateCopy[tx.fromHash].TxCnt != txCnt {
+		err := fmt.Sprintf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)",txCnt, b.stateCopy[tx.fromHash].TxCnt)
+		return errors.New(err)
 	}
 
 	accSender := b.stateCopy[tx.fromHash]
@@ -145,7 +153,6 @@ func (b *Block) finalizeBlock() {
 	//merkle tree only built from funds transactions
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData)
 	b.Timestamp = time.Now().Unix()
-	b.Difficulty = 24
 	copy(b.Beneficiary[:],MinerHash[:])
 
 	//anonymous struct
@@ -164,7 +171,7 @@ func (b *Block) finalizeBlock() {
 	}
 
 	partialHashed := serializeHashContent(partialToHash)
-	proof := proofOfWork(b.Difficulty, partialHashed)
+	proof := proofOfWork(getDifficulty(), partialHashed)
 	b.Hash = sha3.Sum256(append(proof.Bytes(),partialHashed[:]...))
 
 	//we need to write the proof at the end of the fixed-size byte array of length 9
@@ -191,11 +198,11 @@ func validateBlock(b *Block) error {
 	proof := b.Proof[startIndex:]
 
 	//anonymous struct
-	partialToHash := struct{
-		prevHash [32]byte
-		version uint8
-		timestamp int64
-		merkleRoot [32]byte
+	partialToHash := struct {
+		prevHash    [32]byte
+		version     uint8
+		timestamp   int64
+		merkleRoot  [32]byte
 		beneficiary [32]byte
 	}{
 		b.PrevHash,
@@ -205,7 +212,7 @@ func validateBlock(b *Block) error {
 		b.Beneficiary,
 	}
 	partialHashed := serializeHashContent(partialToHash)
-	if b.Hash != sha3.Sum256(append(proof,partialHashed[:]...)) || !validateProofOfWork(b.Difficulty, b.Hash) {
+	if b.Hash != sha3.Sum256(append(proof, partialHashed[:]...)) || !validateProofOfWork(getDifficulty(), b.Hash) {
 		return errors.New("Proof of work is incorrect.")
 		log.Println("Proof of work is incorrect.")
 
@@ -220,7 +227,6 @@ func validateBlock(b *Block) error {
 	}
 
 	log.Println("Merkle root hash passed.")
-
 
 	//check if fundsTxs is syntactically well-formed and signature is correct
 	for _, tx := range b.FundsTxData {
@@ -241,7 +247,7 @@ func validateBlock(b *Block) error {
 
 		if b.Version == 0x01 {
 			//check if we have to issue new coins
-			for hash,rootAcc := range RootKeys {
+			for hash, rootAcc := range RootKeys {
 				if hash == tx.fromHash {
 					log.Printf("Root Key Transaction: %x\n", hash[0:8])
 					rootAcc.Balance += binary.BigEndian.Uint64(tx.Amount[:])
@@ -252,22 +258,32 @@ func validateBlock(b *Block) error {
 		if fundsStateChange(&tx) != nil {
 			//don't use pointer here
 			log.Println("Starting rollback")
-			fundsStateRollback(b.FundsTxData,index-1)
+			fundsStateRollback(b.FundsTxData, index-1)
 			return errors.New("Invalid State Transition. Roll back.")
 		}
 	}
 
-	for _,tx := range b.AccTxData {
+	for _, tx := range b.AccTxData {
 		accStateChange(&tx)
 	}
 
 	//collect fees for both transaction types
 	collectTxFees(b.FundsTxData, b.AccTxData, b.Beneficiary)
-	
+
+	//collect block reward
+	collectBlockReward(getBlockReward(), b.Beneficiary)
+
 	log.Print("Block validated and state changed accordingly: \n")
 	PrintState()
 
 	return nil
+}
+
+func encodeBlock(block Block) (encodedBlock []byte) {
+
+
+
+	return encodedBlock
 }
 
 func (b Block) String() string {
@@ -286,7 +302,7 @@ func (b Block) String() string {
 		b.Version,
 		b.Proof,
 		b.Timestamp,
-		b.Difficulty,
+		getDifficulty(),
 		b.MerkleRoot[0:8],
 		b.Beneficiary[0:8],
 		len(b.FundsTxData),

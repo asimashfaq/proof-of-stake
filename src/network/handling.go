@@ -4,7 +4,6 @@ import (
 	"bc"
 	"net"
 	"bufio"
-	"fmt"
 )
 
 func Init() {

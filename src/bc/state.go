@@ -20,6 +20,16 @@ func getAccountFromHash(hash [32]byte) (*Account) {
 	return nil
 }
 
+func isRootKey(hash [32]byte) (bool) {
+
+	for _,rootAcc := range RootKeys {
+		if rootAcc.Hash == hash {
+			return true
+		}
+	}
+	return false
+}
+
 //possibility of state change
 //1) exchange funds from tx
 //2) revert funds from previous tx
@@ -37,7 +47,6 @@ func accStateChange(acctx *accTx) {
 	copy(fixedHash[:],addressHash[0:8])
 	newAcc := Account{Hash:addressHash,Address:acctx.PubKey}
 	State[fixedHash] = append(State[fixedHash],&newAcc)
-	PrintState()
 }
 
 func fundsStateChange(tx *fundsTx) error {
@@ -85,18 +94,23 @@ func collectTxFees(fundsTx []fundsTx, accTx []accTx, minerHash [32]byte) {
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
 	for _,tx := range fundsTx {
 		fee := binary.BigEndian.Uint64(tx.Fee[:])
-		miner.Balance += uint64(fee)
+		miner.Balance += fee
 
 		senderAcc := getAccountFromHash(tx.fromHash)
-		senderAcc.Balance -= uint64(fee)
+		senderAcc.Balance -= fee
 	}
 
 	for _,tx := range accTx {
 		//money gets created from thin air
 		//no need to subtract money from root key
 		fee := binary.BigEndian.Uint64(tx.Fee[:])
-		miner.Balance += uint64(fee)
+		miner.Balance += fee
 	}
+}
+
+func collectBlockReward(reward uint64, minerHash [32]byte) {
+	miner := getAccountFromHash(minerHash)
+	miner.Balance += reward
 }
 
 func fundsStateRollback(txSlice []fundsTx, index int) {

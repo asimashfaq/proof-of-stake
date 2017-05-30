@@ -1,10 +1,11 @@
 package network
 
 const (
-	HEADER_LEN = 0x02
+	ACCTX = 1
+	FUNDSTX = 2
 
-	ACCTX = 0x01
-	FUNDSTX = 0x02
+	BLOCK = 10
 
-	BLOCK = 0x10
+	GET_NODE_LIST = 20
+	GET_TIME = 21
 )
