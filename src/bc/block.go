@@ -118,7 +118,6 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	//checking if the sender account is already in the local state copy
 	if _,exists := b.stateCopy[tx.fromHash]; !exists {
 		for _,acc := range State[tx.From] {
-			fmt.Printf("%v\n", acc)
 			if bytes.Compare(acc.Hash[:],tx.fromHash[:]) == 0 {
 				newAcc := Account{}
 				newAcc = *acc
@@ -197,6 +196,10 @@ func (b *Block) finalizeBlock() {
 	for index,val := range proof.Bytes() {
 		b.Proof[PROOF_SIZE-len(proof.Bytes())+index] = val
 	}
+
+	//should this be hashed as well?
+	b.NrFundsTx = uint16(len(b.FundsTxData))
+	b.NrAccTx = uint16(len(b.AccTxData))
 
 	log.Printf("Finalized block: %v", b)
 }
@@ -299,34 +302,80 @@ func validateBlock(b *Block) error {
 
 func encodeBlock(b Block) (encodedBlock []byte) {
 
+	//making byte array of all non-byte data
+	var timeStamp [8]byte
+	var nrFundsTx, nrAccTx [2]byte
+
+	binary.BigEndian.PutUint64(timeStamp[:], uint64(b.Timestamp))
+	binary.BigEndian.PutUint16(nrFundsTx[:], b.NrFundsTx)
+	binary.BigEndian.PutUint16(nrAccTx[:], b.NrAccTx)
+
+	fmt.Printf("%v, %v\n", b.NrFundsTx, b.NrAccTx)
+	fmt.Printf("%v, %v\n", nrFundsTx, nrAccTx)
+
 	//reserve space
 	encodedBlock = make([]byte,
 		BLOCKHEADER_SIZE +
 		b.NrAccTx * ACCTX_SIZE +
 		b.NrFundsTx * FUNDSTX_SIZE)
 
+
 	copy(encodedBlock[0:32],b.Hash[:])
 	copy(encodedBlock[32:64],b.PrevHash[:])
 	encodedBlock[64] = byte(b.Version)
 	copy(encodedBlock[65:74],b.Proof[:])
-	copy(encodedBlock[74:82],b.Hash)
+	copy(encodedBlock[74:82],timeStamp[:])
 	copy(encodedBlock[82:114],b.MerkleRoot[:])
 	copy(encodedBlock[114:146],b.Beneficiary[:])
+	copy(encodedBlock[146:148],nrFundsTx[:])
+	copy(encodedBlock[148:150],nrAccTx[:])
+
+
+	/*index := 150
+
+	for _,tx := range b.FundsTxData {
+		encodedTx := EncodeFundsTx(tx)
+		copy(encodedBlock[index:index+FUNDSTX_SIZE],encodedTx)
+		index += FUNDSTX_SIZE
+	}
+
+	for _,tx := range b.AccTxData {
+		encodedTx := EncodeAccTx(tx)
+		copy(encodedBlock[index:index+ACCTX_SIZE],encodedTx)
+		index += ACCTX_SIZE
+	}*/
 
 	return encodedBlock
 }
 
-Hash [32]byte
-PrevHash [32]byte
-Version uint8 //future updates
-Proof [PROOF_SIZE]byte //72-bit, enough even if the network gets really large
-Timestamp int64
-MerkleRoot [32]byte
-Beneficiary [32]byte
-//this field will not be exported, this is just to avoid race conditions for the global state
-stateCopy map[[32]byte]*Account
-FundsTxData []fundsTx
-AccTxData []accTx
+func decodeBlock(encodedBlock []byte) (b *Block) {
+
+	//time.Now().Unix() return int64, but binary.BigEndian only offers uint64
+	var timeStampTmp uint64
+	var timeStamp int64
+	var nrFundsTx, nrAccTx uint16
+
+	if len(encodedBlock) < BLOCKHEADER_SIZE {
+		return nil
+	}
+
+	timeStampTmp = binary.BigEndian.Uint64(encodedBlock[74:82])
+	nrFundsTx = binary.BigEndian.Uint16(encodedBlock[146:148])
+	nrFundsTx = binary.BigEndian.Uint16(encodedBlock[148:150])
+	timeStamp = int64(timeStampTmp)
+
+	copy(b.Hash[:],encodedBlock[0:32])
+	copy(b.PrevHash[:],encodedBlock[32:64])
+	b.Version = encodedBlock[64]
+	copy(b.Proof[:],encodedBlock[65:74])
+	b.Timestamp = timeStamp
+	copy(encodedBlock[82:114],b.MerkleRoot[:])
+	copy(encodedBlock[114:146],b.Beneficiary[:])
+	b.NrFundsTx = nrFundsTx
+	b.NrAccTx = nrAccTx
+
+	return b
+}
 
 func (b Block) String() string {
 	return fmt.Sprintf("\nHash: %x\n" +

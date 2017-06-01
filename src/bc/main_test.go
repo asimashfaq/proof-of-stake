@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"crypto/elliptic"
 	"golang.org/x/crypto/sha3"
+	"log"
+	"io/ioutil"
 )
 
 var accA, accB Account
@@ -100,6 +102,7 @@ func TestMain(m *testing.M) {
 
 	addTestingAccounts()
 	addRootAccounts()
-
+	//we don't want logging msgs when testing, designated messages
+	log.SetOutput(ioutil.Discard)
 	os.Exit(m.Run())
 }
