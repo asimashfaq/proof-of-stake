@@ -317,7 +317,6 @@ func encodeBlock(b Block) (encodedBlock []byte) {
 		int(b.NrAccTx) * ACCTX_SIZE +
 		int(b.NrFundsTx) * FUNDSTX_SIZE)
 
-
 	copy(encodedBlock[0:32],b.Hash[:])
 	copy(encodedBlock[32:64],b.PrevHash[:])
 	encodedBlock[64] = byte(b.Version)

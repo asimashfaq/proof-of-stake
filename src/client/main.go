@@ -12,6 +12,8 @@ import (
 	"network"
 	"bytes"
 	"encoding/binary"
+	"bufio"
+	"fmt"
 )
 
 const(
@@ -50,9 +52,9 @@ func main() {
 		toSend2[1] = network.ACCTX
 		copy(toSend2[2:],accData)
 		conn.Write(toSend2)
-		conn.Close()
-		time.Sleep(20*time.Second)
 
+		conn.Close()
+		time.Sleep(1*time.Second)
 
 		conn, _ = net.Dial("tcp", "127.0.0.1:8081")
 		tx, _ := bc.ConstrFundsTx(header,rand.Uint64()%100+1, rand.Uint64()%50+1, txCnt, accA.Hash,accB.Hash, &PrivKeyA)

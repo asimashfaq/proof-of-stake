@@ -97,6 +97,8 @@ func EncodeAccTx(tx accTx) (encodedTx []byte) {
 }
 
 func DecodeAccTx(encodedTx []byte) (tx *accTx) {
+
+	fmt.Printf("%v\n", len(encodedTx))
 	tx = new(accTx)
 	tx.Header = encodedTx[0]
 	copy(tx.Issuer[:],encodedTx[1:33])
