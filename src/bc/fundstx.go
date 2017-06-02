@@ -181,6 +181,7 @@ func DecodeFundsTx(encodedTx []byte) (tx *fundsTx) {
 	return tx
 }
 
+
 func (tx fundsTx) String() string {
 	return fmt.Sprintf(
 		"\nHeader: %x\n" +

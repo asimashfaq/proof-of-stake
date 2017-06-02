@@ -88,7 +88,7 @@ func fundsStateChange(tx *fundsTx) error {
 	return nil
 }
 
-func collectTxFees(fundsTx []fundsTx, accTx []accTx, minerHash [32]byte) {
+func collectTxFees(fundsTx []*fundsTx, accTx []*accTx, minerHash [32]byte) {
 	miner := getAccountFromHash(minerHash)
 
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
@@ -113,7 +113,7 @@ func collectBlockReward(reward uint64, minerHash [32]byte) {
 	miner.Balance += reward
 }
 
-func fundsStateRollback(txSlice []fundsTx, index int) {
+func fundsStateRollback(txSlice []*fundsTx, index int) {
 
 	for cnt := index; index >= 0; index-- {
 		tx := txSlice[cnt]

@@ -9,7 +9,7 @@ import (
 
 func TestBuildMerkleTree(t *testing.T) {
 
-	var funds []fundsTx
+	var funds []*fundsTx
 	var hash1,hash2,hash3 [32]byte
 	var tmpHash []byte
 	var tx, tx2, tx3 fundsTx
@@ -74,21 +74,21 @@ func TestBuildMerkleTree(t *testing.T) {
 
 	//test with one node
 	//self hash
-	funds = append(funds,tx)
+	funds = append(funds,&tx)
 	tmpHash = append(hash1[:],hash1[:]...)
 	if serializeHashContent(tmpHash) != buildMerkleTree(funds) {
 		t.Errorf("Hashes don't match: %x != %x\n", serializeHashContent(tmpHash), buildMerkleTree(funds))
 	}
 
 	//two nodes
-	funds = append(funds,tx2)
+	funds = append(funds,&tx2)
 	tmpHash = append(hash1[:],hash2[:]...)
 	if serializeHashContent(tmpHash) != buildMerkleTree(funds) {
 		t.Errorf("Hashes don't match: %x != %x\n", serializeHashContent(tmpHash), buildMerkleTree(funds))
 	}
 
 	//three nodes
-	funds = append(funds,tx3)
+	funds = append(funds,&tx3)
 	tmpHash = append(hash1[:],hash2[:]...)
 	tmpHashHash := serializeHashContent(tmpHash)
 	tmpHash2 := append(hash3[:],hash3[:]...)

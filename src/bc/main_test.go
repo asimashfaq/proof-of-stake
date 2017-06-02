@@ -9,12 +9,14 @@ import (
 	"golang.org/x/crypto/sha3"
 	"log"
 	"io/ioutil"
+	"crypto/rand"
 )
 
 var accA, accB Account
 var PrivKeyA ecdsa.PrivateKey
 var PubKeyA ecdsa.PublicKey
 var RootPrivKey ecdsa.PrivateKey
+
 
 
 func addTestingAccounts() {
@@ -44,13 +46,13 @@ func addTestingAccounts() {
 		privb,
 	}
 
-	accA = Account{Balance: 12345678}
+	accA = Account{Balance: 123232345678}
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
 	accA.Hash = sha3.Sum256(accA.Address[:])
 
 	//This one is just for testing purposes
-	accB = Account{Balance: 87654321}
+	accB = Account{Balance: 823237654321}
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
 	accB.Hash = sha3.Sum256(accB.Address[:])
@@ -63,6 +65,17 @@ func addTestingAccounts() {
 
 	State[shortHashA] = append(State[shortHashA],&accA)
 	State[shortHashB] = append(State[shortHashB],&accB)
+
+	MinerPrivKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	var pubKey [64]byte
+	var shortMiner [8]byte
+	copy(pubKey[:32],MinerPrivKey.X.Bytes())
+	copy(pubKey[32:],MinerPrivKey.Y.Bytes())
+	MinerHash = serializeHashContent(pubKey[:])
+	copy(shortMiner[:],MinerHash[0:8])
+	minerAcc := Account{Hash:MinerHash, Address:pubKey}
+	State[shortMiner] = append(State[shortMiner],&minerAcc)
+
 }
 
 func addRootAccounts() {
@@ -100,6 +113,7 @@ func TestMain(m *testing.M) {
 	State = make(map[[8]byte][]*Account)
 	RootKeys = make(map[[32]byte]*Account)
 
+	//setting a new random seed
 	addTestingAccounts()
 	addRootAccounts()
 	//we don't want logging msgs when testing, designated messages

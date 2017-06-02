@@ -32,8 +32,8 @@ type Block struct {
 	NrAccTx uint16
 	//this field will not be exported, this is just to avoid race conditions for the global state
 	stateCopy map[[32]byte]*Account
-	FundsTxData []fundsTx
-	AccTxData []accTx
+	FundsTxData []*fundsTx
+	AccTxData []*accTx
 }
 
 //imitating constructor
@@ -95,7 +95,7 @@ func (b *Block) addAccTx(tx *accTx) error {
 		}
 	}
 
-	b.AccTxData = append(b.AccTxData,*tx)
+	b.AccTxData = append(b.AccTxData,tx)
 	log.Printf("Added tx to the AccTxData slice: %v", *tx)
 	return nil
 }
@@ -110,7 +110,7 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	copy(txCntBuf[1:],tx.TxCnt[:])
 	txCnt := binary.BigEndian.Uint32(txCntBuf[:])
 
-	if fee <= FEE_THRESHOLD {
+	if fee < FEE_THRESHOLD {
 		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", fee, FEE_THRESHOLD)
 		return errors.New(err)
 	}
@@ -159,7 +159,7 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	accReceiver := b.stateCopy[tx.toHash]
 	accReceiver.Balance += amount
 
-	b.FundsTxData = append(b.FundsTxData, *tx)
+	b.FundsTxData = append(b.FundsTxData, tx)
 
 	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)
 	return nil
@@ -209,6 +209,21 @@ func validateBlock(b *Block) error {
 	//prevHash check
 	//extract proof first by cutting of leading zeroes
 	log.Println("Starting block validation...")
+
+	//check if fundsTxs is syntactically well-formed and signature is correct
+	for _, tx := range b.FundsTxData {
+		if !(tx).verify() {
+			return errors.New("Malformed transaction.")
+		}
+	}
+
+	//check if accTxs are syntactically well-formed and signature is correct
+	for _, tx := range b.AccTxData {
+		if !(tx).verify() {
+			return errors.New("Malformed transaction.")
+		}
+	}
+
 	startIndex := 0
 	for _, singleByte := range b.Proof {
 		if singleByte != 0x00 {
@@ -249,20 +264,6 @@ func validateBlock(b *Block) error {
 
 	log.Println("Merkle root hash passed.")
 
-	//check if fundsTxs is syntactically well-formed and signature is correct
-	for _, tx := range b.FundsTxData {
-		if !tx.verify() {
-			return errors.New("Malformed transaction.")
-		}
-	}
-
-	//check if accTxs are syntactically well-formed and signature is correct
-	for _, tx := range b.AccTxData {
-		if !tx.verify() {
-			return errors.New("Malformed transaction.")
-		}
-	}
-
 	//apply to State
 	for index, tx := range b.FundsTxData {
 
@@ -276,7 +277,7 @@ func validateBlock(b *Block) error {
 				}
 			}
 		}
-		if fundsStateChange(&tx) != nil {
+		if fundsStateChange(tx) != nil {
 			//don't use pointer here
 			log.Println("Starting rollback")
 			fundsStateRollback(b.FundsTxData, index-1)
@@ -285,7 +286,7 @@ func validateBlock(b *Block) error {
 	}
 
 	for _, tx := range b.AccTxData {
-		accStateChange(&tx)
+		accStateChange(tx)
 	}
 
 	//collect fees for both transaction types
@@ -310,14 +311,11 @@ func encodeBlock(b Block) (encodedBlock []byte) {
 	binary.BigEndian.PutUint16(nrFundsTx[:], b.NrFundsTx)
 	binary.BigEndian.PutUint16(nrAccTx[:], b.NrAccTx)
 
-	fmt.Printf("%v, %v\n", b.NrFundsTx, b.NrAccTx)
-	fmt.Printf("%v, %v\n", nrFundsTx, nrAccTx)
-
 	//reserve space
 	encodedBlock = make([]byte,
 		BLOCKHEADER_SIZE +
-		b.NrAccTx * ACCTX_SIZE +
-		b.NrFundsTx * FUNDSTX_SIZE)
+		int(b.NrAccTx) * ACCTX_SIZE +
+		int(b.NrFundsTx) * FUNDSTX_SIZE)
 
 
 	copy(encodedBlock[0:32],b.Hash[:])
@@ -330,25 +328,26 @@ func encodeBlock(b Block) (encodedBlock []byte) {
 	copy(encodedBlock[146:148],nrFundsTx[:])
 	copy(encodedBlock[148:150],nrAccTx[:])
 
-
-	/*index := 150
+	index := BLOCKHEADER_SIZE
 
 	for _,tx := range b.FundsTxData {
-		encodedTx := EncodeFundsTx(tx)
+		encodedTx := EncodeFundsTx(*tx)
 		copy(encodedBlock[index:index+FUNDSTX_SIZE],encodedTx)
 		index += FUNDSTX_SIZE
 	}
 
 	for _,tx := range b.AccTxData {
-		encodedTx := EncodeAccTx(tx)
+		encodedTx := EncodeAccTx(*tx)
 		copy(encodedBlock[index:index+ACCTX_SIZE],encodedTx)
 		index += ACCTX_SIZE
-	}*/
+	}
 
 	return encodedBlock
 }
 
 func decodeBlock(encodedBlock []byte) (b *Block) {
+
+	b = new(Block)
 
 	//time.Now().Unix() return int64, but binary.BigEndian only offers uint64
 	var timeStampTmp uint64
@@ -361,7 +360,7 @@ func decodeBlock(encodedBlock []byte) (b *Block) {
 
 	timeStampTmp = binary.BigEndian.Uint64(encodedBlock[74:82])
 	nrFundsTx = binary.BigEndian.Uint16(encodedBlock[146:148])
-	nrFundsTx = binary.BigEndian.Uint16(encodedBlock[148:150])
+	nrAccTx = binary.BigEndian.Uint16(encodedBlock[148:150])
 	timeStamp = int64(timeStampTmp)
 
 	copy(b.Hash[:],encodedBlock[0:32])
@@ -369,10 +368,24 @@ func decodeBlock(encodedBlock []byte) (b *Block) {
 	b.Version = encodedBlock[64]
 	copy(b.Proof[:],encodedBlock[65:74])
 	b.Timestamp = timeStamp
-	copy(encodedBlock[82:114],b.MerkleRoot[:])
-	copy(encodedBlock[114:146],b.Beneficiary[:])
+	copy(b.MerkleRoot[:],encodedBlock[82:114])
+	copy(b.Beneficiary[:],encodedBlock[114:146])
 	b.NrFundsTx = nrFundsTx
 	b.NrAccTx = nrAccTx
+
+	index := BLOCKHEADER_SIZE
+
+	for cnt := 0; cnt < int(nrFundsTx); cnt++ {
+		tx := DecodeFundsTx(encodedBlock[index:index+FUNDSTX_SIZE])
+		b.FundsTxData = append(b.FundsTxData,tx)
+		index += FUNDSTX_SIZE
+	}
+
+	for cnt := 0; cnt < int(nrAccTx); cnt++ {
+		tx := DecodeAccTx(encodedBlock[index:index+ACCTX_SIZE])
+		b.AccTxData = append(b.AccTxData,tx)
+		index += ACCTX_SIZE
+	}
 
 	return b
 }
@@ -394,7 +407,7 @@ func (b Block) String() string {
 		b.Timestamp,
 		b.MerkleRoot[0:8],
 		b.Beneficiary[0:8],
-		len(b.FundsTxData),
-		len(b.AccTxData),
+		b.NrFundsTx,
+		b.NrAccTx,
 	)
 }
