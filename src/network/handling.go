@@ -42,6 +42,9 @@ func parseInput(data []byte) {
 	case FUNDSTX:
 		bc.InFundsTx(data[1:])
 	case BLOCK:
+		bc.InBlockTx(data[1:])
+	case GET_TIME:
+
 	}
 }
 

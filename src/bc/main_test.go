@@ -7,16 +7,15 @@ import (
 	"math/big"
 	"crypto/elliptic"
 	"golang.org/x/crypto/sha3"
-	"log"
-	"io/ioutil"
 	"crypto/rand"
+	"io/ioutil"
+	"log"
 )
 
-var accA, accB Account
-var PrivKeyA ecdsa.PrivateKey
-var PubKeyA ecdsa.PublicKey
+var accA, accB, minerAcc Account
+var PrivKeyA, PrivKeyB ecdsa.PrivateKey
+var PubKeyA, PubKeyB ecdsa.PublicKey
 var RootPrivKey ecdsa.PrivateKey
-
 
 
 func addTestingAccounts() {
@@ -36,12 +35,12 @@ func addTestingAccounts() {
 	pubb1,_ := new(big.Int).SetString(pubB1,16)
 	pubb2,_ := new(big.Int).SetString(pubB2,16)
 	privb,_ := new(big.Int).SetString(privB,16)
-	PubKeyB := ecdsa.PublicKey{
+	PubKeyB = ecdsa.PublicKey{
 		elliptic.P256(),
 		pubb1,
 		pubb2,
 	}
-	PrivKeyB := ecdsa.PrivateKey{
+	PrivKeyB = ecdsa.PrivateKey{
 		PubKeyB,
 		privb,
 	}
@@ -73,7 +72,7 @@ func addTestingAccounts() {
 	copy(pubKey[32:],MinerPrivKey.Y.Bytes())
 	MinerHash = serializeHashContent(pubKey[:])
 	copy(shortMiner[:],MinerHash[0:8])
-	minerAcc := Account{Hash:MinerHash, Address:pubKey}
+	minerAcc = Account{Hash:MinerHash, Address:pubKey}
 	State[shortMiner] = append(State[shortMiner],&minerAcc)
 
 }

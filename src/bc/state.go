@@ -69,7 +69,7 @@ func fundsStateChange(tx *fundsTx) error {
 	txCnt := binary.BigEndian.Uint32(cntBuf[:])
 	if txCnt != accSender.TxCnt {
 		log.Printf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)\n", txCnt, accSender.TxCnt)
-		return errors.New("Sender does not have enough funds for the transaction.")
+		return errors.New("TxCnt mismatch!")
 	}
 
 	amount := binary.BigEndian.Uint64(tx.Amount[:])
@@ -115,7 +115,7 @@ func collectBlockReward(reward uint64, minerHash [32]byte) {
 
 func fundsStateRollback(txSlice []*fundsTx, index int) {
 
-	for cnt := index; index >= 0; index-- {
+	for cnt := index; cnt >= 0; cnt-- {
 		tx := txSlice[cnt]
 
 		accSender, accReceiver := getAccountFromHash(tx.fromHash), getAccountFromHash(tx.toHash)

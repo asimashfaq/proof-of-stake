@@ -80,7 +80,7 @@ func (b *Block) addTx(tx transaction) error {
 func (b *Block) addAccTx(tx *accTx) error {
 
 	fee := binary.BigEndian.Uint64(tx.Fee[:])
-	if fee <= FEE_THRESHOLD {
+	if fee < FEE_THRESHOLD {
 		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", fee, FEE_THRESHOLD)
 		return errors.New(err)
 	}
