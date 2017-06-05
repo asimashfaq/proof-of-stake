@@ -11,6 +11,7 @@ import (
 	"golang.org/x/crypto/sha3"
 	"sync"
 	"fmt"
+
 )
 
 const (
@@ -74,7 +75,7 @@ func consumeTx() {
 			nextBlock.addTx(txQueue.Dequeue().(transaction))
 			nextBlockAccess.Unlock()
 		}
-		time.Sleep(50*time.Millisecond)
+		time.Sleep(20*time.Millisecond)
 	}
 }
 
@@ -83,8 +84,11 @@ func publishBlock() {
 }
 
 func publishTx() {
+	fmt.Printf("%v\n", HEADER_LEN)
 
 }
+
+
 
 func mining() {
 
@@ -106,27 +110,25 @@ func mining() {
 func InFundsTx(data []byte) {
 
 	tx := DecodeFundsTx(data)
+	if tx == nil {
+		return
+	}
 	txQueue.Enqueue(tx)
 }
 
 func InAccTx(data []byte) {
 
 	tx := DecodeAccTx(data)
+	if tx == nil {
+		return
+	}
 	txQueue.Enqueue(tx)
 }
 
-func InBlockTx(data []byte) {
+func InBlock(data []byte) {
 
 
 }
-
-
-func ProcessFundsTx(tx* fundsTx) {
-
-	//nextBlock.addTx(tx)
-}
-
-
 
 //some testing code
 func testing_setup() {

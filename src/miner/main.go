@@ -2,7 +2,6 @@ package main
 
 import (
 	"bc"
-	"network"
 )
 
 func setUpTestSystem() {
@@ -12,7 +11,7 @@ func setUpTestSystem() {
 func main() {
 
 	bc.Sync()
-	go network.Init()
+	go bc.Init()
 	bc.InitSystem()
 	//setUpTestSystem()
 

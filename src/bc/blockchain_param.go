@@ -14,5 +14,5 @@ func getBlockReward() uint64 {
 func getDifficulty() uint8 {
 
 	//will be done soon
-	return 24
+	return 23
 }

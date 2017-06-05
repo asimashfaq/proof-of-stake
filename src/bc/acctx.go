@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"encoding/binary"
 	"bytes"
+	"log"
 )
 
 //just for test cases
@@ -98,7 +99,11 @@ func EncodeAccTx(tx accTx) (encodedTx []byte) {
 
 func DecodeAccTx(encodedTx []byte) (tx *accTx) {
 
-	fmt.Printf("%v\n", len(encodedTx))
+	if len(encodedTx) < ACCTX_SIZE {
+		log.Printf("DecodeAccTx, received buffer is too short: %v\n", len(encodedTx))
+		return nil
+	}
+
 	tx = new(accTx)
 	tx.Header = encodedTx[0]
 	copy(tx.Issuer[:],encodedTx[1:33])

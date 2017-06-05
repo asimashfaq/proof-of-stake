@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"encoding/binary"
 	"bytes"
+	"log"
 )
 
 const(
@@ -168,6 +169,12 @@ func EncodeFundsTx(tx fundsTx) (encodedTx []byte) {
 }
 
 func DecodeFundsTx(encodedTx []byte) (tx *fundsTx) {
+
+	if len(encodedTx) < FUNDSTX_SIZE {
+		log.Printf("DecodeFundsTxTx, received buffer is too short: %v\n", len(encodedTx))
+		return nil
+	}
+
 	tx = new(fundsTx)
 	tx.Header = encodedTx[0]
 	copy(tx.Amount[:],encodedTx[1:9])

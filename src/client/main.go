@@ -7,9 +7,6 @@ import (
 	"bc"
 	"golang.org/x/crypto/sha3"
 	"net"
-	"time"
-	"math/rand"
-	"network"
 	"bytes"
 	"encoding/binary"
 	"bufio"
@@ -26,7 +23,7 @@ const(
 )
 
 const (
-	HEADER_LEN = 2
+	VERSION_ID = 1
 )
 
 var accA, accB bc.Account
@@ -35,42 +32,63 @@ var RootPrivKey ecdsa.PrivateKey
 
 func main() {
 
-	var header byte
-	var txCnt uint32
-
-	header = 0x02
-
 	prepAccs()
 
-	for {
+	var conn net.Conn
+
+	conn, _ = net.Dial("tcp", "127.0.0.1:8081")
+
+	header := bc.ConstructHeader(0,bc.TIME_REQ)
+	toSend := make([]byte, bc.HEADER_LEN)
+	copy(toSend[:], header[:])
+	conn.Write(toSend)
+
+	reader := bufio.NewReader(conn)
+	recvHeader := bc.ExtractHeader(reader)
+
+	recvBuf := make([]byte, recvHeader.Len)
+	for i := 0; i < int(recvHeader.Len); i++ {
+		in,_ := reader.ReadByte()
+		recvBuf[i] = in
+	}
+
+	fmt.Printf("%v\n", binary.BigEndian.Uint64(recvBuf[:]))
+
+	conn.Close()
+
+	/*for i:=0; i<100; i++{
 		var conn net.Conn
 		conn, _ = net.Dial("tcp", "127.0.0.1:8081")
 		tx2,_ := bc.ConstrAccTx(rand.Uint64()%100+1,&RootPrivKey)
 		accData := bc.EncodeAccTx(tx2)
-		toSend2 := make([]byte, len(accData)+HEADER_LEN)
-		toSend2[0] = byte(len(accData))
-		toSend2[1] = network.ACCTX
-		copy(toSend2[2:],accData)
-		conn.Write(toSend2)
+		header := network.ConstructHeader(len(accData),network.ACCTX)
+
+		toSend := make([]byte, len(accData)+len(header))
+		copy(toSend[0:network.HEADER_LEN],header[:])
+		copy(toSend[network.HEADER_LEN:],accData[:])
+		conn.Write(toSend)
 
 		conn.Close()
-		time.Sleep(1*time.Second)
 
+		time.Sleep(time.Second)
 		conn, _ = net.Dial("tcp", "127.0.0.1:8081")
-		tx, _ := bc.ConstrFundsTx(header,rand.Uint64()%100+1, rand.Uint64()%50+1, txCnt, accA.Hash,accB.Hash, &PrivKeyA)
+
+		tx, _ := bc.ConstrFundsTx(0x02,rand.Uint64()%100+1, rand.Uint64()%50+1, txCnt, accA.Hash,accB.Hash, &PrivKeyA)
 		txCnt++
 		fundsData := bc.EncodeFundsTx(tx)
-		toSend := make([]byte, len(fundsData)+HEADER_LEN)
-		toSend[0] = byte(len(fundsData))
-		toSend[1] = network.FUNDSTX
-		copy(toSend[2:],fundsData)
-		conn.Write(toSend)
+		header2 := network.ConstructHeader(len(fundsData),network.FUNDSTX)
+
+		toSend2 := make([]byte, len(fundsData)+len(header2))
+		copy(toSend2[0:network.HEADER_LEN],header2[:])
+		copy(toSend2[network.HEADER_LEN:],fundsData[:])
+
+		conn.Write(toSend2)
 
 		time.Sleep(time.Second)
 
 		conn.Close()
 
-	}
+	}*/
 }
 
 
