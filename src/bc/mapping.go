@@ -9,5 +9,6 @@ const (
 	TIME_REQ = 20
 	TIME_RES = 21
 
-	NODE_LIST_REQ = 30
+	ACC_REQ = 40
+	ACC_RES = 41
 )

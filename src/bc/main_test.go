@@ -12,13 +12,16 @@ import (
 	"log"
 )
 
-var accA, accB, minerAcc Account
+var accA, accB, minerAcc *Account
 var PrivKeyA, PrivKeyB ecdsa.PrivateKey
 var PubKeyA, PubKeyB ecdsa.PublicKey
 var RootPrivKey ecdsa.PrivateKey
 
 
 func addTestingAccounts() {
+
+	accA,accB,minerAcc = new(Account),new(Account),new(Account)
+
 	puba1,_ := new(big.Int).SetString(pubA1,16)
 	puba2,_ := new(big.Int).SetString(pubA2,16)
 	priva,_ := new(big.Int).SetString(privA,16)
@@ -45,13 +48,13 @@ func addTestingAccounts() {
 		privb,
 	}
 
-	accA = Account{Balance: 123232345678}
+	accA.Balance = 123232345678
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
 	accA.Hash = sha3.Sum256(accA.Address[:])
 
 	//This one is just for testing purposes
-	accB = Account{Balance: 823237654321}
+	accB.Balance = 823237654321
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
 	accB.Hash = sha3.Sum256(accB.Address[:])
@@ -62,8 +65,8 @@ func addTestingAccounts() {
 	copy(shortHashA[:], accA.Hash[0:8])
 	copy(shortHashB[:], accB.Hash[0:8])
 
-	State[shortHashA] = append(State[shortHashA],&accA)
-	State[shortHashB] = append(State[shortHashB],&accB)
+	State[shortHashA] = append(State[shortHashA],accA)
+	State[shortHashB] = append(State[shortHashB],accB)
 
 	MinerPrivKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	var pubKey [64]byte
@@ -72,8 +75,9 @@ func addTestingAccounts() {
 	copy(pubKey[32:],MinerPrivKey.Y.Bytes())
 	MinerHash = serializeHashContent(pubKey[:])
 	copy(shortMiner[:],MinerHash[0:8])
-	minerAcc = Account{Hash:MinerHash, Address:pubKey}
-	State[shortMiner] = append(State[shortMiner],&minerAcc)
+	minerAcc.Hash = MinerHash
+	minerAcc.Address = pubKey
+	State[shortMiner] = append(State[shortMiner],minerAcc)
 
 }
 

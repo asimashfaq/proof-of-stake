@@ -21,15 +21,15 @@ func TestBlock(t *testing.T) {
 	loopMax := int(rand.Uint32()%testSize)
 	for cnt := 0; loopMax < loopMax; cnt++ {
 		tx,_ := ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accA.Hash, accB.Hash, &PrivKeyA)
-		b.addTx(&tx)
-		fundsTxData = append(fundsTxData, &tx)
+		b.addTx(tx)
+		fundsTxData = append(fundsTxData, tx)
 	}
 
 	loopMax = int(rand.Uint32()%testSize)
 	for cnt := 0; cnt < loopMax; cnt++ {
 		tx,_ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
-		b.addTx(&tx)
-		accTxData = append(accTxData, &tx)
+		b.addTx(tx)
+		accTxData = append(accTxData, tx)
 	}
 
 	b.finalizeBlock()

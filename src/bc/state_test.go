@@ -28,8 +28,8 @@ func TestFundsTxStateChange(t *testing.T) {
 
 	for i := 0; i < int(rand.Uint32()%testSize+1); i++ {
 		ftx, _ := ConstrFundsTx(0x01,rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accA.Hash, accB.Hash, &PrivKeyA)
-		if b.addTx(&ftx) == nil {
-			funds = append(funds,&ftx)
+		if b.addTx(ftx) == nil {
+			funds = append(funds,ftx)
 			amount := binary.BigEndian.Uint64(ftx.Amount[:])
 			fee := binary.BigEndian.Uint64(ftx.Fee[:])
 			balanceA -= amount
@@ -41,8 +41,8 @@ func TestFundsTxStateChange(t *testing.T) {
 
 
 		ftx2,_ := ConstrFundsTx(0x01,rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accB.Hash, accA.Hash, &PrivKeyB)
-		if b.addTx(&ftx2) == nil {
-			funds = append(funds,&ftx2)
+		if b.addTx(ftx2) == nil {
+			funds = append(funds,ftx2)
 			amount := binary.BigEndian.Uint64(ftx2.Amount[:])
 			fee := binary.BigEndian.Uint64(ftx2.Fee[:])
 			balanceB -= amount
@@ -85,7 +85,7 @@ func TestAccTxStateChange(t *testing.T) {
 
 	for i := 0; i < int(rand.Uint32()%testSize)+1; i++ {
 		tx,_ := ConstrAccTx(rand.Uint64()%1000,&RootPrivKey)
-		accs = append(accs, &tx)
+		accs = append(accs, tx)
 	}
 
 	for _,tx := range accs {

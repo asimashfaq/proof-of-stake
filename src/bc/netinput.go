@@ -30,7 +30,6 @@ func Init() {
 		conn, _ := ln.Accept()
 		//creating new goroutine for every incoming request, not sure if smartest way to do it
 		go handleConn(conn)
-
 	}
 }
 
@@ -110,7 +109,9 @@ func parseInput(conn net.Conn, header *Header, data []byte) {
 	case BLOCK:
 		InBlock(data)
 	case TIME_REQ:
-		timeReq(conn)
+		timeRes(conn)
+	case ACC_REQ:
+		accRes(conn, data)
 	}
 	conn.Close()
 }

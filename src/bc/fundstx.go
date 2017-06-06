@@ -32,13 +32,15 @@ type fundsTx struct {
 	Sig [40]byte
 }
 
-func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx fundsTx, err error) {
+func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx *fundsTx, err error) {
 
 	var buf bytes.Buffer
 	var amountBuf [8]byte
 	var feeBuf [8]byte
 	var tmpTxCntBuf [4]byte
 	var txCntBuf [3]byte
+
+	tx = new(fundsTx)
 
 	//transfer integer values to byte arrays
 	binary.Write(&buf, binary.BigEndian, fee)
@@ -154,7 +156,7 @@ func (tx *fundsTx) verify() bool {
 
 //when we serialize the struct with binary.Write, unexported field get serialized as well, undesired
 //behavior. Therefore, writing own encoder/decoder
-func EncodeFundsTx(tx fundsTx) (encodedTx []byte) {
+func EncodeFundsTx(tx *fundsTx) (encodedTx []byte) {
 	encodedTx = make([]byte,FUNDSTX_SIZE)
 	encodedTx[0] = tx.Header
 	copy(encodedTx[1:9], tx.Amount[:])

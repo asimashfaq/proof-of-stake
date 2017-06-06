@@ -31,12 +31,11 @@ type accTx struct {
 	PubKey [64]byte
 }
 
-func ConstrAccTx(fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx accTx, err error) {
+func ConstrAccTx(fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *accTx, err error) {
 
-	//fixed fee for now
 	var buf bytes.Buffer
 
-	//fee will be discarded later
+	tx = new(accTx)
 
 	binary.Write(&buf,binary.BigEndian,fee)
 	copy(tx.Fee[:],buf.Bytes())
@@ -86,7 +85,7 @@ func (tx *accTx) verify() bool {
 	return false
 }
 
-func EncodeAccTx(tx accTx) (encodedTx []byte) {
+func EncodeAccTx(tx *accTx) (encodedTx []byte) {
 	encodedTx = make([]byte,ACCTX_SIZE)
 	encodedTx[0] = tx.Header
 	copy(encodedTx[1:33], tx.Issuer[:])

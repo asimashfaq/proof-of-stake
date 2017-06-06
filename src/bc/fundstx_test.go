@@ -25,7 +25,7 @@ func TestFundsTxSerialization(t *testing.T) {
 		tx, _ := ConstrFundsTx(0x01,rand.Uint64()%100000+1, rand.Uint64()%10+1, uint32(i), accA.Hash, accB.Hash, &PrivKeyA)
 		data := EncodeFundsTx(tx)
 		decodedTx := DecodeFundsTx(data)
-		if !reflect.DeepEqual(&tx, decodedTx) {
+		if !reflect.DeepEqual(tx, decodedTx) {
 			t.Errorf("FundsTx Serialization failed (%v) vs. (%v)\n", tx, decodedTx)
 		}
 	}

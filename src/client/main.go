@@ -10,7 +10,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"bufio"
+	"math/rand"
 	"fmt"
+	"time"
 )
 
 const(
@@ -33,7 +35,68 @@ var RootPrivKey ecdsa.PrivateKey
 func main() {
 
 	prepAccs()
+	sendAccReq()
+	sendFundsTx()
+	time.Sleep(20*time.Second)
+	sendAccReq()
+}
 
+func sendAccReq() {
+	var conn net.Conn
+	conn, _ = net.Dial("tcp", "127.0.0.1:8081")
+	header := bc.ConstructHeader(len(accA.Hash),bc.ACC_REQ)
+	toSend := make([]byte, len(header)+len(accA.Hash))
+	copy(toSend[:bc.HEADER_LEN],header[:])
+	copy(toSend[bc.HEADER_LEN:],accA.Hash[:])
+
+	conn.Write(toSend)
+
+	reader := bufio.NewReader(conn)
+	recvHeader := bc.ExtractHeader(reader)
+
+	recvBuf := make([]byte, recvHeader.Len)
+	for i := 0; i < int(recvHeader.Len); i++ {
+		in,_ := reader.ReadByte()
+		recvBuf[i] = in
+	}
+
+	acc := bc.DecodeAcc(recvBuf)
+	fmt.Printf("%v\n", acc)
+	conn.Close()
+}
+
+func sendAccTx() {
+	var conn net.Conn
+	conn, _ = net.Dial("tcp", "127.0.0.1:8081")
+	tx,_ := bc.ConstrAccTx(rand.Uint64()%100+1,&RootPrivKey)
+	accData := bc.EncodeAccTx(tx)
+	header := bc.ConstructHeader(len(accData),bc.ACCTX)
+
+	toSend := make([]byte, len(accData)+len(header))
+	copy(toSend[0:bc.HEADER_LEN],header[:])
+	copy(toSend[bc.HEADER_LEN:],accData[:])
+	conn.Write(toSend)
+
+	conn.Close()
+}
+
+func sendFundsTx() {
+	var conn net.Conn
+	var txCnt uint32
+	conn, _ = net.Dial("tcp", "127.0.0.1:8081")
+	tx, _ := bc.ConstrFundsTx(0x02,rand.Uint64()%100+1, rand.Uint64()%50+1, txCnt, accA.Hash,accB.Hash, &PrivKeyA)
+	fundsData := bc.EncodeFundsTx(tx)
+	header := bc.ConstructHeader(len(fundsData),bc.FUNDSTX)
+
+	toSend := make([]byte, len(fundsData)+len(header))
+	copy(toSend[0:bc.HEADER_LEN],header[:])
+	copy(toSend[bc.HEADER_LEN:],fundsData[:])
+
+	conn.Write(toSend)
+	conn.Close()
+}
+
+func sendTimeReq() {
 	var conn net.Conn
 
 	conn, _ = net.Dial("tcp", "127.0.0.1:8081")
@@ -52,43 +115,7 @@ func main() {
 		recvBuf[i] = in
 	}
 
-	fmt.Printf("%v\n", binary.BigEndian.Uint64(recvBuf[:]))
-
 	conn.Close()
-
-	/*for i:=0; i<100; i++{
-		var conn net.Conn
-		conn, _ = net.Dial("tcp", "127.0.0.1:8081")
-		tx2,_ := bc.ConstrAccTx(rand.Uint64()%100+1,&RootPrivKey)
-		accData := bc.EncodeAccTx(tx2)
-		header := network.ConstructHeader(len(accData),network.ACCTX)
-
-		toSend := make([]byte, len(accData)+len(header))
-		copy(toSend[0:network.HEADER_LEN],header[:])
-		copy(toSend[network.HEADER_LEN:],accData[:])
-		conn.Write(toSend)
-
-		conn.Close()
-
-		time.Sleep(time.Second)
-		conn, _ = net.Dial("tcp", "127.0.0.1:8081")
-
-		tx, _ := bc.ConstrFundsTx(0x02,rand.Uint64()%100+1, rand.Uint64()%50+1, txCnt, accA.Hash,accB.Hash, &PrivKeyA)
-		txCnt++
-		fundsData := bc.EncodeFundsTx(tx)
-		header2 := network.ConstructHeader(len(fundsData),network.FUNDSTX)
-
-		toSend2 := make([]byte, len(fundsData)+len(header2))
-		copy(toSend2[0:network.HEADER_LEN],header2[:])
-		copy(toSend2[network.HEADER_LEN:],fundsData[:])
-
-		conn.Write(toSend2)
-
-		time.Sleep(time.Second)
-
-		conn.Close()
-
-	}*/
 }
 
 

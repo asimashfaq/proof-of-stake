@@ -26,7 +26,7 @@ func TestAccTxSerialization(t *testing.T) {
 		tx, _ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
 		data := EncodeAccTx(tx)
 		decodedTx := DecodeAccTx(data)
-		if !reflect.DeepEqual(&tx, decodedTx) {
+		if !reflect.DeepEqual(tx, decodedTx) {
 			t.Errorf("AccTx Serialization failed (%v) vs. (%v)\n", tx, decodedTx)
 		}
 	}

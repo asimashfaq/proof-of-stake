@@ -85,10 +85,7 @@ func publishBlock() {
 
 func publishTx() {
 	fmt.Printf("%v\n", HEADER_LEN)
-
 }
-
-
 
 func mining() {
 

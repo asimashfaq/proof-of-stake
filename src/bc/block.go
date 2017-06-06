@@ -102,6 +102,8 @@ func (b *Block) addAccTx(tx *accTx) error {
 
 func (b *Block) addFundsTx(tx *fundsTx) error {
 
+
+	fmt.Printf("%v\n", tx)
 	amount := binary.BigEndian.Uint64(tx.Amount[:])
 	fee := binary.BigEndian.Uint64(tx.Fee[:])
 
@@ -167,6 +169,7 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 
 func (b *Block) finalizeBlock() {
 
+	fmt.Print("Start mining...\n")
 	//merkle tree only built from funds transactions
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData)
 	b.Timestamp = time.Now().Unix()
@@ -204,12 +207,39 @@ func (b *Block) finalizeBlock() {
 	log.Printf("Finalized block: %v", b)
 }
 
+//this function needs to be split into block syntax/PoW check and actual state change
+//because there is the case that we might need to go fetch several blocks in reverse order
+//and have to check the blocks first before the changing the state in the correct order
 func validateBlock(b *Block) error {
 
-	//prevHash check
-	//extract proof first by cutting of leading zeroes
-	log.Println("Starting block validation...")
+	//basic check if valid at all
+	if err := checkProperties(b); err != nil {
+		return errors.New("Property for block failed!")
+	}
 
+	//this will be the most common case, so one extra check to make things faster
+	if bytes.Compare(b.PrevHash[:],lastBlock.Hash[:]) == 0 {
+		if err := checkState(b); err != nil {
+			return errors.New("State validation failed for the block.")
+		}
+
+		return nil
+	}
+
+	//before changing the state we need to get assurance that we're working on the longest chain
+	//if not the longest chain we need to rollback the state first
+	blocksToRollback, blocksToValidate := getBlockSequence(b)
+
+	//if we do have a state update failure among the received blocks, we have to do a rollblack for every
+	//block in reverse order
+
+	return nil
+}
+
+//for blocks that already have been validated but were overwritten by a longer chain
+func blockRollback()
+
+func checkProperties(b *Block) error {
 	//check if fundsTxs is syntactically well-formed and signature is correct
 	for _, tx := range b.FundsTxData {
 		if !(tx).verify() {
@@ -263,7 +293,10 @@ func validateBlock(b *Block) error {
 	}
 
 	log.Println("Merkle root hash passed.")
+	return nil
+}
 
+func checkState(b *Block) error {
 	//apply to State
 	for index, tx := range b.FundsTxData {
 
@@ -298,7 +331,11 @@ func validateBlock(b *Block) error {
 	log.Print("Block validated and state changed accordingly: \n")
 	PrintState()
 
+	//need to collect statistics from block
+	collectStatistics(b)
+
 	return nil
+
 }
 
 func encodeBlock(b Block) (encodedBlock []byte) {
@@ -330,13 +367,13 @@ func encodeBlock(b Block) (encodedBlock []byte) {
 	index := BLOCKHEADER_SIZE
 
 	for _,tx := range b.FundsTxData {
-		encodedTx := EncodeFundsTx(*tx)
+		encodedTx := EncodeFundsTx(tx)
 		copy(encodedBlock[index:index+FUNDSTX_SIZE],encodedTx)
 		index += FUNDSTX_SIZE
 	}
 
 	for _,tx := range b.AccTxData {
-		encodedTx := EncodeAccTx(*tx)
+		encodedTx := EncodeAccTx(tx)
 		copy(encodedBlock[index:index+ACCTX_SIZE],encodedTx)
 		index += ACCTX_SIZE
 	}
