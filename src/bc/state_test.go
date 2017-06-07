@@ -5,7 +5,9 @@ import (
 	"testing"
 	"encoding/binary"
 	"time"
+
 )
+
 
 //Testing state change, rollback and fee collection
 func TestFundsTxStateChange(t *testing.T) {
@@ -38,8 +40,6 @@ func TestFundsTxStateChange(t *testing.T) {
 			balanceB += amount
 		}
 
-
-
 		ftx2,_ := ConstrFundsTx(0x01,rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accB.Hash, accA.Hash, &PrivKeyB)
 		if b.addTx(ftx2) == nil {
 			funds = append(funds,ftx2)
@@ -52,6 +52,8 @@ func TestFundsTxStateChange(t *testing.T) {
 		}
 	}
 
+	getAccountFromHash(accA.Hash).TxCnt = 0
+	getAccountFromHash(accB.Hash).TxCnt = 0
 	for _,tx := range funds {
 		fundsStateChange(tx)
 	}

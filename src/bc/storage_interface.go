@@ -17,35 +17,67 @@ func writeBlock(b *Block) {
 	storage.WriteBlock(b.Hash,encodeBlock(b))
 }
 
-func readFundsTx(hash [32]byte) (tx *fundsTx) {
+func readOpenFundsTx(hash [32]byte) (tx *fundsTx) {
 
-	encodedTx := storage.ReadTx(hash)
+	encodedTx := storage.ReadOpenTx(hash)
 	if encodedTx == nil {
 		return nil
 	}
-	return DecodeFundsTx(encodedTx)
+	decodedTx := DecodeFundsTx(encodedTx)
+	//this isn't very nice, but necessary to enrich the full hashes in the transaction
+	decodedTx.verify()
+	return decodedTx
+
 }
 
-func writeFundsTx(tx *fundsTx) {
+func readClosedFundsTx(hash [32]byte) (tx *fundsTx) {
 
-	storage.WriteTx(hashFundsTx(tx),EncodeFundsTx(tx))
+	encodedTx := storage.ReadClosedTx(hash)
+	if encodedTx == nil {
+		return nil
+	}
+	decodedTx := DecodeFundsTx(encodedTx)
+	decodedTx.verify()
+	return decodedTx
 }
 
-func readAccTx(hash [32]byte) (tx *accTx) {
+func readOpenAccTx(hash [32]byte) (tx *accTx) {
 
-	encodedTx := storage.ReadTx(hash)
+	encodedTx := storage.ReadOpenTx(hash)
 	if encodedTx == nil {
 		return nil
 	}
 	return DecodeAccTx(encodedTx)
 }
 
-func writeAccTx(tx *accTx) {
+func readClosedAccTx(hash [32]byte) (tx *accTx) {
 
-	storage.WriteTx(hashAccTx(tx), EncodeAccTx(tx))
+	encodedTx := storage.ReadClosedTx(hash)
+	if encodedTx == nil {
+		return nil
+	}
+	return DecodeAccTx(encodedTx)
 }
 
+func writeOpenFundsTx(tx *fundsTx) {
 
+	storage.WriteOpenTx(hashFundsTx(tx),EncodeFundsTx(tx))
+}
+
+func writeClosedFundsTx(tx *fundsTx) {
+
+	storage.WriteClosedTx(hashFundsTx(tx),EncodeFundsTx(tx))
+}
+
+func writeOpenAccTx(tx *accTx) {
+
+	storage.WriteOpenTx(hashAccTx(tx),EncodeAccTx(tx))
+}
+
+func writeClosedAccTx(tx *accTx) {
+
+	storage.WriteClosedTx(hashAccTx(tx), EncodeAccTx(tx))
+}
 
 func readState(hash [32]byte) (acc *Account) {
 

@@ -11,7 +11,8 @@ func TestAccTx(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
 	//creating some root-signed new accounts
-	for i := 0; i <= int(rand.Uint64()%1000); i++ {
+	loopMax := int(rand.Uint64()%1000)
+	for i := 0; i <= loopMax; i++ {
 		tx, _ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
 		if tx.verify() == false {
 			t.Errorf("AccTx could not be verified: %v\n", tx)
@@ -22,7 +23,8 @@ func TestAccTx(t *testing.T) {
 func TestAccTxSerialization(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
-	for i := 1; i < int(rand.Uint32()%10000); i++ {
+	loopMax := int(rand.Uint32()%10000)
+	for i := 1; i < loopMax; i++ {
 		tx, _ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
 		data := EncodeAccTx(tx)
 		decodedTx := DecodeAccTx(data)

@@ -8,9 +8,10 @@ import (
 	"crypto/elliptic"
 	"golang.org/x/crypto/sha3"
 	"crypto/rand"
+
+	"storage"
 	"io/ioutil"
 	"log"
-	"storage"
 )
 
 var accA, accB, minerAcc *Account

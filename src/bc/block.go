@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	HASH_LEN = 32
 	PROOF_SIZE = 9
 	BLOCKHEADER_SIZE = 150
 	FEE_THRESHOLD = 1
@@ -32,8 +33,8 @@ type Block struct {
 	NrAccTx uint16
 	//this field will not be exported, this is just to avoid race conditions for the global state
 	stateCopy map[[32]byte]*Account
-	FundsTxData []*fundsTx
-	AccTxData []*accTx
+	FundsTxData [][32]byte
+	AccTxData [][32]byte
 }
 
 //imitating constructor
@@ -95,7 +96,8 @@ func (b *Block) addAccTx(tx *accTx) error {
 		}
 	}
 
-	b.AccTxData = append(b.AccTxData,tx)
+	b.AccTxData = append(b.AccTxData,hashAccTx(tx))
+	writeOpenAccTx(tx)
 	log.Printf("Added tx to the AccTxData slice: %v", *tx)
 	return nil
 }
@@ -159,8 +161,8 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	accReceiver := b.stateCopy[tx.toHash]
 	accReceiver.Balance += amount
 
-	b.FundsTxData = append(b.FundsTxData, tx)
-
+	b.FundsTxData = append(b.FundsTxData, hashFundsTx(tx))
+	writeOpenFundsTx(tx)
 	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)
 	return nil
 }
@@ -198,15 +200,16 @@ func validateBlock(b *Block) error {
 
 	//basic check if valid at all
 	if err := checkProperties(b); err != nil {
-		return errors.New("Property for block failed!")
+		return err
 	}
 
 	//this will be the most common case, so one extra check to make things faster
 
 	if lastBlock == nil {
 		if err := checkState(b); err != nil {
-			return errors.New("State validation failed for the block.")
+			return err
 		}
+
 		return nil
 	}
 
@@ -236,14 +239,23 @@ func blockRollback() {
 
 func checkProperties(b *Block) error {
 	//check if fundsTxs is syntactically well-formed and signature is correct
-	for _, tx := range b.FundsTxData {
+	for _, txHash := range b.FundsTxData {
+		tx := readOpenFundsTx(txHash)
+		if tx == nil {
+			return errors.New("FundsTx could not be read.")
+		}
+
 		if !(tx).verify() {
 			return errors.New("Malformed transaction.")
 		}
 	}
 
 	//check if accTxs are syntactically well-formed and signature is correct
-	for _, tx := range b.AccTxData {
+	for _, txHash := range b.AccTxData {
+		tx := readOpenAccTx(txHash)
+		if tx == nil {
+			return errors.New("AccTx could not be read.")
+		}
 		if !(tx).verify() {
 			return errors.New("Malformed transaction.")
 		}
@@ -277,10 +289,20 @@ func checkProperties(b *Block) error {
 	return nil
 }
 
+//apply to State
 func checkState(b *Block) error {
-	//apply to State
-	for index, tx := range b.FundsTxData {
 
+	//we collect the fundsTx in local memory to rollback when needed
+	//also, we don't want to fetch the same data several times
+	var fundsTxSlice []*fundsTx
+	var accTxSlice []*accTx
+
+	for index, txHash := range b.FundsTxData {
+		tx := readOpenFundsTx(txHash)
+		if tx == nil {
+			return errors.New("FundsTx could not be read.")
+		}
+		fundsTxSlice = append(fundsTxSlice, tx)
 		if b.Version == 0x01 {
 			//check if we have to issue new coins
 			for hash, rootAcc := range RootKeys {
@@ -292,19 +314,26 @@ func checkState(b *Block) error {
 			}
 		}
 		if fundsStateChange(tx) != nil {
+
+			fmt.Printf("%v\n", tx)
 			//don't use pointer here
 			log.Println("Starting rollback")
-			fundsStateRollback(b.FundsTxData, index-1)
+			fundsStateRollback(fundsTxSlice, index-1)
 			return errors.New("Invalid State Transition. Roll back.")
 		}
 	}
 
-	for _, tx := range b.AccTxData {
+	for _, txHash := range b.AccTxData {
+		tx := readOpenAccTx(txHash)
+		if tx == nil {
+			return errors.New("AccTx could not be read.")
+		}
+		accTxSlice = append(accTxSlice,tx)
 		accStateChange(tx)
 	}
 
 	//collect fees for both transaction types
-	collectTxFees(b.FundsTxData, b.AccTxData, b.Beneficiary)
+	collectTxFees(fundsTxSlice, accTxSlice, b.Beneficiary)
 
 	//collect block reward
 	collectBlockReward(getBlockReward(), b.Beneficiary)
@@ -369,16 +398,14 @@ func encodeBlock(b *Block) (encodedBlock []byte) {
 
 	index := BLOCKHEADER_SIZE
 
-	for _,tx := range b.FundsTxData {
-		encodedTx := EncodeFundsTx(tx)
-		copy(encodedBlock[index:index+FUNDSTX_SIZE],encodedTx)
-		index += FUNDSTX_SIZE
+	for _,txHash := range b.FundsTxData {
+		copy(encodedBlock[index:index+HASH_LEN],txHash[:])
+		index += HASH_LEN
 	}
 
-	for _,tx := range b.AccTxData {
-		encodedTx := EncodeAccTx(tx)
-		copy(encodedBlock[index:index+ACCTX_SIZE],encodedTx)
-		index += ACCTX_SIZE
+	for _,txHash := range b.AccTxData {
+		copy(encodedBlock[index:index+HASH_LEN],txHash[:])
+		index += HASH_LEN
 	}
 
 	return encodedBlock
@@ -414,16 +441,17 @@ func decodeBlock(encodedBlock []byte) (b *Block) {
 
 	index := BLOCKHEADER_SIZE
 
+	var hash [32]byte
 	for cnt := 0; cnt < int(nrFundsTx); cnt++ {
-		tx := DecodeFundsTx(encodedBlock[index:index+FUNDSTX_SIZE])
-		b.FundsTxData = append(b.FundsTxData,tx)
-		index += FUNDSTX_SIZE
+		copy(hash[:],encodedBlock[index:index+HASH_LEN])
+		b.FundsTxData = append(b.FundsTxData,hash)
+		index += HASH_LEN
 	}
 
 	for cnt := 0; cnt < int(nrAccTx); cnt++ {
-		tx := DecodeAccTx(encodedBlock[index:index+ACCTX_SIZE])
-		b.AccTxData = append(b.AccTxData,tx)
-		index += ACCTX_SIZE
+		copy(hash[:],encodedBlock[index:index+HASH_LEN])
+		b.AccTxData = append(b.AccTxData,hash)
+		index += HASH_LEN
 	}
 
 	return b

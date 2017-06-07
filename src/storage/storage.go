@@ -10,13 +10,15 @@ const (
 var state map[[8]byte][ACC_SIZE]byte
 var rootAccs map[[32]byte][ACC_SIZE]byte
 var blocks map[[32]byte][]byte
-var txs map[[32]byte][]byte
+var opentxs map[[32]byte][]byte
+var closedtxs map[[32]byte][]byte
 
 func Init() {
 
 	state = make(map[[8]byte][ACC_SIZE]byte)
 	rootAccs = make(map[[32]byte][ACC_SIZE]byte)
 	blocks = make(map[[32]byte][]byte)
-	txs = make(map[[32]byte][]byte)
+	opentxs = make(map[[32]byte][]byte)
+	closedtxs = make(map[[32]byte][]byte)
 }
 
