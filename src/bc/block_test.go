@@ -33,7 +33,7 @@ func TestBlock(t *testing.T) {
 	}
 
 	b.finalizeBlock()
-	encodedBlock := encodeBlock(*b)
+	encodedBlock := encodeBlock(b)
 	decodedBlock := decodeBlock(encodedBlock)
 
 	err := validateBlock(decodedBlock)

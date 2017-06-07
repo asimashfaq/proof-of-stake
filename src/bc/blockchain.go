@@ -134,7 +134,7 @@ func testing_setup() {
 	var shortMiner [8]byte
 	copy(pubKey[:32],MinerPrivKey.X.Bytes())
 	copy(pubKey[32:],MinerPrivKey.Y.Bytes())
-	MinerHash = serializeHashContent(pubKey[:])
+  	MinerHash = serializeHashContent(pubKey[:])
 	copy(shortMiner[:],MinerHash[0:8])
 	minerAcc := Account{Hash:MinerHash, Address:pubKey}
 	State[shortMiner] = append(State[shortMiner],&minerAcc)

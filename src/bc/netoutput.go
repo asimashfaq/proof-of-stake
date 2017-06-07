@@ -8,12 +8,14 @@ import (
 
 func prepareRequest(typeID uint8) (responseData []byte) {
 
-	conn := getPeer()
+	//conn := getPeer()
 
 	return responseData
 }
 
-func blockReq()
+func blockReq() {
+
+}
 
 func timeRes(conn net.Conn) {
 

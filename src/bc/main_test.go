@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"io/ioutil"
 	"log"
+	"storage"
 )
 
 var accA, accB, minerAcc *Account
@@ -115,6 +116,8 @@ func TestMain(m *testing.M) {
 	//initialize states
 	State = make(map[[8]byte][]*Account)
 	RootKeys = make(map[[32]byte]*Account)
+
+	storage.Init()
 
 	//setting a new random seed
 	addTestingAccounts()

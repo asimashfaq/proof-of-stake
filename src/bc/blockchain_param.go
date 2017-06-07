@@ -1,7 +1,6 @@
 package bc
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -28,13 +27,14 @@ func collectStatistics(b *Block) {
 	//we need to make sure that we have the longest chain
 	//long is defined as the added difficulty from the genesis block
 	timestamp[localBlockCount] = b.Timestamp
-	fmt.Printf("%v\n", b.Timestamp)
 	globalBlockCount++
 	localBlockCount++
 	if localBlockCount == BLOCKS_PER_DIFF {
 		calculateNewDifficulty()
 		localBlockCount = 0
 	}
+
+	lastBlock = b
 }
 
 func getBlockSequence(newBlock *Block) (blocksToRollback, blocksToValidate []*Block) {
@@ -95,7 +95,7 @@ func calculateNewDifficulty() {
 func getDifficulty() uint8 {
 	//if chain doesn't exist yet
 	if blockDifficulty == 0 {
-		return 23
+		return 15
 	}
 	return blockDifficulty
 }

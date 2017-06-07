@@ -54,30 +54,8 @@ func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, t
 	copy(txCntBuf[:],tmpTxCntBuf[1:])
 	buf.Reset()
 
-	txToHash := struct {
-		Header byte
-		Amount [8]byte
-		Fee [8]byte
-		TxCnt [3]byte
-		From [32]byte
-		To [32]byte
-	} {
-		header,
-		amountBuf,
-		feeBuf,
-		txCntBuf,
-		from,
-		to,
-	}
-
-	sigHash := serializeHashContent(txToHash)
-
-	r,s, err := ecdsa.Sign(rand.Reader, key, sigHash[:])
-
-	var sig [64]byte
-	copy(sig[32-len(r.Bytes()):32],r.Bytes())
-	copy(sig[64-len(s.Bytes()):],s.Bytes())
-
+	tx.fromHash = from
+	tx.toHash = to
 	tx.Header = header
 	tx.Amount = amountBuf
 	tx.Fee = feeBuf
@@ -85,6 +63,15 @@ func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, t
 
 	copy(tx.From[0:8],from[0:8])
 	copy(tx.To[0:8],to[0:8])
+
+	txHash := hashFundsTx(tx)
+
+	r,s, err := ecdsa.Sign(rand.Reader, key, txHash[:])
+
+	var sig [64]byte
+	copy(sig[32-len(r.Bytes()):32],r.Bytes())
+	copy(sig[64-len(s.Bytes()):],s.Bytes())
+
 
 	for i := 0; i < 24; i++ {
 		tx.Xored[i] = from[i+8] ^ to[i+8] ^ sig[i]
@@ -125,25 +112,13 @@ func (tx *fundsTx) verify() bool {
 			r.SetBytes(concatSig[:32])
 			s.SetBytes(concatSig[32:])
 
-			txHash := struct {
-				Header byte
-				Amount [8]byte
-				Fee [8]byte
-				TxCnt [3]byte
-				From [32]byte
-				To [32]byte
-			} {
-				tx.Header,
-				tx.Amount,
-				tx.Fee,
-				tx.TxCnt,
-				accFrom.Hash,
-				accTo.Hash,
-			}
-			sigHash := serializeHashContent(txHash)
+			tx.fromHash = accFrom.Hash
+			tx.toHash = accTo.Hash
+
+			txHash := hashFundsTx(tx)
 
 			pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
-			if ecdsa.Verify(&pubKey,sigHash[:],r,s) == true && !reflect.DeepEqual(accFrom,accTo) {
+			if ecdsa.Verify(&pubKey,txHash[:],r,s) == true && !reflect.DeepEqual(accFrom,accTo) {
 				tx.fromHash = accFrom.Hash
 				tx.toHash = accTo.Hash
 				return true
@@ -152,6 +127,26 @@ func (tx *fundsTx) verify() bool {
 	}
 
 	return false
+}
+
+func hashFundsTx(tx *fundsTx) (hash [32]byte) {
+
+	txHash := struct {
+		Header byte
+		Amount [8]byte
+		Fee [8]byte
+		TxCnt [3]byte
+		From [32]byte
+		To [32]byte
+	} {
+		tx.Header,
+		tx.Amount,
+		tx.Fee,
+		tx.TxCnt,
+		tx.fromHash,
+		tx.toHash,
+	}
+	return serializeHashContent(txHash)
 }
 
 //when we serialize the struct with binary.Write, unexported field get serialized as well, undesired

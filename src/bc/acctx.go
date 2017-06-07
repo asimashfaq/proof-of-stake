@@ -47,8 +47,6 @@ func ConstrAccTx(fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *accTx, err erro
 	copy(tx.PubKey[32-len(newAccPub1):32],newAccPub1)
 	copy(tx.PubKey[64-len(newAccPub2):],newAccPub2)
 
-	r,s, err := ecdsa.Sign(rand.Reader, rootPrivKey, tx.PubKey[:])
-
 	var rootPublicKey [64]byte
 	rootPubKey1,rootPubKey2 := rootPrivKey.PublicKey.X.Bytes(),rootPrivKey.PublicKey.Y.Bytes()
 	copy(rootPublicKey[32-len(rootPubKey1):32],rootPubKey1)
@@ -56,6 +54,10 @@ func ConstrAccTx(fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *accTx, err erro
 
 	issuer := serializeHashContent(rootPublicKey)
 	copy(tx.Issuer[:], issuer[:])
+
+	txHash := hashAccTx(tx)
+
+	r,s,err := ecdsa.Sign(rand.Reader, rootPrivKey, txHash[:])
 
 	copy(tx.Sig[32-len(r.Bytes()):32],r.Bytes())
 	copy(tx.Sig[64-len(s.Bytes()):],s.Bytes())
@@ -77,12 +79,27 @@ func (tx *accTx) verify() bool {
 		pub2.SetBytes(rootAcc.Address[32:])
 
 		pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
-		if ecdsa.Verify(&pubKey,tx.PubKey[:],r,s) == true {
+		txHash := hashAccTx(tx)
+		if ecdsa.Verify(&pubKey,txHash[:],r,s) == true {
 			return true
 		}
 	}
 
 	return false
+}
+
+func hashAccTx(tx *accTx) (hash [32]byte) {
+
+	txHash := struct {
+		Issuer [32]byte
+		Fee [8]byte
+		PubKey [64]byte
+	} {
+		tx.Issuer,
+		tx.Fee,
+		tx.PubKey,
+	}
+	return serializeHashContent(txHash)
 }
 
 func EncodeAccTx(tx *accTx) (encodedTx []byte) {

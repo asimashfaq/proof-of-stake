@@ -102,8 +102,6 @@ func (b *Block) addAccTx(tx *accTx) error {
 
 func (b *Block) addFundsTx(tx *fundsTx) error {
 
-
-	fmt.Printf("%v\n", tx)
 	amount := binary.BigEndian.Uint64(tx.Amount[:])
 	fee := binary.BigEndian.Uint64(tx.Fee[:])
 
@@ -176,23 +174,9 @@ func (b *Block) finalizeBlock() {
 	copy(b.Beneficiary[:],MinerHash[:])
 
 	//anonymous struct
-	partialToHash := struct{
-		prevHash [32]byte
-		version uint8
-		timestamp int64
-		merkleRoot [32]byte
-		beneficiary [32]byte
-	}{
-		b.PrevHash,
-		b.Version,
-		b.Timestamp,
-		b.MerkleRoot,
-		b.Beneficiary,
-	}
-
-	partialHashed := serializeHashContent(partialToHash)
-	proof := proofOfWork(getDifficulty(), partialHashed)
-	b.Hash = sha3.Sum256(append(proof.Bytes(),partialHashed[:]...))
+	partialHash := hashBlock(b)
+	proof := proofOfWork(getDifficulty(), partialHash)
+	b.Hash = sha3.Sum256(append(proof.Bytes(),partialHash[:]...))
 
 	//we need to write the proof at the end of the fixed-size byte array of length 9
 	//needs to be decoded by the receiver
@@ -218,6 +202,14 @@ func validateBlock(b *Block) error {
 	}
 
 	//this will be the most common case, so one extra check to make things faster
+
+	if lastBlock == nil {
+		if err := checkState(b); err != nil {
+			return errors.New("State validation failed for the block.")
+		}
+		return nil
+	}
+
 	if bytes.Compare(b.PrevHash[:],lastBlock.Hash[:]) == 0 {
 		if err := checkState(b); err != nil {
 			return errors.New("State validation failed for the block.")
@@ -228,7 +220,8 @@ func validateBlock(b *Block) error {
 
 	//before changing the state we need to get assurance that we're working on the longest chain
 	//if not the longest chain we need to rollback the state first
-	blocksToRollback, blocksToValidate := getBlockSequence(b)
+
+	// blocksToRollback, blocksToValidate := getBlockSequence(b)
 
 	//if we do have a state update failure among the received blocks, we have to do a rollblack for every
 	//block in reverse order
@@ -237,7 +230,9 @@ func validateBlock(b *Block) error {
 }
 
 //for blocks that already have been validated but were overwritten by a longer chain
-func blockRollback()
+func blockRollback() {
+
+}
 
 func checkProperties(b *Block) error {
 	//check if fundsTxs is syntactically well-formed and signature is correct
@@ -263,22 +258,8 @@ func checkProperties(b *Block) error {
 	}
 	proof := b.Proof[startIndex:]
 
-	//anonymous struct
-	partialToHash := struct {
-		prevHash    [32]byte
-		version     uint8
-		timestamp   int64
-		merkleRoot  [32]byte
-		beneficiary [32]byte
-	}{
-		b.PrevHash,
-		b.Version,
-		b.Timestamp,
-		b.MerkleRoot,
-		b.Beneficiary,
-	}
-	partialHashed := serializeHashContent(partialToHash)
-	if b.Hash != sha3.Sum256(append(proof, partialHashed[:]...)) || !validateProofOfWork(getDifficulty(), b.Hash) {
+	partialHash := hashBlock(b)
+	if b.Hash != sha3.Sum256(append(proof, partialHash[:]...)) || !validateProofOfWork(getDifficulty(), b.Hash) {
 		return errors.New("Proof of work is incorrect.")
 		log.Println("Proof of work is incorrect.")
 
@@ -338,7 +319,29 @@ func checkState(b *Block) error {
 
 }
 
-func encodeBlock(b Block) (encodedBlock []byte) {
+func hashBlock(b *Block) (hash [32]byte) {
+
+	var buf bytes.Buffer
+
+	blockToHash := struct {
+		prevHash    [32]byte
+		version     uint8
+		timestamp   int64
+		merkleRoot  [32]byte
+		beneficiary [32]byte
+	}{
+		b.PrevHash,
+		b.Version,
+		b.Timestamp,
+		b.MerkleRoot,
+		b.Beneficiary,
+	}
+
+	binary.Write(&buf,binary.BigEndian, blockToHash)
+	return sha3.Sum256(buf.Bytes())
+}
+
+func encodeBlock(b *Block) (encodedBlock []byte) {
 
 	//making byte array of all non-byte data
 	var timeStamp [8]byte

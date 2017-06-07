@@ -1,20 +1,9 @@
 package bc
 
 import (
-	"bytes"
-	"encoding/binary"
-	"golang.org/x/crypto/sha3"
 	"math/big"
+	"golang.org/x/crypto/sha3"
 )
-
-func serializeHashContent(data interface{}) (hash [32]byte) {
-	// Create a struct and write it.
-	var buf bytes.Buffer
-
-	binary.Write(&buf,binary.LittleEndian, data)
-
-	return sha3.Sum256(buf.Bytes())
-}
 
 func validateProofOfWork(diff uint8, hash [32]byte) bool {
 	var byteNr uint8
@@ -29,7 +18,7 @@ func validateProofOfWork(diff uint8, hash [32]byte) bool {
 	return true
 }
 
-func proofOfWork(diff uint8, merkleRoot [32]byte) *big.Int {
+func proofOfWork(diff uint8, partialHash [32]byte) *big.Int {
 
 	var tmp [32]byte
 	var byteNr uint8
@@ -41,7 +30,7 @@ func proofOfWork(diff uint8, merkleRoot [32]byte) *big.Int {
 	for ;; cnt.Add(cnt,oneIncr) {
 		abort = false
 
-		tmp = sha3.Sum256(append(cnt.Bytes(),merkleRoot[:]...))
+		tmp = sha3.Sum256(append(cnt.Bytes(),partialHash[:]...))
 		for byteNr = 0; byteNr < (uint8)(diff/8); byteNr++ {
 			if tmp[byteNr] != 0 {
 				abort = true
