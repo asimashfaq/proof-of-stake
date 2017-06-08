@@ -3,22 +3,9 @@ package bc
 import (
 	"log"
 	"golang.org/x/crypto/sha3"
-	"bytes"
 	"errors"
 	"encoding/binary"
 )
-
-func getAccountFromHash(hash [32]byte) (*Account) {
-
-	var fixedHash [8]byte
-	copy(fixedHash[:],hash[0:8])
-	for _,acc := range State[fixedHash] {
-		if bytes.Compare(acc.Hash[:],hash[:]) == 0 {
-			return acc
-		}
-	}
-	return nil
-}
 
 func isRootKey(hash [32]byte) (bool) {
 

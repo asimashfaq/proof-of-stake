@@ -18,6 +18,10 @@ type Account struct {
 
 func EncodeAcc(acc *Account) (encodedAcc []byte) {
 
+	if acc == nil {
+		return nil
+	}
+
 	encodedAcc = make([]byte, ACC_SIZE)
 
 	var balanceBuf [8]byte

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bc"
+	"storage"
 )
 
 func setUpTestSystem() {
@@ -10,6 +11,7 @@ func setUpTestSystem() {
 
 func main() {
 
+	storage.Init()
 	bc.Sync()
 	go bc.Init()
 	bc.InitSystem()

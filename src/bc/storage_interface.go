@@ -1,6 +1,10 @@
 package bc
 
-import "storage"
+import (
+	"storage"
+	"bytes"
+	"fmt"
+)
 
 //acts as the interface to the storage module
 func readBlock(hash [32]byte) (b *Block) {
@@ -58,6 +62,29 @@ func readClosedAccTx(hash [32]byte) (tx *accTx) {
 	}
 	return DecodeAccTx(encodedTx)
 }
+func getAccountFromHash(hash [32]byte) (*Account) {
+
+	var fixedHash [8]byte
+	copy(fixedHash[:],hash[0:8])
+	for _,acc := range State[fixedHash] {
+		if bytes.Compare(acc.Hash[:],hash[:]) == 0 {
+			return acc
+		}
+	}
+	return nil
+}
+func readState(hash [32]byte) (acc *Account) {
+
+	var shortHash [8]byte
+	copy(shortHash[:],hash[0:8])
+	accSlice := storage.ReadState(shortHash)
+
+	//decode the Slice
+	for _,decodedAcc := range accSlice {
+		fmt.Printf("%x\n", decodedAcc)
+	}
+	return nil
+}
 
 func writeOpenFundsTx(tx *fundsTx) {
 
@@ -79,12 +106,15 @@ func writeClosedAccTx(tx *accTx) {
 	storage.WriteClosedTx(hashAccTx(tx),EncodeAccTx(tx))
 }
 
-func readState(hash [32]byte) (acc *Account) {
+func writeState(acc *Account) {}
 
-	return nil
+func deleteOpenFundsTx(hash [32]byte) {
+
+	storage.WriteOpenTx(hash,nil)
 }
 
-func writeState(acc Account) {
+func deleteOpenAccTx(hash [32]byte) {
 
-
+	storage.WriteOpenTx(hash,nil)
 }
+

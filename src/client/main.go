@@ -37,7 +37,11 @@ func main() {
 	prepAccs()
 	sendAccReq()
 	sendFundsTx()
-	time.Sleep(20*time.Second)
+	sendAccTx()
+	sendAccTx()
+	sendAccTx()
+	sendAccTx()
+	time.Sleep(5*time.Second)
 	sendAccReq()
 }
 
@@ -67,6 +71,7 @@ func sendAccReq() {
 
 func sendAccTx() {
 	var conn net.Conn
+	rand := rand.New(rand.NewSource(time.Now().Unix()))
 	conn, _ = net.Dial("tcp", "127.0.0.1:8081")
 	tx,_ := bc.ConstrAccTx(rand.Uint64()%100+1,&RootPrivKey)
 	accData := bc.EncodeAccTx(tx)
@@ -83,6 +88,7 @@ func sendAccTx() {
 func sendFundsTx() {
 	var conn net.Conn
 	var txCnt uint32
+	rand := rand.New(rand.NewSource(time.Now().Unix()))
 	conn, _ = net.Dial("tcp", "127.0.0.1:8081")
 	tx, _ := bc.ConstrFundsTx(0x02,rand.Uint64()%100+1, rand.Uint64()%50+1, txCnt, accA.Hash,accB.Hash, &PrivKeyA)
 	fundsData := bc.EncodeFundsTx(tx)

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"bytes"
 	"encoding/binary"
+	"storage"
 )
 
 const (
@@ -210,6 +211,8 @@ func validateBlock(b *Block) error {
 			return err
 		}
 
+		postValidation(b)
+
 		return nil
 	}
 
@@ -217,6 +220,8 @@ func validateBlock(b *Block) error {
 		if err := checkState(b); err != nil {
 			return errors.New("State validation failed for the block.")
 		}
+
+		postValidation(b)
 
 		return nil
 	}
@@ -230,6 +235,32 @@ func validateBlock(b *Block) error {
 	//block in reverse order
 
 	return nil
+}
+
+func postValidation(b *Block) {
+
+	storage.PrintOpenTxs()
+	storage.PrintClosedTxs()
+
+	//put all txs from the block from open to close
+	for _,hash := range b.FundsTxData {
+		tx := readOpenFundsTx(hash)
+		writeClosedFundsTx(tx)
+		deleteOpenFundsTx(hash)
+	}
+
+	for _,hash := range b.AccTxData {
+		tx := readOpenAccTx(hash)
+		writeClosedAccTx(tx)
+		deleteOpenAccTx(hash)
+	}
+
+	storage.PrintOpenTxs()
+	storage.PrintClosedTxs()
+
+	//need to collect statistics from block
+	collectStatistics(b)
+
 }
 
 //for blocks that already have been validated but were overwritten by a longer chain
@@ -341,9 +372,6 @@ func checkState(b *Block) error {
 	log.Print("Block validated and state changed accordingly: \n")
 	PrintState()
 
-	//need to collect statistics from block
-	collectStatistics(b)
-
 	return nil
 
 }
@@ -387,8 +415,8 @@ func encodeBlock(b *Block) (encodedBlock []byte) {
 	//reserve space
 	encodedBlock = make([]byte,
 		BLOCKHEADER_SIZE +
-		int(b.NrAccTx) * ACCTX_SIZE +
-		int(b.NrFundsTx) * FUNDSTX_SIZE)
+		int(b.NrAccTx) * HASH_LEN +
+		int(b.NrFundsTx) * HASH_LEN)
 
 	copy(encodedBlock[0:32],b.Hash[:])
 	copy(encodedBlock[32:64],b.PrevHash[:])

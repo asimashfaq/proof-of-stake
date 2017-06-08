@@ -27,7 +27,6 @@ func TestReadWriteTx(t *testing.T) {
 		hashAccSlice = append(hashAccSlice, hashAccTx(tx))
 	}
 
-
 	for _,hash := range hashFundsSlice {
 		if readOpenFundsTx(hash) == nil {
 			t.Errorf("Error writing transaction hash: %x\n", hash)
@@ -39,5 +38,28 @@ func TestReadWriteTx(t *testing.T) {
 			t.Errorf("Error writing transaction hash: %x\n", hash)
 		}
 	}
+
+	//deleting open txs
+	for _,hash := range hashFundsSlice {
+		deleteOpenFundsTx(hash)
+	}
+
+	for _,hash := range hashAccSlice {
+		deleteOpenAccTx(hash)
+	}
+
+	for _,hash := range hashFundsSlice {
+		if readOpenFundsTx(hash) != nil {
+			t.Errorf("Error deleting transaction hash: %x\n", hash)
+		}
+	}
+
+	for _,hash := range hashAccSlice {
+		if readOpenAccTx(hash) != nil {
+			t.Errorf("Error deleting transaction hash: %x\n", hash)
+		}
+	}
+
+
 }
 
