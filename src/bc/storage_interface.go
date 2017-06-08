@@ -76,7 +76,7 @@ func writeOpenAccTx(tx *accTx) {
 
 func writeClosedAccTx(tx *accTx) {
 
-	storage.WriteClosedTx(hashAccTx(tx), EncodeAccTx(tx))
+	storage.WriteClosedTx(hashAccTx(tx),EncodeAccTx(tx))
 }
 
 func readState(hash [32]byte) (acc *Account) {

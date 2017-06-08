@@ -131,6 +131,11 @@ func (tx *fundsTx) verify() bool {
 
 func hashFundsTx(tx *fundsTx) (hash [32]byte) {
 
+	if tx == nil {
+		//is returning nil better?
+		return [32]byte{}
+	}
+
 	txHash := struct {
 		Header byte
 		Amount [8]byte
@@ -152,6 +157,11 @@ func hashFundsTx(tx *fundsTx) (hash [32]byte) {
 //when we serialize the struct with binary.Write, unexported field get serialized as well, undesired
 //behavior. Therefore, writing own encoder/decoder
 func EncodeFundsTx(tx *fundsTx) (encodedTx []byte) {
+
+	if tx == nil {
+		return nil
+	}
+
 	encodedTx = make([]byte,FUNDSTX_SIZE)
 	encodedTx[0] = tx.Header
 	copy(encodedTx[1:9], tx.Amount[:])

@@ -372,6 +372,10 @@ func hashBlock(b *Block) (hash [32]byte) {
 
 func encodeBlock(b *Block) (encodedBlock []byte) {
 
+	if b == nil {
+		return nil
+	}
+
 	//making byte array of all non-byte data
 	var timeStamp [8]byte
 	var nrFundsTx, nrAccTx [2]byte

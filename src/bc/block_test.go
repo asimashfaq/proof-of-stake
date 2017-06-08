@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"time"
 	"reflect"
-	"fmt"
 )
 
 //Tests block adding, verification, serialization and deserialization

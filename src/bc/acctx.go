@@ -90,6 +90,10 @@ func (tx *accTx) verify() bool {
 
 func hashAccTx(tx *accTx) (hash [32]byte) {
 
+	if tx == nil {
+		return [32]byte{}
+	}
+
 	txHash := struct {
 		Issuer [32]byte
 		Fee [8]byte
@@ -103,6 +107,10 @@ func hashAccTx(tx *accTx) (hash [32]byte) {
 }
 
 func EncodeAccTx(tx *accTx) (encodedTx []byte) {
+	if tx == nil {
+		return nil
+	}
+
 	encodedTx = make([]byte,ACCTX_SIZE)
 	encodedTx[0] = tx.Header
 	copy(encodedTx[1:33], tx.Issuer[:])
