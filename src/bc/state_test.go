@@ -5,9 +5,7 @@ import (
 	"testing"
 	"encoding/binary"
 	"time"
-
 )
-
 
 //Testing state change, rollback and fee collection
 func TestFundsTxStateChange(t *testing.T) {
@@ -15,7 +13,7 @@ func TestFundsTxStateChange(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
 	var testSize uint32
-	testSize = 1000000
+	testSize = 1000
 
 	b := newBlock()
 	var funds []*fundsTx
@@ -28,7 +26,8 @@ func TestFundsTxStateChange(t *testing.T) {
 	balanceA := accA.Balance
 	balanceB := accB.Balance
 
-	for i := 0; i < int(rand.Uint32()%testSize+1); i++ {
+	loopMax := int(rand.Uint32()%testSize+1)
+	for i := 0; i < loopMax+1; i++ {
 		ftx, _ := ConstrFundsTx(0x01,rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accA.Hash, accB.Hash, &PrivKeyA)
 		if b.addTx(ftx) == nil {
 			funds = append(funds,ftx)
@@ -54,15 +53,14 @@ func TestFundsTxStateChange(t *testing.T) {
 
 	getAccountFromHash(accA.Hash).TxCnt = 0
 	getAccountFromHash(accB.Hash).TxCnt = 0
-	for _,tx := range funds {
-		fundsStateChange(tx)
-	}
+
+	fundsStateChange(funds)
 
 	if accA.Balance != balanceA || accB.Balance != balanceB {
 		t.Error("State update failed!")
 	}
 
-	fundsStateRollback(funds, len(funds)-1)
+	fundsStateChangeRollback(funds)
 
 	if accA.Balance != rollBackA || accB.Balance != rollBackB {
 		t.Error("Rollback failed!")
@@ -90,9 +88,7 @@ func TestAccTxStateChange(t *testing.T) {
 		accs = append(accs, tx)
 	}
 
-	for _,tx := range accs {
-		accStateChange(tx)
-	}
+	accStateChange(accs)
 
 	var shortHash [8]byte
 	for _,acc := range accs {

@@ -23,7 +23,6 @@ const (
 	privB = "7a0a9babcc97ea7991ed67ed7f800f70c5e04e99718960ad8efab2ca052f00c7"
 )
 
-//will act as interface to bc package
 var State map[[8]byte][]*Account
 var RootKeys map[[32]byte]*Account
 var LogFile *os.File

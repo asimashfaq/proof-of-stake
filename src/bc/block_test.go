@@ -19,19 +19,23 @@ func TestBlock(t *testing.T) {
 	b := newBlock()
 
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
-	loopMax := int(rand.Uint32()%testSize)
+	loopMax := int(rand.Uint32() % testSize)
+	loopMax = 1
 	for cnt := 0; cnt < loopMax; cnt++ {
-		tx,_ := ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accA.Hash, accB.Hash, &PrivKeyA)
+		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accA.Hash, accB.Hash, &PrivKeyA)
 		b.addTx(tx)
 		hashFundsSlice = append(hashFundsSlice, hashFundsTx(tx))
 	}
 
-	loopMax = int(rand.Uint32()%testSize)
+	loopMax = int(rand.Uint32() % testSize)
+	loopMax = 0
 	for cnt := 0; cnt < loopMax; cnt++ {
-		tx,_ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
+		tx, _ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
 		b.addTx(tx)
 		hashAccSlice = append(hashAccSlice, hashAccTx(tx))
 	}
+
+	//storage.PrintOpenTxs()
 
 	b.finalizeBlock()
 
@@ -47,15 +51,62 @@ func TestBlock(t *testing.T) {
 		t.Errorf("Block validation failed (%v)\n", err)
 	}
 
-	if !reflect.DeepEqual(hashFundsSlice,decodedBlock.FundsTxData) {
+	if !reflect.DeepEqual(hashFundsSlice, decodedBlock.FundsTxData) {
 		t.Error("FundsTx data is not properly serialized!")
 	}
 
-	if !reflect.DeepEqual(hashAccSlice,decodedBlock.AccTxData) {
+	if !reflect.DeepEqual(hashAccSlice, decodedBlock.AccTxData) {
 		t.Error("AccTx data is not properly serialized!")
 	}
 
 	if !reflect.DeepEqual(b, decodedBlock) {
 		t.Error("Either serialization or deserialization failed, blocks are not equal!")
+	}
+}
+
+func TestMultipleBlocks(t *testing.T) {
+
+	genesis := newBlock()
+	lastBlock = genesis
+
+	b := newBlock()
+	createBlockWithTxs(b)
+	b.finalizeBlock()
+	if err := validateBlock(b); err != nil {
+		t.Errorf("Block failed: %v\n", b)
+	}
+
+	b2 := newBlock()
+	b2.PrevHash = b.Hash
+	createBlockWithTxs(b2)
+	b2.finalizeBlock()
+	if err := validateBlock(b2); err != nil {
+		t.Errorf("Block failed: %v\n", b2)
+	}
+}
+
+func createBlockWithTxs(b *Block) {
+
+	var testSize uint32
+	testSize = 100
+
+	var hashFundsSlice [][32]byte
+	var hashAccSlice [][32]byte
+
+	rand := rand.New(rand.NewSource(time.Now().Unix()))
+	loopMax := int(rand.Uint32() % testSize)
+	loopMax = 0
+	for cnt := 0; cnt < loopMax; cnt++ {
+		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accA.Hash, accB.Hash, &PrivKeyA)
+		b.addTx(tx)
+		hashFundsSlice = append(hashFundsSlice, hashFundsTx(tx))
+	}
+
+	loopMax = int(rand.Uint32() % testSize)
+	loopMax = 5
+	for cnt := 0; cnt < loopMax; cnt++ {
+		tx, _ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
+		b.addTx(tx)
+		hashAccSlice = append(hashAccSlice, hashAccTx(tx))
 	}
 }

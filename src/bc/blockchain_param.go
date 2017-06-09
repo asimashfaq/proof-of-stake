@@ -74,6 +74,8 @@ func getNewChain(newBlock *Block) (ancestor *Block, newChain []*Block) {
 		prevBlockHash := newBlock.PrevHash
 		potentialAncestor := readBlock(prevBlockHash)
 
+		fmt.Printf("%v\n", potentialAncestor)
+
 		if potentialAncestor != nil {
 			//found ancestor
 			//we went back in time, so reverse order
@@ -84,7 +86,7 @@ func getNewChain(newBlock *Block) (ancestor *Block, newChain []*Block) {
 			return potentialAncestor, newChain
 		}
 
-		//fetch the block we apparentlys missed
+		//fetch the block we apparently missed
 		newBlock = blockReq(prevBlockHash)
 	}
 
