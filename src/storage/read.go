@@ -1,10 +1,10 @@
 package storage
 
-import (
-	"fmt"
-)
-
 func ReadBlock(hash [32]byte) (encodedBlock []byte) {
+
+	if block,exists := blocks[hash]; exists {
+		return block[:]
+	}
 	return nil
 }
 
@@ -22,14 +22,4 @@ func ReadClosedTx(hash [32]byte) (encodedTx []byte) {
 		return tx[:]
 	}
 	return nil
-}
-
-func GetStatistics() string {
-	return fmt.Sprintf("Blocks: %v\n" +
-		"Unconfirmed Transactions: %v\n" +
-		"Confirmed Transactions: %v\n",
-		len(blocks),
-		len(opentxs),
-		len(closedtxs),
-	)
 }

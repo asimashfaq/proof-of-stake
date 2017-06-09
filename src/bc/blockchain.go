@@ -55,6 +55,12 @@ func InitSystem() {
 	//set up mining account
 
 	log.Println("Starting system, initializing state map")
+
+	genesisBlock := newBlock()
+	collectStatistics(genesisBlock)
+	writeBlock(genesisBlock)
+
+
 	currentBlock = newBlock()
 	nextBlock = newBlock()
 

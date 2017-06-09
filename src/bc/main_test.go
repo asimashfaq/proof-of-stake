@@ -120,6 +120,11 @@ func TestMain(m *testing.M) {
 
 	storage.Init()
 
+	//genesis block
+	genesis := newBlock()
+	writeBlock(genesis)
+	collectStatistics(genesis)
+
 	//setting a new random seed
 	addTestingAccounts()
 	addRootAccounts()

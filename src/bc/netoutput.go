@@ -13,8 +13,9 @@ func prepareRequest(typeID uint8) (responseData []byte) {
 	return responseData
 }
 
-func blockReq() {
+func blockReq(hash [32]byte) (b *Block) {
 
+	return b
 }
 
 func timeRes(conn net.Conn) {

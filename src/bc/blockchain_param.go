@@ -1,8 +1,6 @@
 package bc
 
-import (
-	"reflect"
-)
+import "fmt"
 
 const(
 	BLOCK_REWARD = 0
@@ -37,10 +35,10 @@ func collectStatistics(b *Block) {
 	lastBlock = b
 }
 
-func getBlockSequence(newBlock *Block) (blocksToRollback, blocksToValidate []*Block) {
+func getBlockSequences(newBlock *Block) (blocksToRollback, blocksToValidate []*Block) {
 
 	//newChainLen indicates how long the chain is to the common ancestor
-	ancestor, newChainLen := findCommonAncestor(newBlock)
+	ancestor, newChain := getNewChain(newBlock)
 
 	if ancestor == nil {
 		//ancestor not found, discard block
@@ -48,41 +46,49 @@ func getBlockSequence(newBlock *Block) (blocksToRollback, blocksToValidate []*Bl
 	}
 
 	//we count how many blocks there are on the currently active chain
-	currentChainLen := 0
+	tmpBlock := lastBlock
 	for {
-		currentChainLen++
-		tmpBlock := readBlock(lastBlock.PrevHash)
-		if reflect.DeepEqual(tmpBlock, ancestor) {
+		if tmpBlock.Hash == ancestor.Hash {
 			break
 		}
+		blocksToRollback = append(blocksToRollback,tmpBlock)
+		tmpBlock = readBlock(tmpBlock.PrevHash)
 	}
 
-	//count current length and compare with new chain length
-	if uint8(currentChainLen) >= newChainLen {
-		//new longest chain detected, build the new chain
-		blocksToValidate = append(blocksToValidate,newBlock)
-		return nil,blocksToValidate
+	//compare current length with new chain length
+	if len(blocksToRollback) >= len(newChain) {
+		//current chain length is longer or equal, nothing to do
+		return nil, nil
 	} else {
-
+		//new chain is longer
+		return blocksToRollback, newChain
 	}
-
-	return nil,nil
 }
 
 
-func findCommonAncestor(newBlock *Block) (ancestor *Block, newChainLen uint8) {
+func getNewChain(newBlock *Block) (ancestor *Block, newChain []*Block) {
 
-	var tmpBlock *Block
 	for {
-		newChainLen++
-		if tmpBlock = readBlock(tmpBlock.PrevHash); tmpBlock != nil {
-			//found common ancestor
-			return tmpBlock, newChainLen
+		newChain = append(newChain, newBlock)
+
+		prevBlockHash := newBlock.PrevHash
+		potentialAncestor := readBlock(prevBlockHash)
+
+		if potentialAncestor != nil {
+			//found ancestor
+			//we went back in time, so reverse order
+			for i, j := 0, len(newChain)-1; i < j; i, j = i+1, j-1 {
+				newChain[i], newChain[j] = newChain[j], newChain[i]
+			}
+
+			return potentialAncestor, newChain
 		}
-		newBlock = tmpBlock
+
+		//fetch the block we apparentlys missed
+		newBlock = blockReq(prevBlockHash)
 	}
 
-	return nil, 0
+	return nil, nil
 }
 
 func calculateNewDifficulty() {
@@ -95,7 +101,7 @@ func calculateNewDifficulty() {
 func getDifficulty() uint8 {
 	//if chain doesn't exist yet
 	if blockDifficulty == 0 {
-		return 23
+		return 15
 	}
 	return blockDifficulty
 }

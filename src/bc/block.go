@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"bytes"
 	"encoding/binary"
-	"storage"
 )
 
 const (
@@ -199,48 +198,49 @@ func (b *Block) finalizeBlock() {
 //and have to check the blocks first before the changing the state in the correct order
 func validateBlock(b *Block) error {
 
-	//basic check if valid at all
-	if err := checkProperties(b); err != nil {
-		return err
+	blocksToRollback, blocksToValidate := getBlockSequences(b)
+
+	if blocksToValidate == nil {
+		return errors.New("Common ancestor not found or new chain shorter than current one.")
 	}
 
-	//this will be the most common case, so one extra check to make things faster
-
-	if lastBlock == nil {
-		if err := checkState(b); err != nil {
+	//if not the whole chain of blocks is valid, we don't consider any of them
+	//this avoids the attack to create a fake long chain with only some blocks valid
+	for _,block := range blocksToValidate {
+		if err := preValidation(block); err != nil {
 			return err
 		}
-
-		postValidation(b)
-
-		return nil
 	}
 
-	if bytes.Compare(b.PrevHash[:],lastBlock.Hash[:]) == 0 {
-		if err := checkState(b); err != nil {
-			return errors.New("State validation failed for the block.")
+	//no rollback needed, just a new block to validate
+	if len(blocksToRollback) == 0 {
+		for _,block := range blocksToValidate {
+			if err := stateValidation(block); err != nil {
+				//if one block fails along the way, we just stop, but this is very unlikely to happen
+				return err
+			}
+			postValidation(block)
 		}
-
-		postValidation(b)
-
-		return nil
+	} else {
+		for _,block := range blocksToRollback {
+			err := blockRollback(block)
+			if err != nil {
+				log.Print(err)
+			}
+		}
+		for _,block := range blocksToValidate {
+			if err := stateValidation(block); err != nil {
+				//if one block fails along the way, we just stop, but this is very unlikely to happen
+				return err
+			}
+			postValidation(block)
+		}
 	}
-
-	//before changing the state we need to get assurance that we're working on the longest chain
-	//if not the longest chain we need to rollback the state first
-
-	// blocksToRollback, blocksToValidate := getBlockSequence(b)
-
-	//if we do have a state update failure among the received blocks, we have to do a rollblack for every
-	//block in reverse order
 
 	return nil
 }
 
 func postValidation(b *Block) {
-
-	storage.PrintOpenTxs()
-	storage.PrintClosedTxs()
 
 	//put all txs from the block from open to close
 	for _,hash := range b.FundsTxData {
@@ -255,20 +255,47 @@ func postValidation(b *Block) {
 		deleteOpenAccTx(hash)
 	}
 
-	storage.PrintOpenTxs()
-	storage.PrintClosedTxs()
-
-	//need to collect statistics from block
 	collectStatistics(b)
-
 }
 
 //for blocks that already have been validated but were overwritten by a longer chain
-func blockRollback() {
+//if this is not atomic, we're doomed
+func blockRollback(b *Block) error {
 
+	var fundsTxSlice []*fundsTx
+	var accTxSlice []*accTx
+	//fetch all transactions
+	for _,hash := range b.FundsTxData {
+		tx := readClosedFundsTx(hash)
+		if tx == nil {
+			log.Printf("CRITICAL: Validated accTx was not in the confirmed tx storage: %v\n", hash)
+			return errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
+		}
+		fundsTxSlice = append(fundsTxSlice,tx)
+
+		//switch from confirmed to unconfirmed
+		deleteClosedFundsTx(hash)
+		writeOpenFundsTx(tx)
+	}
+
+	for _,hash := range b.AccTxData {
+		tx := readClosedAccTx(hash)
+		if tx == nil {
+			log.Printf("CRITICAL: Validated accTx was not in the confirmed tx storage: %v\n", hash)
+			return errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
+		}
+		accTxSlice = append(accTxSlice, tx)
+
+		deleteClosedAccTx(hash)
+		writeOpenAccTx(tx)
+	}
+
+
+
+	return nil
 }
 
-func checkProperties(b *Block) error {
+func preValidation(b *Block) error {
 	//check if fundsTxs is syntactically well-formed and signature is correct
 	for _, txHash := range b.FundsTxData {
 		tx := readOpenFundsTx(txHash)
@@ -321,7 +348,7 @@ func checkProperties(b *Block) error {
 }
 
 //apply to State
-func checkState(b *Block) error {
+func stateValidation(b *Block) error {
 
 	//we collect the fundsTx in local memory to rollback when needed
 	//also, we don't want to fetch the same data several times
@@ -345,8 +372,6 @@ func checkState(b *Block) error {
 			}
 		}
 		if fundsStateChange(tx) != nil {
-
-			fmt.Printf("%v\n", tx)
 			//don't use pointer here
 			log.Println("Starting rollback")
 			fundsStateRollback(fundsTxSlice, index-1)

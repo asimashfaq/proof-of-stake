@@ -5,16 +5,25 @@ import (
 	"golang.org/x/crypto/sha3"
 	"errors"
 	"encoding/binary"
+	"bytes"
 )
 
 func isRootKey(hash [32]byte) (bool) {
 
-	for _,rootAcc := range RootKeys {
-		if rootAcc.Hash == hash {
-			return true
+	_,exists := RootKeys[hash]
+	return exists
+}
+
+func getAccountFromHash(hash [32]byte) (*Account) {
+
+	var fixedHash [8]byte
+	copy(fixedHash[:],hash[0:8])
+	for _,acc := range State[fixedHash] {
+		if bytes.Compare(acc.Hash[:],hash[:]) == 0 {
+			return acc
 		}
 	}
-	return false
+	return nil
 }
 
 //possibility of state change

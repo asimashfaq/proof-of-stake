@@ -59,7 +59,5 @@ func TestReadWriteTx(t *testing.T) {
 			t.Errorf("Error deleting transaction hash: %x\n", hash)
 		}
 	}
-
-
 }
 
