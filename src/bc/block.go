@@ -49,7 +49,6 @@ func newBlock() *Block {
 // is used for every instead of manipulating the global state
 //because we the work might get interrupted by receiving a block
 func (b *Block) addTx(tx transaction) error {
-
 	//verifies correctness for the specific transaction
 	//i'd actually like to use !(&tx).verify to pass by pointer, but golang doesn't allow this
 	if !(tx).verify() {
@@ -241,7 +240,7 @@ func validateBlock(b *Block) error {
 		}
 	} else {
 		for _,block := range blocksToRollback {
-			err := blockRollback(block)
+			err := validateBlockRollback(block)
 			if err != nil {
 				log.Print(err)
 			}

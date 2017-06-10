@@ -1,6 +1,8 @@
 package bc
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+)
 
 func fundsStateChangeRollback(txSlice []*fundsTx) {
 
@@ -21,14 +23,12 @@ func fundsStateChangeRollback(txSlice []*fundsTx) {
 func accStateChangeRollback(txSlice []*accTx) {
 
 	for _,tx := range txSlice {
-
 		accHash := serializeHashContent(tx.PubKey)
 
 		var fixedHash [8]byte
 		copy(fixedHash[:],accHash[0:8])
 
 		accSlice := State[fixedHash]
-
 		for i := range accSlice {
 			if accSlice[i].Hash == accHash {
 				//deleting the account from the state
@@ -38,14 +38,36 @@ func accStateChangeRollback(txSlice []*accTx) {
 				accSlice = accSlice[:len(accSlice)-1]
 			}
 		}
+		//preventing memory leaks, this is important
+		if len(accSlice) == 0 {
+			delete(State,fixedHash)
+		}
 	}
 }
 
 func collectTxFeesRollback(fundsTx []*fundsTx, accTx []*accTx, minerHash [32]byte) {
 
+	miner := getAccountFromHash(minerHash)
+	//subtract fees from sender (check if that is allowed has already been done in the block validation)
+	for _,tx := range fundsTx {
+		fee := binary.BigEndian.Uint64(tx.Fee[:])
+		miner.Balance -= fee
+
+		senderAcc := getAccountFromHash(tx.fromHash)
+		senderAcc.Balance += fee
+	}
+
+	for _,tx := range accTx {
+		//money gets created from thin air
+		//no need to subtract money from root key
+		fee := binary.BigEndian.Uint64(tx.Fee[:])
+		miner.Balance -= fee
+	}
 }
 
 func collectBlockRewardRollback(reward uint64, minerHash [32]byte) {
 
+	miner := getAccountFromHash(minerHash)
+	miner.Balance -= reward
 }
 

@@ -20,8 +20,8 @@ func TestFundsTxStateChange(t *testing.T) {
 
 	var feeA, feeB uint64
 
-	rollBackA := accA.Balance
-	rollBackB := accB.Balance
+	//rollBackA := accA.Balance
+	//rollBackB := accB.Balance
 
 	balanceA := accA.Balance
 	balanceB := accB.Balance
@@ -60,16 +60,16 @@ func TestFundsTxStateChange(t *testing.T) {
 		t.Error("State update failed!")
 	}
 
-	fundsStateChangeRollback(funds)
-
-	if accA.Balance != rollBackA || accB.Balance != rollBackB {
-		t.Error("Rollback failed!")
-	}
-
 	minerBal := minerAcc.Balance
 	collectTxFees(funds,nil,minerAcc.Hash)
 	if feeA+feeB != minerAcc.Balance-minerBal {
 		t.Error("Fee Collection failed!")
+	}
+
+	balBeforeRew := minerAcc.Balance
+	collectBlockReward(getBlockReward(),minerAcc.Hash)
+	if minerAcc.Balance != balBeforeRew+getBlockReward() {
+		t.Error("Block reward collection failed!")
 	}
 }
 
@@ -78,12 +78,12 @@ func TestAccTxStateChange(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
 	var testSize uint32
-	testSize = 10
+	testSize = 1000
 
 	var accs []*accTx
 
-
-	for i := 0; i < int(rand.Uint32()%testSize)+1; i++ {
+	loopMax := int(rand.Uint32()%testSize)+1
+	for i := 0; i < loopMax; i++ {
 		tx,_ := ConstrAccTx(rand.Uint64()%1000,&RootPrivKey)
 		accs = append(accs, tx)
 	}
@@ -92,9 +92,17 @@ func TestAccTxStateChange(t *testing.T) {
 
 	var shortHash [8]byte
 	for _,acc := range accs {
+		found := false
 		accHash := serializeHashContent(acc.PubKey)
 		copy(shortHash[:],accHash[0:8])
-		if _,exists := State[shortHash]; !exists {
+		accSlice := State[shortHash]
+		//make sure the previously created acc is in the state
+		for _,singleAcc := range accSlice {
+			if singleAcc.Hash == accHash {
+				found = true
+			}
+		}
+		if !found {
 			t.Errorf("Account State failed to update for the following account: %v\n", acc)
 		}
 	}

@@ -102,3 +102,6 @@ func deleteClosedAccTx(hash [32]byte) {
 	storage.WriteClosedTx(hash, nil)
 }
 
+func deleteBlock(hash [32]byte) {
+	storage.WriteBlock(hash, nil)
+}

@@ -22,5 +22,9 @@ func WriteOpenTx(hash [32]byte, encodedTx []byte) {
 
 func WriteClosedTx(hash [32]byte, encodedTx []byte) {
 
+	if encodedTx == nil {
+		delete(closedtxs,hash)
+		return
+	}
 	closedtxs[hash] = encodedTx
 }

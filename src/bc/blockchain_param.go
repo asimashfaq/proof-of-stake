@@ -1,7 +1,5 @@
 package bc
 
-import "fmt"
-
 const(
 	BLOCK_REWARD = 0
 	INTER_BLOCK_TIME = 60 //seconds
@@ -73,8 +71,6 @@ func getNewChain(newBlock *Block) (ancestor *Block, newChain []*Block) {
 
 		prevBlockHash := newBlock.PrevHash
 		potentialAncestor := readBlock(prevBlockHash)
-
-		fmt.Printf("%v\n", potentialAncestor)
 
 		if potentialAncestor != nil {
 			//found ancestor
