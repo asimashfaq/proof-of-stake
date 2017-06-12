@@ -18,7 +18,6 @@ var PrivKeyA, PrivKeyB ecdsa.PrivateKey
 var PubKeyA, PubKeyB ecdsa.PublicKey
 var RootPrivKey ecdsa.PrivateKey
 
-
 func addTestingAccounts() {
 
 	accA,accB,minerAcc = new(Account),new(Account),new(Account)

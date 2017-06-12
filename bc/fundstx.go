@@ -21,9 +21,9 @@ const(
 
 type fundsTx struct {
 	Header byte
-	Amount [8]byte
-	Fee [8]byte
-	TxCnt [3]byte
+	Amount uint64
+	Fee uint64
+	TxCnt uint32
 	From [8]byte
 	fromHash [32]byte
 	To [8]byte

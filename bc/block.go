@@ -22,10 +22,10 @@ type transaction interface {
 }
 
 type Block struct {
+	Header byte
 	Hash [32]byte
 	PrevHash [32]byte
-	Version uint8 //future updates
-	Proof [PROOF_SIZE]byte //72-bit, enough even if the network gets really large
+	Nonce [PROOF_SIZE]byte //72-bit, enough even if the network gets really large
 	Timestamp int64
 	MerkleRoot [32]byte
 	Beneficiary [32]byte
@@ -40,7 +40,7 @@ type Block struct {
 //imitating constructor
 func newBlock() *Block {
 	b := Block{}
-	b.Version = 0x01
+	b.Header = 0x01
 	b.stateCopy = make(map[[32]byte]*Account)
 	return &b
 }
@@ -175,13 +175,13 @@ func (b *Block) finalizeBlock() {
 
 	//anonymous struct
 	partialHash := hashBlock(b)
-	proof := proofOfWork(getDifficulty(), partialHash)
-	b.Hash = sha3.Sum256(append(proof.Bytes(),partialHash[:]...))
+	nonce := proofOfWork(getDifficulty(), partialHash)
+	b.Hash = sha3.Sum256(append(nonce.Bytes(),partialHash[:]...))
 
 	//we need to write the proof at the end of the fixed-size byte array of length 9
 	//needs to be decoded by the receiver
-	for index,val := range proof.Bytes() {
-		b.Proof[PROOF_SIZE-len(proof.Bytes())+index] = val
+	for index,val := range nonce.Bytes() {
+		b.Nonce[PROOF_SIZE-len(nonce.Bytes())+index] = val
 	}
 
 	//should this be hashed as well?
@@ -301,16 +301,16 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, err 
 	}
 
 	startIndex := 0
-	for _, singleByte := range b.Proof {
+	for _, singleByte := range b.Nonce {
 		if singleByte != 0x00 {
 			break
 		}
 		startIndex++
 	}
-	proof := b.Proof[startIndex:]
+	nonce := b.Nonce[startIndex:]
 
 	partialHash := hashBlock(b)
-	if b.Hash != sha3.Sum256(append(proof, partialHash[:]...)) || !validateProofOfWork(getDifficulty(), b.Hash) {
+	if b.Hash != sha3.Sum256(append(nonce, partialHash[:]...)) || !validateProofOfWork(getDifficulty(), b.Hash) {
 		return nil,nil,errors.New("Proof of work is incorrect.")
 		log.Println("Proof of work is incorrect.")
 
@@ -375,13 +375,13 @@ func hashBlock(b *Block) (hash [32]byte) {
 
 	blockToHash := struct {
 		prevHash    [32]byte
-		version     uint8
+		header     uint8
 		timestamp   int64
 		merkleRoot  [32]byte
 		beneficiary [32]byte
 	}{
 		b.PrevHash,
-		b.Version,
+		b.Header,
 		b.Timestamp,
 		b.MerkleRoot,
 		b.Beneficiary,
@@ -411,10 +411,11 @@ func encodeBlock(b *Block) (encodedBlock []byte) {
 		int(b.NrAccTx) * HASH_LEN +
 		int(b.NrFundsTx) * HASH_LEN)
 
-	copy(encodedBlock[0:32],b.Hash[:])
-	copy(encodedBlock[32:64],b.PrevHash[:])
-	encodedBlock[64] = byte(b.Version)
-	copy(encodedBlock[65:74],b.Proof[:])
+	encodedBlock[0] = b.Header
+
+	copy(encodedBlock[1:33],b.Hash[:])
+	copy(encodedBlock[33:65],b.PrevHash[:])
+	copy(encodedBlock[65:74],b.Nonce[:])
 	copy(encodedBlock[74:82],timeStamp[:])
 	copy(encodedBlock[82:114],b.MerkleRoot[:])
 	copy(encodedBlock[114:146],b.Beneficiary[:])
@@ -454,10 +455,10 @@ func decodeBlock(encodedBlock []byte) (b *Block) {
 	nrAccTx = binary.BigEndian.Uint16(encodedBlock[148:150])
 	timeStamp = int64(timeStampTmp)
 
-	copy(b.Hash[:],encodedBlock[0:32])
-	copy(b.PrevHash[:],encodedBlock[32:64])
-	b.Version = encodedBlock[64]
-	copy(b.Proof[:],encodedBlock[65:74])
+	b.Header = encodedBlock[0]
+	copy(b.Hash[:],encodedBlock[1:33])
+	copy(b.PrevHash[:],encodedBlock[33:65])
+	copy(b.Nonce[:],encodedBlock[65:74])
 	b.Timestamp = timeStamp
 	copy(b.MerkleRoot[:],encodedBlock[82:114])
 	copy(b.Beneficiary[:],encodedBlock[114:146])
@@ -485,8 +486,8 @@ func decodeBlock(encodedBlock []byte) (b *Block) {
 func (b Block) String() string {
 	return fmt.Sprintf("\nHash: %x\n" +
 		"Previous Hash: %x\n" +
-		"Version: %v\n" +
-		"Proof: %x\n" +
+		"Header: %v\n" +
+		"Nonce: %x\n" +
 		"Timestamp: %v\n" +
 		"MerkleRoot: %x\n" +
 		"Beneficiary: %x\n" +
@@ -494,8 +495,8 @@ func (b Block) String() string {
 		"Amount of txData: %v\n",
 		b.Hash[0:8],
 		b.PrevHash[0:8],
-		b.Version,
-		b.Proof,
+		b.Header,
+		b.Nonce,
 		b.Timestamp,
 		b.MerkleRoot[0:8],
 		b.Beneficiary[0:8],
