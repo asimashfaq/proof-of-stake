@@ -8,10 +8,9 @@ import (
 	"crypto/elliptic"
 	"golang.org/x/crypto/sha3"
 	"crypto/rand"
-
-	"storage"
 	"io/ioutil"
 	"log"
+	"github.com/lisgie/bazo_miner/storage"
 )
 
 var accA, accB, minerAcc *Account
