@@ -1,7 +1,7 @@
 package bc
 
 import (
-	"storage"
+	"github.com/lisgie/bazo_miner/storage"
 )
 
 //acts as the interface to the storage module
