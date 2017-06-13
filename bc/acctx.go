@@ -52,11 +52,14 @@ func ConstrAccTx(fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *accTx, err erro
 	txHash := hashAccTx(tx)
 
 	r,s,err := ecdsa.Sign(rand.Reader, rootPrivKey, txHash[:])
+	if err != nil {
+		return nil,err
+	}
 
 	copy(tx.Sig[32-len(r.Bytes()):32],r.Bytes())
 	copy(tx.Sig[64-len(s.Bytes()):],s.Bytes())
 
-	return
+	return tx, nil
 }
 
 func (tx *accTx) verify() bool {
@@ -89,10 +92,12 @@ func hashAccTx(tx *accTx) (hash [32]byte) {
 	}
 
 	txHash := struct {
+		Header byte
 		Issuer [32]byte
 		Fee uint64
 		PubKey [64]byte
 	} {
+		tx.Header,
 		tx.Issuer,
 		tx.Fee,
 		tx.PubKey,

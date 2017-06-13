@@ -14,7 +14,6 @@ const (
 	HASH_LEN = 32
 	PROOF_SIZE = 9
 	BLOCKHEADER_SIZE = 150
-	FEE_THRESHOLD = 1
 )
 
 type transaction interface {
@@ -31,10 +30,12 @@ type Block struct {
 	Beneficiary [32]byte
 	NrFundsTx uint16
 	NrAccTx uint16
+	NrConfigTx uint8
 	//this field will not be exported, this is just to avoid race conditions for the global state
 	stateCopy map[[32]byte]*Account
 	FundsTxData [][32]byte
 	AccTxData [][32]byte
+	ConfigTxData [][32]byte
 }
 
 //imitating constructor
@@ -70,6 +71,11 @@ func (b *Block) addTx(tx transaction) error {
 		if err != nil {
 			log.Printf("Adding accTx tx failed (%v): %v\n", err,tx.(*accTx))
 		}
+	case *configTx:
+		err := b.addConfigTx(tx.(*configTx))
+		if err != nil {
+			log.Printf("Adding configTx tx failed (%v): %v\n", err,tx.(*configTx))
+		}
 	default:
 		return errors.New("Transaction type not recognized.")
 	}
@@ -77,33 +83,11 @@ func (b *Block) addTx(tx transaction) error {
 	return nil
 }
 
-func (b *Block) addAccTx(tx *accTx) error {
-
-	if tx.Fee < FEE_THRESHOLD {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_THRESHOLD)
-		return errors.New(err)
-	}
-
-	//at this point the tx has already been verified
-	var mapId [8]byte
-	accHash := sha3.Sum256(tx.PubKey[:])
-	copy(mapId[:],accHash[0:8])
-	for _,j := range State[mapId] {
-		if bytes.Compare(tx.PubKey[:],j.Address[:]) == 0 {
-			return errors.New("Account already exists.")
-		}
-	}
-
-	b.AccTxData = append(b.AccTxData,hashAccTx(tx))
-	writeOpenAccTx(tx)
-	log.Printf("Added tx to the AccTxData slice: %v", *tx)
-	return nil
-}
-
 func (b *Block) addFundsTx(tx *fundsTx) error {
 
-	if tx.Fee < FEE_THRESHOLD {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_THRESHOLD)
+	//I think we don't have to check for nil here as well, since this was already implicitly done with addTx(...)
+	if tx.Fee < FEE_MINIMUM {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
 		return errors.New(err)
 	}
 
@@ -161,6 +145,40 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	b.FundsTxData = append(b.FundsTxData, hashFundsTx(tx))
 	writeOpenFundsTx(tx)
 	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)
+	return nil
+}
+
+func (b *Block) addAccTx(tx *accTx) error {
+
+	if tx.Fee < FEE_MINIMUM {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
+		return errors.New(err)
+	}
+
+	//at this point the tx has already been verified
+	var mapId [8]byte
+	accHash := sha3.Sum256(tx.PubKey[:])
+	copy(mapId[:],accHash[0:8])
+	for _,j := range State[mapId] {
+		if bytes.Compare(tx.PubKey[:],j.Address[:]) == 0 {
+			return errors.New("Account already exists.")
+		}
+	}
+
+	b.AccTxData = append(b.AccTxData,hashAccTx(tx))
+	writeOpenAccTx(tx)
+	log.Printf("Added tx to the AccTxData slice: %v", *tx)
+	return nil
+}
+
+func (b *Block) addConfigTx(tx *configTx) error {
+
+	if tx.Fee < FEE_MINIMUM {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
+		return errors.New(err)
+	}
+
+	b.ConfigTxData = append(b.ConfigTxData,hashConfigTx(tx))
 	return nil
 }
 

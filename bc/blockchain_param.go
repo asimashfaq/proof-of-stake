@@ -6,6 +6,11 @@ const(
 	BLOCKS_PER_DIFF = 5 //in bitcoin, this is 2016
 )
 
+//this are "constants" that can be changed with config transactions
+var FEE_MINIMUM uint64
+var BLOCK_SIZE uint64
+var DIFFICULTY_INTERVAL uint64
+
 var lastBlock *Block
 var timestamp [BLOCKS_PER_DIFF]int64
 var globalBlockCount uint64
