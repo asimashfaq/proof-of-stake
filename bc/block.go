@@ -167,7 +167,7 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 func (b *Block) finalizeBlock() {
 
 	//merkle tree only built from funds transactions
-	b.MerkleRoot = buildMerkleTree(b.FundsTxData)
+	b.MerkleRoot = buildMerkleTree(b.FundsTxData,b.AccTxData)
 	b.Timestamp = time.Now().Unix()
 	copy(b.Beneficiary[:],MinerHash[:])
 
@@ -317,7 +317,7 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, err 
 	log.Println("Proof of work validation passed.")
 
 	//cmp merkle tree
-	if buildMerkleTree(b.FundsTxData) != b.MerkleRoot {
+	if buildMerkleTree(b.FundsTxData, b.AccTxData) != b.MerkleRoot {
 		return nil,nil,errors.New("Merkle Root incorrect.")
 		log.Println("Merkle Root incorrect.")
 	}

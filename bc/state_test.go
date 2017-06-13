@@ -23,6 +23,9 @@ func TestFundsTxStateChange(t *testing.T) {
 
 	var feeA, feeB uint64
 
+	//we're testing an overflowing balance in another test, this is that no interference occurs
+	accA.Balance = 12343478374563434
+	accB.Balance = 2947939489348234
 	balanceA := accA.Balance
 	balanceB := accB.Balance
 
@@ -50,15 +53,17 @@ func TestFundsTxStateChange(t *testing.T) {
 	getAccountFromHash(accAHash).TxCnt = 0
 	getAccountFromHash(accBHash).TxCnt = 0
 
-	fundsStateChange(funds)
-
-	if accA.Balance != balanceA || accB.Balance != balanceB {
-		t.Error("State update failed!")
-	}
 
 	//we have another test that checks overflows, have to set the balance to a fixed lower value
 	minerAcc.Balance = 123456
 	minerBal := minerAcc.Balance
+	fundsStateChange(funds)
+
+	if accA.Balance != balanceA || accB.Balance != balanceB {
+		t.Errorf("State update failed: %v != %v or %v != %v\n", accA.Balance, balanceA, accB.Balance, balanceB)
+	}
+
+
 	collectTxFees(funds,nil,minerAccHash)
 	if feeA+feeB != minerAcc.Balance-minerBal {
 		t.Error("Fee Collection failed!")

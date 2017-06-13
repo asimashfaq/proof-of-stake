@@ -175,8 +175,19 @@ func TestCollectTxFeesRollback(t *testing.T) {
 		fee2 += tx.Fee
 	}
 
+	accA.Balance = 123456789
+	accB.Balance = 234357348
+	//this tests fundsStateChange and collectTxFees (which will fail because of overflow)
+
+	accABal := accA.Balance
+	accBBal := accB.Balance
+
 	//should throw an error and result in a rollback, because of acc balance overflow
-	if err := collectTxFees(funds2, nil,minerHash); err == nil || minerBal != minerAcc.Balance {
+	if err := stateValidation(funds2,nil,minerHash);
+		err == nil ||
+		minerBal != minerAcc.Balance ||
+		accA.Balance != accABal ||
+		accB.Balance != accBBal {
 		t.Errorf("No rollback resulted, %v != %v\n", minerBal, minerAcc.Balance)
 	}
 }

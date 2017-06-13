@@ -15,6 +15,7 @@ func prepareMerkleTree(txHashSlice [][32]byte) []merkleNode {
 	var parentChild *merkleNode
 
 	for _, txHash := range txHashSlice {
+
 		//construct leaf nodes
 		parentChild = new(merkleNode)
 		//here we need the hash of the tx
@@ -34,17 +35,28 @@ func prepareMerkleTree(txHashSlice [][32]byte) []merkleNode {
 	return levelNodes
 }
 
-func buildMerkleTree(txHash [][32]byte) ([32]byte) {
+func buildMerkleTree(txHashSlice ...[][32]byte) ([32]byte) {
 
-	if len(txHash) == 0 {
+	var completeSlice [][32]byte
+
+	if len(txHashSlice) == 0 {
 		return [32]byte{}
+	}
+
+	//the argument is variadic, need to break down and rebuild
+	for _,hashSlice := range txHashSlice {
+		for _,singleHash := range hashSlice {
+			completeSlice = append(completeSlice,singleHash)
+		}
 	}
 
 	stepOver := -1
 	var leftChild, rightChild, parentChild *merkleNode
 	var cumulativeHash []byte
 
-	levelNodes := prepareMerkleTree(txHash)
+
+
+	levelNodes := prepareMerkleTree(completeSlice)
 	levelUpNodes := levelNodes
 
 	for len(levelUpNodes) > 1 {
