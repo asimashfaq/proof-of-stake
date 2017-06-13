@@ -23,9 +23,6 @@ func TestFundsTxStateChange(t *testing.T) {
 
 	var feeA, feeB uint64
 
-	//rollBackA := accA.Balance
-	//rollBackB := accB.Balance
-
 	balanceA := accA.Balance
 	balanceB := accB.Balance
 
@@ -59,6 +56,8 @@ func TestFundsTxStateChange(t *testing.T) {
 		t.Error("State update failed!")
 	}
 
+	//we have another test that checks overflows, have to set the balance to a fixed lower value
+	minerAcc.Balance = 123456
 	minerBal := minerAcc.Balance
 	collectTxFees(funds,nil,minerAccHash)
 	if feeA+feeB != minerAcc.Balance-minerBal {
@@ -69,6 +68,29 @@ func TestFundsTxStateChange(t *testing.T) {
 	collectBlockReward(getBlockReward(),minerAccHash)
 	if minerAcc.Balance != balBeforeRew+getBlockReward() {
 		t.Error("Block reward collection failed!")
+	}
+}
+
+func TestAccountOverflow(t *testing.T) {
+
+	var accSlice []*fundsTx
+	accAHash := serializeHashContent(accA.Address)
+	accBHash := serializeHashContent(accB.Address)
+
+	accA.Balance = MAX_MONEY
+	accA.TxCnt = 0
+	tx,err := ConstrFundsTx(0x01, 1,1,0, accBHash, accAHash, &PrivKeyB)
+	if !tx.verify() || err != nil {
+		t.Error("Failed to create reasonable fundsTx\n")
+		return
+	}
+	accSlice = append(accSlice,tx)
+	err = fundsStateChange(accSlice)
+
+	//err shouldn't be nil, because the tx can't have been successful
+	//also, the balance of A shouldn't have changed
+	if err == nil || accA.Balance != MAX_MONEY {
+		t.Errorf("Failed to block overflowing transaction to account with balance: %v\n", accA.Balance)
 	}
 }
 

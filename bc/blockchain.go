@@ -96,7 +96,9 @@ func mining() {
 	for {
 		currentBlock.finalizeBlock()
 		fmt.Print("Block mined.\n")
-		validateBlock(currentBlock)
+		if err := validateBlock(currentBlock); err != nil {
+			fmt.Printf("%v\n", err)
+		}
 
 		nextBlockAccess.Lock()
 		prevHash := currentBlock.Hash

@@ -74,7 +74,8 @@ func (tx *fundsTx) verify() bool {
 	r,s := new(big.Int), new(big.Int)
 
 	//fundstx only makes sense if amount > 0
-	if tx.Amount == 0 {
+	if tx.Amount == 0 || tx.Amount > MAX_MONEY {
+		log.Printf("Invalid transaction amount %v\n", tx.Amount)
 		return false
 	}
 
@@ -142,14 +143,14 @@ func hashFundsTx(tx *fundsTx) (hash [32]byte) {
 //behavior. Therefore, writing own encoder/decoder
 func EncodeFundsTx(tx *fundsTx) (encodedTx []byte) {
 
+	if tx == nil {
+		return nil
+	}
+
 	var buf bytes.Buffer
 	var amountBuf [8]byte
 	var feeBuf [8]byte
 	var txCntBuf [4]byte
-
-	if tx == nil {
-		return nil
-	}
 
 	//transfer integer values to byte arrays
 	binary.Write(&buf, binary.BigEndian, tx.Amount)

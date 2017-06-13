@@ -132,3 +132,55 @@ func TestAccStateChangeRollback(t *testing.T) {
 		}
 	}
 }
+
+func TestCollectTxFeesRollback(t *testing.T) {
+
+	rand := rand.New(rand.NewSource(time.Now().Unix()))
+
+	var funds, funds2 []*fundsTx
+
+	accAHash := serializeHashContent(accA.Address)
+	accBHash := serializeHashContent(accB.Address)
+	minerHash := serializeHashContent(minerAcc.Address)
+
+	minerBal := minerAcc.Balance
+	//rollback everything
+	var fee uint64
+	loopMax := int(rand.Uint64()%1000)
+	for i := 0; i < loopMax+1; i++ {
+		tx, _ := ConstrFundsTx(0x01,rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
+
+		funds = append(funds,tx)
+		fee += tx.Fee
+	}
+
+	collectTxFees(funds,nil,minerHash)
+	if minerBal+fee != minerAcc.Balance {
+		t.Errorf("%v + %v != %v\n", minerBal,fee,minerAcc.Balance)
+	}
+	collectTxFeesRollback(funds,nil,minerHash)
+	if minerBal != minerAcc.Balance {
+		t.Errorf("Tx fees rollback failed: %v != %v\n", minerBal, minerAcc.Balance)
+	}
+
+
+
+	minerAcc.Balance = MAX_MONEY-100
+	var fee2 uint64
+	minerBal = minerAcc.Balance
+	//interrupt somewhere in between
+	for i := 2; i < 100; i++ {
+		tx, _ := ConstrFundsTx(0x01,rand.Uint64()%1000000+1, uint64(i), uint32(i), accAHash, accBHash, &PrivKeyA)
+		funds2 = append(funds2,tx)
+		fee2 += tx.Fee
+	}
+
+	//should throw an error and result in a rollback, because of acc balance overflow
+	if err := collectTxFees(funds2, nil,minerHash); err == nil || minerBal != minerAcc.Balance {
+		t.Errorf("No rollback resulted, %v != %v\n", minerBal, minerAcc.Balance)
+	}
+}
+
+func TestCollectBlockRewardRollback(t *testing.T) {
+
+}

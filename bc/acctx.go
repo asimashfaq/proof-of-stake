@@ -26,23 +26,17 @@ const(
 type accTx struct {
 	Header byte
 	Issuer [32]byte
-	Fee [8]byte
+	Fee uint64
 	PubKey [64]byte
 	Sig [64]byte
 }
 
 func ConstrAccTx(fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *accTx, err error) {
 
-	var buf bytes.Buffer
-
 	tx = new(accTx)
+	tx.Fee = fee
 
-	binary.Write(&buf,binary.BigEndian,fee)
-	copy(tx.Fee[:],buf.Bytes())
-
-	//var pubKey [64]byte
 	newAccAddress, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-
 	newAccPub1,newAccPub2 := newAccAddress.PublicKey.X.Bytes(),newAccAddress.PublicKey.Y.Bytes()
 	copy(tx.PubKey[32-len(newAccPub1):32],newAccPub1)
 	copy(tx.PubKey[64-len(newAccPub2):],newAccPub2)
@@ -96,7 +90,7 @@ func hashAccTx(tx *accTx) (hash [32]byte) {
 
 	txHash := struct {
 		Issuer [32]byte
-		Fee [8]byte
+		Fee uint64
 		PubKey [64]byte
 	} {
 		tx.Issuer,
@@ -107,14 +101,21 @@ func hashAccTx(tx *accTx) (hash [32]byte) {
 }
 
 func EncodeAccTx(tx *accTx) (encodedTx []byte) {
+
 	if tx == nil {
 		return nil
 	}
 
+	var buf bytes.Buffer
+	var feeBuf [8]byte
+
+	binary.Write(&buf, binary.BigEndian, tx.Fee)
+	copy(feeBuf[:],buf.Bytes())
+
 	encodedTx = make([]byte,ACCTX_SIZE)
 	encodedTx[0] = tx.Header
 	copy(encodedTx[1:33], tx.Issuer[:])
-	copy(encodedTx[33:41], tx.Fee[:])
+	copy(encodedTx[33:41], feeBuf[:])
 	copy(encodedTx[41:105], tx.PubKey[:])
 	copy(encodedTx[105:169], tx.Sig[:])
 
@@ -131,7 +132,7 @@ func DecodeAccTx(encodedTx []byte) (tx *accTx) {
 	tx = new(accTx)
 	tx.Header = encodedTx[0]
 	copy(tx.Issuer[:],encodedTx[1:33])
-	copy(tx.Fee[:],encodedTx[33:41])
+	tx.Fee = binary.BigEndian.Uint64(encodedTx[33:41])
 	copy(tx.PubKey[:],encodedTx[41:105])
 	copy(tx.Sig[:],encodedTx[105:169])
 

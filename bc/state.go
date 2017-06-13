@@ -4,7 +4,6 @@ import (
 	"log"
 	"golang.org/x/crypto/sha3"
 	"errors"
-	"encoding/binary"
 )
 
 func isRootKey(hash [32]byte) (bool) {
@@ -52,18 +51,23 @@ func fundsStateChange(txSlice []*fundsTx) error {
 
 	for index,tx := range txSlice {
 
+		var err error
 		//check if we have to issue new coins
 		for hash, rootAcc := range RootKeys {
 			if hash == tx.fromHash {
 				log.Printf("Root Key Transaction: %x\n", hash[0:8])
+
+				if rootAcc.Balance + tx.Amount + tx.Fee > MAX_MONEY {
+					log.Printf("Root Account overflows (%v) with given transaction amount (%v) and fee (%v).\n", rootAcc.Balance,tx.Amount,tx.Fee)
+					err = errors.New("Sender does not exist in the State.")
+				}
+
 				rootAcc.Balance += tx.Amount
 				rootAcc.Balance += tx.Fee
 			}
 		}
 
 		accSender, accReceiver := getAccountFromHash(tx.fromHash), getAccountFromHash(tx.toHash)
-
-		var err error
 		if accSender == nil {
 			log.Printf("CRITICAL: Sender does not exist in the State: %x\n", tx.fromHash[0:8])
 			err = errors.New("Sender does not exist in the State.")
@@ -85,6 +89,12 @@ func fundsStateChange(txSlice []*fundsTx) error {
 			err = errors.New("Sender does not have enough funds for the transaction.")
 		}
 
+		//overflow protection
+		if tx.Amount + accReceiver.Balance > MAX_MONEY {
+			log.Printf("Transaction amount (%v) would lead to balance overflow at the receiver account (%v)\n", tx.Amount, accReceiver.Balance)
+			err = errors.New("Transaction amount would lead to balance overflow at the receiver account\n")
+		}
+
 		if err != nil {
 			//was it the first tx in the block, no rollback needed
 			if index == 0 {
@@ -103,35 +113,62 @@ func fundsStateChange(txSlice []*fundsTx) error {
 	return nil
 }
 
-func collectTxFees(fundsTx []*fundsTx, accTx []*accTx, minerHash [32]byte) {
+func collectTxFees(fundsTxSlice []*fundsTx, accTxSlice []*accTx, minerHash [32]byte) error {
+
+	var tmpFundsTx []*fundsTx
+	var tmpAccTx []*accTx
+
 	miner := getAccountFromHash(minerHash)
 
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
-	for _,tx := range fundsTx {
+	for _,tx := range fundsTxSlice {
+		//preventing miner account from overflowing
+		if miner.Balance + tx.Fee > MAX_MONEY {
+			//rollback of all perviously transferred transaction fees to the miner's account
+			collectTxFeesRollback(tmpFundsTx,tmpAccTx,minerHash)
+			log.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", miner.Balance, tx.Fee)
+			return errors.New("Miner balance overflows with transaction fee.\n")
+		}
 		miner.Balance += tx.Fee
 
 		senderAcc := getAccountFromHash(tx.fromHash)
 		senderAcc.Balance -= tx.Fee
+
+		tmpFundsTx = append(tmpFundsTx, tx)
 	}
 
-	for _,tx := range accTx {
+	for _,tx := range accTxSlice {
+		if miner.Balance + tx.Fee > MAX_MONEY {
+			//rollback of all perviously transferred transaction fees to the miner's account
+			collectTxFeesRollback(tmpFundsTx,tmpAccTx,minerHash)
+			log.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", miner.Balance, tx.Fee)
+			return errors.New("Miner balance overflows with transaction fee.\n")
+		}
+
 		//money gets created from thin air
 		//no need to subtract money from root key
-		fee := binary.BigEndian.Uint64(tx.Fee[:])
-		miner.Balance += fee
+		miner.Balance += tx.Fee
+		tmpAccTx = append(tmpAccTx, tx)
 	}
+	return nil
 }
 
-func collectBlockReward(reward uint64, minerHash [32]byte) {
+func collectBlockReward(reward uint64, minerHash [32]byte) error {
 	miner := getAccountFromHash(minerHash)
+
+	if miner.Balance + reward > MAX_MONEY {
+		log.Printf("Miner balance (%v) overflows with block reward (%v).\n", miner.Balance, reward)
+		return errors.New("Miner balance overflows with transaction fee.\n")
+	}
 	miner.Balance += reward
+	return nil
 }
 
 func PrintState() {
 	log.Println("State updated: ")
 	for key,val := range State {
 		for _,acc := range val {
-			log.Printf("%x: %v\n", key[0:4], acc)
+			log.Printf("%x: %v\n", key[0:8], acc)
 		}
 	}
 }

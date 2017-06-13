@@ -79,9 +79,8 @@ func (b *Block) addTx(tx transaction) error {
 
 func (b *Block) addAccTx(tx *accTx) error {
 
-	fee := binary.BigEndian.Uint64(tx.Fee[:])
-	if fee < FEE_THRESHOLD {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", fee, FEE_THRESHOLD)
+	if tx.Fee < FEE_THRESHOLD {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_THRESHOLD)
 		return errors.New(err)
 	}
 
@@ -146,10 +145,15 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 		return errors.New(err)
 	}
 
+	//don't add tx if amount leads to overflow at receiver acc (amount == 0 has already been checked with verify())
+	if b.stateCopy[tx.toHash].Balance + tx.Amount > MAX_MONEY {
+		err := fmt.Sprintf("Transaction amount (%v) leads to overflow at receiver account balance (%v).\n", tx.Amount, b.stateCopy[tx.toHash].Balance)
+		return errors.New(err)
+	}
+
 	accSender := b.stateCopy[tx.fromHash]
 	accSender.TxCnt += 1
 	accSender.Balance -= tx.Amount
-	//b.stateCopy[tx.fromHash] = accSender
 
 	accReceiver := b.stateCopy[tx.toHash]
 	accReceiver.Balance += tx.Amount
@@ -334,12 +338,23 @@ func stateValidation(fundsTxSlice []*fundsTx, accTxSlice []*accTx, beneficiary [
 	}
 
 	if err := accStateChange(accTxSlice); err != nil {
+		//block invalid, rollback
+		fundsStateChangeRollback(fundsTxSlice)
 		return err
 	}
+
+	//both collectTxFees as well as collectBlockReward can throw an error when the balance of the miner overflows
 	//collect fees for both transaction types
-	collectTxFees(fundsTxSlice, accTxSlice, beneficiary)
+	if err := collectTxFees(fundsTxSlice, accTxSlice, beneficiary); err != nil {
+		accStateChangeRollback(accTxSlice)
+		fundsStateChangeRollback(fundsTxSlice)
+	}
 	//collect block reward
-	collectBlockReward(getBlockReward(), beneficiary)
+	if err := collectBlockReward(getBlockReward(), beneficiary); err != nil {
+		collectTxFeesRollback(fundsTxSlice,accTxSlice,beneficiary)
+		accStateChangeRollback(accTxSlice)
+		fundsStateChangeRollback(fundsTxSlice)
+	}
 
 	log.Print("Block validated and state changed accordingly: \n")
 	PrintState()

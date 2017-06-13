@@ -1,9 +1,5 @@
 package bc
 
-import (
-	"encoding/binary"
-)
-
 func fundsStateChangeRollback(txSlice []*fundsTx) {
 
 	for cnt := len(txSlice)-1; cnt >= 0; cnt-- {
@@ -59,8 +55,7 @@ func collectTxFeesRollback(fundsTx []*fundsTx, accTx []*accTx, minerHash [32]byt
 	for _,tx := range accTx {
 		//money gets created from thin air
 		//no need to subtract money from root key
-		fee := binary.BigEndian.Uint64(tx.Fee[:])
-		miner.Balance -= fee
+		miner.Balance -= tx.Fee
 	}
 }
 
