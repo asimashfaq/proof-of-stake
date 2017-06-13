@@ -10,12 +10,15 @@ func TestReadWriteTx(t *testing.T) {
 
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
+	accAHash := serializeHashContent(accA.Address)
+	accBHash := serializeHashContent(accB.Address)
+
 	var hashFundsSlice [][32]byte
 	var hashAccSlice [][32]byte
 
 	loopMax := int(rand.Uint32()%10000)
 	for i := 0; i < loopMax; i++ {
-		tx, _ := ConstrFundsTx(0x01,rand.Uint64()%100000+1, rand.Uint64()%10+1, uint32(i), accA.Hash, accB.Hash, &PrivKeyA)
+		tx, _ := ConstrFundsTx(0x01,rand.Uint64()%100000+1, rand.Uint64()%10+1, uint32(i), accAHash, accBHash, &PrivKeyA)
 		writeOpenFundsTx(tx)
 		hashFundsSlice = append(hashFundsSlice,hashFundsTx(tx))
 	}

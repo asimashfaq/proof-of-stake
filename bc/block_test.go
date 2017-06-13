@@ -72,7 +72,9 @@ func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte) {
 	loopMax := int(rand.Uint32() % testSize)+1
 	loopMax += int(accA.TxCnt)
 	for cnt := int(accA.TxCnt); cnt < loopMax ; cnt++ {
-		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accA.Hash, accB.Hash, &PrivKeyA)
+		accAHash := serializeHashContent(accA.Address)
+		accBHash := serializeHashContent(accB.Address)
+		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accAHash, accBHash, &PrivKeyA)
 		b.addTx(tx)
 		hashFundsSlice = append(hashFundsSlice, hashFundsTx(tx))
 	}

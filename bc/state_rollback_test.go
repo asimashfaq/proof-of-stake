@@ -4,12 +4,15 @@ import (
 	"testing"
 	"time"
 	"math/rand"
-	"encoding/binary"
 )
 
 func TestFundsStateChangeRollback(t *testing.T) {
 
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
+
+	accAHash := serializeHashContent(accA.Address)
+	accBHash := serializeHashContent(accB.Address)
+	minerAccHash := serializeHashContent(minerAcc.Address)
 
 	var testSize uint32
 	testSize = 1000
@@ -27,30 +30,26 @@ func TestFundsStateChangeRollback(t *testing.T) {
 
 	loopMax := int(rand.Uint32()%testSize+1)
 	for i := 0; i < loopMax+1; i++ {
-		ftx, _ := ConstrFundsTx(0x01,rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accA.Hash, accB.Hash, &PrivKeyA)
+		ftx, _ := ConstrFundsTx(0x01,rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
 		if b.addTx(ftx) == nil {
 			funds = append(funds,ftx)
-			amount := binary.BigEndian.Uint64(ftx.Amount[:])
-			fee := binary.BigEndian.Uint64(ftx.Fee[:])
-			balanceA -= amount
-			feeA += fee
+			balanceA -= ftx.Amount
+			feeA += ftx.Fee
 
-			balanceB += amount
+			balanceB += ftx.Amount
 		}
 
-		ftx2,_ := ConstrFundsTx(0x01,rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accB.Hash, accA.Hash, &PrivKeyB)
+		ftx2,_ := ConstrFundsTx(0x01,rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accBHash, accAHash, &PrivKeyB)
 		if b.addTx(ftx2) == nil {
 			funds = append(funds,ftx2)
-			amount := binary.BigEndian.Uint64(ftx2.Amount[:])
-			fee := binary.BigEndian.Uint64(ftx2.Fee[:])
-			balanceB -= amount
-			feeB += fee
+			balanceB -= ftx2.Amount
+			feeB += ftx2.Fee
 
-			balanceA += amount
+			balanceA += ftx2.Amount
 		}
 	}
-	getAccountFromHash(accA.Hash).TxCnt = 0
-	getAccountFromHash(accB.Hash).TxCnt = 0
+	getAccountFromHash(accAHash).TxCnt = 0
+	getAccountFromHash(accBHash).TxCnt = 0
 	fundsStateChange(funds)
 	if accA.Balance != balanceA || accB.Balance != balanceB {
 		t.Error("State update failed!")
@@ -60,21 +59,21 @@ func TestFundsStateChangeRollback(t *testing.T) {
 		t.Error("Rollback failed!")
 	}
 	minerBal := minerAcc.Balance
-	collectTxFees(funds,nil,minerAcc.Hash)
+	collectTxFees(funds,nil,minerAccHash)
 	if feeA+feeB != minerAcc.Balance-minerBal {
 		t.Error("Fee Collection failed!")
 	}
-	collectTxFeesRollback(funds,nil,minerAcc.Hash)
+	collectTxFeesRollback(funds,nil,minerAccHash)
 	if minerBal != minerAcc.Balance {
 		t.Error("Fee Collection Rollback failed!")
 	}
 	balBeforeRew := minerAcc.Balance
 	reward := 5
-	collectBlockReward(uint64(reward),minerAcc.Hash)
+	collectBlockReward(uint64(reward),minerAccHash)
 	if minerAcc.Balance != balBeforeRew+uint64(reward) {
 		t.Error("Block reward collection failed!")
 	}
-	collectBlockRewardRollback(uint64(reward),minerAcc.Hash)
+	collectBlockRewardRollback(uint64(reward),minerAccHash)
 	if minerAcc.Balance != balBeforeRew {
 		t.Error("Block reward collection rollback failed!")
 	}
@@ -104,7 +103,8 @@ func TestAccStateChangeRollback(t *testing.T) {
 		copy(shortHash[:],accHash[0:8])
 		accSlice := State[shortHash]
 		for _,singleAcc := range accSlice {
-			if singleAcc.Hash == accHash {
+			singleAccHash := serializeHashContent(singleAcc.Address)
+			if singleAccHash == accHash {
 				found = true
 			}
 		}
@@ -122,7 +122,8 @@ func TestAccStateChangeRollback(t *testing.T) {
 		copy(shortHash[:],accHash[0:8])
 		accSlice := State[shortHash]
 		for _,singleAcc := range accSlice {
-			if singleAcc.Hash == accHash {
+			singleAccHash := serializeHashContent(singleAcc.Address)
+			if singleAccHash == accHash {
 				found = true
 			}
 		}

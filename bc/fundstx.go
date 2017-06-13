@@ -8,13 +8,13 @@ import (
 	"crypto/elliptic"
 	"reflect"
 	"fmt"
-	"encoding/binary"
-	"bytes"
 	"log"
+	"bytes"
+	"encoding/binary"
 )
 
 const(
-	FUNDSTX_SIZE = 100
+	FUNDSTX_SIZE = 101
 )
 
 //when we broadcast transactions we need a way to distinguish with a type
@@ -34,32 +34,14 @@ type fundsTx struct {
 
 func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx *fundsTx, err error) {
 
-	var buf bytes.Buffer
-	var amountBuf [8]byte
-	var feeBuf [8]byte
-	var tmpTxCntBuf [4]byte
-	var txCntBuf [3]byte
-
 	tx = new(fundsTx)
-
-	//transfer integer values to byte arrays
-	binary.Write(&buf, binary.BigEndian, fee)
-	copy(feeBuf[:],buf.Bytes())
-	buf.Reset()
-	binary.Write(&buf, binary.BigEndian, amount)
-	copy(amountBuf[:],buf.Bytes())
-	buf.Reset()
-	binary.Write(&buf, binary.BigEndian, txCnt)
-	copy(tmpTxCntBuf[:],buf.Bytes())
-	copy(txCntBuf[:],tmpTxCntBuf[1:])
-	buf.Reset()
 
 	tx.fromHash = from
 	tx.toHash = to
 	tx.Header = header
-	tx.Amount = amountBuf
-	tx.Fee = feeBuf
-	tx.TxCnt = txCntBuf
+	tx.Amount = amount
+	tx.Fee = fee
+	tx.TxCnt = txCnt
 
 	copy(tx.From[0:8],from[0:8])
 	copy(tx.To[0:8],to[0:8])
@@ -92,16 +74,18 @@ func (tx *fundsTx) verify() bool {
 	r,s := new(big.Int), new(big.Int)
 
 	//fundstx only makes sense if amount > 0
-	if binary.BigEndian.Uint64(tx.Amount[:]) == 0 {
+	if tx.Amount == 0 {
 		return false
 	}
 
 	//check if accounts are present in the actual state
 	for _,accFrom := range State[tx.From] {
+		accFromHash := serializeHashContent(accFrom.Address)
 		for _,accTo := range State[tx.To] {
+			accToHash := serializeHashContent(accTo.Address)
 			sig = [24]byte{}
 			for cnt := 0; cnt < 24; cnt++ {
-				sig[cnt] = tx.Xored[cnt] ^ accFrom.Hash[cnt+8] ^ accTo.Hash[cnt+8]
+				sig[cnt] = tx.Xored[cnt] ^ accFromHash[cnt+8] ^ accToHash[cnt+8]
 			}
 			copy(concatSig[:24],sig[0:24])
 			copy(concatSig[24:],tx.Sig[:])
@@ -112,15 +96,15 @@ func (tx *fundsTx) verify() bool {
 			r.SetBytes(concatSig[:32])
 			s.SetBytes(concatSig[32:])
 
-			tx.fromHash = accFrom.Hash
-			tx.toHash = accTo.Hash
+			tx.fromHash = accFromHash
+			tx.toHash = accToHash
 
 			txHash := hashFundsTx(tx)
 
 			pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
 			if ecdsa.Verify(&pubKey,txHash[:],r,s) == true && !reflect.DeepEqual(accFrom,accTo) {
-				tx.fromHash = accFrom.Hash
-				tx.toHash = accTo.Hash
+				tx.fromHash = accFromHash
+				tx.toHash = accToHash
 				return true
 			}
 		}
@@ -138,9 +122,9 @@ func hashFundsTx(tx *fundsTx) (hash [32]byte) {
 
 	txHash := struct {
 		Header byte
-		Amount [8]byte
-		Fee [8]byte
-		TxCnt [3]byte
+		Amount uint64
+		Fee uint64
+		TxCnt uint32
 		From [32]byte
 		To [32]byte
 	} {
@@ -158,19 +142,35 @@ func hashFundsTx(tx *fundsTx) (hash [32]byte) {
 //behavior. Therefore, writing own encoder/decoder
 func EncodeFundsTx(tx *fundsTx) (encodedTx []byte) {
 
+	var buf bytes.Buffer
+	var amountBuf [8]byte
+	var feeBuf [8]byte
+	var txCntBuf [4]byte
+
 	if tx == nil {
 		return nil
 	}
 
+	//transfer integer values to byte arrays
+	binary.Write(&buf, binary.BigEndian, tx.Amount)
+	copy(amountBuf[:],buf.Bytes())
+	buf.Reset()
+	binary.Write(&buf, binary.BigEndian, tx.Fee)
+	copy(feeBuf[:],buf.Bytes())
+	buf.Reset()
+	binary.Write(&buf, binary.BigEndian, tx.TxCnt)
+	copy(txCntBuf[:],buf.Bytes())
+	buf.Reset()
+
 	encodedTx = make([]byte,FUNDSTX_SIZE)
 	encodedTx[0] = tx.Header
-	copy(encodedTx[1:9], tx.Amount[:])
-	copy(encodedTx[9:17], tx.Fee[:])
-	copy(encodedTx[17:20], tx.TxCnt[:])
-	copy(encodedTx[20:28], tx.From[:])
-	copy(encodedTx[28:36], tx.To[:])
-	copy(encodedTx[36:60], tx.Xored[:])
-	copy(encodedTx[60:100], tx.Sig[:])
+	copy(encodedTx[1:9], amountBuf[:])
+	copy(encodedTx[9:17], feeBuf[:])
+	copy(encodedTx[17:21], txCntBuf[:])
+	copy(encodedTx[21:29], tx.From[:])
+	copy(encodedTx[29:37], tx.To[:])
+	copy(encodedTx[37:61], tx.Xored[:])
+	copy(encodedTx[61:101], tx.Sig[:])
 
 	return encodedTx
 }
@@ -184,17 +184,16 @@ func DecodeFundsTx(encodedTx []byte) (tx *fundsTx) {
 
 	tx = new(fundsTx)
 	tx.Header = encodedTx[0]
-	copy(tx.Amount[:],encodedTx[1:9])
-	copy(tx.Fee[:],encodedTx[9:17])
-	copy(tx.TxCnt[:],encodedTx[17:20])
-	copy(tx.From[:],encodedTx[20:28])
-	copy(tx.To[:],encodedTx[28:36])
-	copy(tx.Xored[:],encodedTx[36:60])
-	copy(tx.Sig[:],encodedTx[60:100])
+	tx.Amount = binary.BigEndian.Uint64(encodedTx[1:9])
+	tx.Fee = binary.BigEndian.Uint64(encodedTx[9:17])
+	tx.TxCnt = binary.BigEndian.Uint32(encodedTx[17:21])
+	copy(tx.From[:],encodedTx[21:29])
+	copy(tx.To[:],encodedTx[29:37])
+	copy(tx.Xored[:],encodedTx[37:61])
+	copy(tx.Sig[:],encodedTx[61:101])
 
 	return tx
 }
-
 
 func (tx fundsTx) String() string {
 	return fmt.Sprintf(

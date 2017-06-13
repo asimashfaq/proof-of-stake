@@ -18,7 +18,8 @@ func getAccountFromHash(hash [32]byte) (*Account) {
 	var fixedHash [8]byte
 	copy(fixedHash[:],hash[0:8])
 	for _,acc := range State[fixedHash] {
-		if acc.Hash == hash {
+		accHash := serializeHashContent(acc.Address)
+		if accHash == hash {
 			return acc
 		}
 	}
@@ -41,7 +42,7 @@ func accStateChange(txSlice []*accTx) error {
 			return errors.New("CRITICAL: Address already exists in the state")
 		}
 		copy(fixedHash[:],addressHash[0:8])
-		newAcc := Account{Hash:addressHash,Address:tx.PubKey}
+		newAcc := Account{Address:tx.PubKey}
 		State[fixedHash] = append(State[fixedHash],&newAcc)
 	}
 	return nil
@@ -55,42 +56,37 @@ func fundsStateChange(txSlice []*fundsTx) error {
 		for hash, rootAcc := range RootKeys {
 			if hash == tx.fromHash {
 				log.Printf("Root Key Transaction: %x\n", hash[0:8])
-				rootAcc.Balance += binary.BigEndian.Uint64(tx.Amount[:])
-				rootAcc.Balance += binary.BigEndian.Uint64(tx.Fee[:])
+				rootAcc.Balance += tx.Amount
+				rootAcc.Balance += tx.Fee
 			}
 		}
 
 		accSender, accReceiver := getAccountFromHash(tx.fromHash), getAccountFromHash(tx.toHash)
 
+		var err error
 		if accSender == nil {
 			log.Printf("CRITICAL: Sender does not exist in the State: %x\n", tx.fromHash[0:8])
-			return errors.New("Sender does not exist in the State.")
+			err = errors.New("Sender does not exist in the State.")
 		}
 
 		if accReceiver == nil {
 			log.Printf("CRITICAL: Receiver does not exist in the State: %x\n", tx.toHash[0:8])
-			return errors.New("Receiver does not exist in the State.")
+			err = errors.New("Receiver does not exist in the State.")
 		}
 
-		//also check for txCnt!
-		var err error
-		var cntBuf [4]byte
-		copy(cntBuf[1:], tx.TxCnt[:])
-		txCnt := binary.BigEndian.Uint32(cntBuf[:])
-		if txCnt != accSender.TxCnt {
-			log.Printf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)\n", txCnt, accSender.TxCnt)
+		//also check for txCnt
+		if tx.TxCnt != accSender.TxCnt {
+			log.Printf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)\n", tx.TxCnt, accSender.TxCnt)
 			err = errors.New("TxCnt mismatch!")
 		}
 
-		amount := binary.BigEndian.Uint64(tx.Amount[:])
-		fee := binary.BigEndian.Uint64(tx.Fee[:])
-		if (amount + fee) > accSender.Balance {
+		if (tx.Amount + tx.Fee) > accSender.Balance {
 			log.Printf("Sender does not have enough balance: %x\n", accSender.Balance)
 			err = errors.New("Sender does not have enough funds for the transaction.")
 		}
 
 		if err != nil {
-			//was it the first tx in the block
+			//was it the first tx in the block, no rollback needed
 			if index == 0 {
 				return err
 			}
@@ -100,8 +96,8 @@ func fundsStateChange(txSlice []*fundsTx) error {
 
 		//we're manipulating pointer, no need to write back
 		accSender.TxCnt += 1
-		accSender.Balance -= amount
-		accReceiver.Balance += amount
+		accSender.Balance -= tx.Amount
+		accReceiver.Balance += tx.Amount
 	}
 
 	return nil
@@ -112,11 +108,10 @@ func collectTxFees(fundsTx []*fundsTx, accTx []*accTx, minerHash [32]byte) {
 
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
 	for _,tx := range fundsTx {
-		fee := binary.BigEndian.Uint64(tx.Fee[:])
-		miner.Balance += fee
+		miner.Balance += tx.Fee
 
 		senderAcc := getAccountFromHash(tx.fromHash)
-		senderAcc.Balance -= fee
+		senderAcc.Balance -= tx.Fee
 	}
 
 	for _,tx := range accTx {

@@ -35,7 +35,8 @@ func TestValidateBlockRollback(t *testing.T) {
 	}
 
 	for _,acc := range accs {
-		stateAcc := getAccountFromHash(acc.Hash)
+		accHash := serializeHashContent(acc.Address)
+		stateAcc := getAccountFromHash(accHash)
 		if !reflect.DeepEqual(*stateAcc,acc) {
 			t.Errorf("The following accounts were not the same after the rollback\n%v\n\nvs.\n\n%v\n", stateAcc,acc)
 		}

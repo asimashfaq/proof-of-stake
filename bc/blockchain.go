@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"crypto/elliptic"
 	"crypto/rand"
-	"golang.org/x/crypto/sha3"
 	"sync"
 	"fmt"
 
@@ -139,9 +138,9 @@ func testing_setup() {
 	var shortMiner [8]byte
 	copy(pubKey[:32],MinerPrivKey.X.Bytes())
 	copy(pubKey[32:],MinerPrivKey.Y.Bytes())
-  	MinerHash = serializeHashContent(pubKey[:])
+  	MinerHash = serializeHashContent(pubKey)
 	copy(shortMiner[:],MinerHash[0:8])
-	minerAcc := Account{Hash:MinerHash, Address:pubKey}
+	minerAcc := Account{Address:pubKey}
 	State[shortMiner] = append(State[shortMiner],&minerAcc)
 
 	pub1,_ := new(big.Int).SetString(RootPub1,16)
@@ -150,11 +149,11 @@ func testing_setup() {
 	copy(pubKey[:32],pub1.Bytes())
 	copy(pubKey[32:],pub2.Bytes())
 
-	rootHash := serializeHashContent(pubKey[:])
+	rootHash := serializeHashContent(pubKey)
 
 	var shortRootHash [8]byte
 	copy(shortRootHash[:], rootHash[0:8])
-	rootAcc := Account{Hash:rootHash, Address:pubKey}
+	rootAcc := Account{Address:pubKey}
 	State[shortRootHash] = append(State[shortRootHash], &rootAcc)
 	RootKeys[rootHash] = &rootAcc
 	var accA, accB Account
@@ -188,19 +187,19 @@ func testing_setup() {
 	accA = Account{Balance: 1500000}
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
-	accA.Hash = sha3.Sum256(accA.Address[:])
+	hashA := serializeHashContent(accA.Address)
 
 	//This one is just for testing purposes
 	accB = Account{Balance: 702000}
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
-	accB.Hash = sha3.Sum256(accB.Address[:])
+	hashB := serializeHashContent(accB.Address)
 
 	//just to bootstrap
 	var shortHashA [8]byte
 	var shortHashB [8]byte
-	copy(shortHashA[:], accA.Hash[0:8])
-	copy(shortHashB[:], accB.Hash[0:8])
+	copy(shortHashA[:], hashA[0:8])
+	copy(shortHashB[:], hashB[0:8])
 
 	State[shortHashA] = append(State[shortHashA],&accA)
 	State[shortHashB] = append(State[shortHashB],&accB)

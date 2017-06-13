@@ -11,11 +11,10 @@ func fundsStateChangeRollback(txSlice []*fundsTx) {
 
 		accSender, accReceiver := getAccountFromHash(tx.fromHash), getAccountFromHash(tx.toHash)
 
-		amount := binary.BigEndian.Uint64(tx.Amount[:])
 		accSender.TxCnt -= 1
-		accSender.Balance += amount
+		accSender.Balance += tx.Amount
 
-		accReceiver.Balance -= amount
+		accReceiver.Balance -= tx.Amount
 	}
 }
 
@@ -30,7 +29,8 @@ func accStateChangeRollback(txSlice []*accTx) {
 
 		accSlice := State[fixedHash]
 		for i := range accSlice {
-			if accSlice[i].Hash == accHash {
+			accSliceHash := serializeHashContent(accSlice[i].Address)
+			if accSliceHash == accHash {
 				//deleting the account from the state
 				//https://github.com/golang/go/wiki/SliceTricks, preventing mem leaks
 				copy(accSlice[i:], accSlice[i+1:])
@@ -50,11 +50,10 @@ func collectTxFeesRollback(fundsTx []*fundsTx, accTx []*accTx, minerHash [32]byt
 	miner := getAccountFromHash(minerHash)
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
 	for _,tx := range fundsTx {
-		fee := binary.BigEndian.Uint64(tx.Fee[:])
-		miner.Balance -= fee
+		miner.Balance -= tx.Fee
 
 		senderAcc := getAccountFromHash(tx.fromHash)
-		senderAcc.Balance += fee
+		senderAcc.Balance += tx.Fee
 	}
 
 	for _,tx := range accTx {

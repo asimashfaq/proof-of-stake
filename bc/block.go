@@ -103,23 +103,16 @@ func (b *Block) addAccTx(tx *accTx) error {
 
 func (b *Block) addFundsTx(tx *fundsTx) error {
 
-	amount := binary.BigEndian.Uint64(tx.Amount[:])
-	fee := binary.BigEndian.Uint64(tx.Fee[:])
-
-	//this is needed because we cannot just parse a 3-byte value into a 32-bit integer
-	var txCntBuf [4]byte
-	copy(txCntBuf[1:],tx.TxCnt[:])
-	txCnt := binary.BigEndian.Uint32(txCntBuf[:])
-
-	if fee < FEE_THRESHOLD {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", fee, FEE_THRESHOLD)
+	if tx.Fee < FEE_THRESHOLD {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_THRESHOLD)
 		return errors.New(err)
 	}
 
 	//checking if the sender account is already in the local state copy
 	if _,exists := b.stateCopy[tx.fromHash]; !exists {
 		for _,acc := range State[tx.From] {
-			if bytes.Compare(acc.Hash[:],tx.fromHash[:]) == 0 {
+			hash := serializeHashContent(acc.Address)
+			if hash == tx.fromHash {
 				newAcc := Account{}
 				newAcc = *acc
 				b.stateCopy[tx.fromHash] = &newAcc
@@ -130,7 +123,8 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	//vice versa for receiver account
 	if _,exists := b.stateCopy[tx.toHash]; !exists {
 		for _,acc := range State[tx.To] {
-			if bytes.Compare(acc.Hash[:],tx.toHash[:]) == 0 {
+			hash := serializeHashContent(acc.Address)
+			if hash == tx.toHash {
 				newAcc := Account{}
 				newAcc = *acc
 				b.stateCopy[tx.toHash] = &newAcc
@@ -141,24 +135,24 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	//rootkey doesn't need to get checked for balance
 	//however, txcnt is still increased, makes things a little easiert in the state manipulation
 	if !isRootKey(tx.fromHash) {
-		if (amount+fee) > b.stateCopy[tx.fromHash].Balance {
+		if (tx.Amount+tx.Fee) > b.stateCopy[tx.fromHash].Balance {
 			return errors.New("Not enough funds to complete the transaction!")
 		}
 	}
 
 	//check if txcnt makes sense
-	if b.stateCopy[tx.fromHash].TxCnt != txCnt {
-		err := fmt.Sprintf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)",txCnt, b.stateCopy[tx.fromHash].TxCnt)
+	if b.stateCopy[tx.fromHash].TxCnt != tx.TxCnt {
+		err := fmt.Sprintf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)",tx.TxCnt, b.stateCopy[tx.fromHash].TxCnt)
 		return errors.New(err)
 	}
 
 	accSender := b.stateCopy[tx.fromHash]
 	accSender.TxCnt += 1
-	accSender.Balance -= amount
+	accSender.Balance -= tx.Amount
 	//b.stateCopy[tx.fromHash] = accSender
 
 	accReceiver := b.stateCopy[tx.toHash]
-	accReceiver.Balance += amount
+	accReceiver.Balance += tx.Amount
 
 	b.FundsTxData = append(b.FundsTxData, hashFundsTx(tx))
 	writeOpenFundsTx(tx)
