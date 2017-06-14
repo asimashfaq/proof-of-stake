@@ -1,36 +1,45 @@
 package bc
 
-const(
-	BLOCK_REWARD = 0
-	INTER_BLOCK_TIME = 60 //seconds
-	BLOCKS_PER_DIFF = 5 //in bitcoin, this is 2016
-)
-
 //this are "constants" that can be changed with config transactions
 var FEE_MINIMUM uint64
 var BLOCK_SIZE uint64
-var DIFFICULTY_INTERVAL uint64
+var DIFF_INTERVAL uint64
+var BLOCK_INTERVAL uint64
+var BLOCK_REWARD uint64
 
 var lastBlock *Block
-var timestamp [BLOCKS_PER_DIFF]int64
 var globalBlockCount uint64
-var localBlockCount uint16
+var localBlockCount uint64
 var blockDifficulty uint8
 
-//calculation of block reward, difficulty, etc.
-func getBlockReward() uint64 {
-
-	//might get changed in the future
-	return BLOCK_REWARD
+//new struct only created when at least one parameter changes in a block
+type parameters struct {
+	blockHash [32]byte
+	blockNr uint64
+	//parameter
+	fee_minimum uint64
+	block_size uint64
+	diff_interval uint64
+	block_interval uint64
+	block_reward uint64
 }
 
 func collectStatistics(b *Block) {
 	//we need to make sure that we have the longest chain
 	//long is defined as the added difficulty from the genesis block
+
+	//Careful, this might lead to problems when run on 32-bit systems!, len(...) results an int, whose size
+	//depends on the underlying architecture
+	if uint64(len(timestamp)) <= localBlockCount {
+		newTimeStamp := make([]int64, 2*(len(timestamp)+1))
+		copy(newTimeStamp,timestamp)
+		timestamp = newTimeStamp
+	}
+
 	timestamp[localBlockCount] = b.Timestamp
 	globalBlockCount++
 	localBlockCount++
-	if localBlockCount == BLOCKS_PER_DIFF {
+	if localBlockCount == BLOCK_INTERVAL {
 		calculateNewDifficulty()
 		localBlockCount = 0
 	}

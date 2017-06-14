@@ -59,11 +59,11 @@ func TestFundsStateChangeRollback(t *testing.T) {
 		t.Error("Rollback failed!")
 	}
 	minerBal := minerAcc.Balance
-	collectTxFees(funds,nil,minerAccHash)
+	collectTxFees(funds,nil,nil,minerAccHash)
 	if feeA+feeB != minerAcc.Balance-minerBal {
 		t.Error("Fee Collection failed!")
 	}
-	collectTxFeesRollback(funds,nil,minerAccHash)
+	collectTxFeesRollback(funds,nil,nil,minerAccHash)
 	if minerBal != minerAcc.Balance {
 		t.Error("Fee Collection Rollback failed!")
 	}
@@ -154,11 +154,11 @@ func TestCollectTxFeesRollback(t *testing.T) {
 		fee += tx.Fee
 	}
 
-	collectTxFees(funds,nil,minerHash)
+	collectTxFees(funds,nil,nil,minerHash)
 	if minerBal+fee != minerAcc.Balance {
 		t.Errorf("%v + %v != %v\n", minerBal,fee,minerAcc.Balance)
 	}
-	collectTxFeesRollback(funds,nil,minerHash)
+	collectTxFeesRollback(funds,nil,nil,minerHash)
 	if minerBal != minerAcc.Balance {
 		t.Errorf("Tx fees rollback failed: %v != %v\n", minerBal, minerAcc.Balance)
 	}
@@ -183,7 +183,10 @@ func TestCollectTxFeesRollback(t *testing.T) {
 	accBBal := accB.Balance
 
 	//should throw an error and result in a rollback, because of acc balance overflow
-	if err := stateValidation(funds2,nil,minerHash);
+	tmpBlock := newBlock()
+	tmpBlock.Beneficiary = minerHash
+	data := blockData{funds2,nil,nil,tmpBlock}
+	if err := stateValidation(data);
 		err == nil ||
 		minerBal != minerAcc.Balance ||
 		accA.Balance != accABal ||

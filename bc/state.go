@@ -25,28 +25,6 @@ func getAccountFromHash(hash [32]byte) (*Account) {
 	return nil
 }
 
-//possibility of state change
-//1) exchange funds from tx
-//2) revert funds from previous tx
-//3) this doesn't need a rollback, because digitally signed
-//https://golang.org/doc/faq#stack_or_heap
-func accStateChange(txSlice []*accTx) error {
-
-	for _,tx := range txSlice {
-		var fixedHash [8]byte
-		addressHash := sha3.Sum256(tx.PubKey[:])
-		acc := getAccountFromHash(addressHash)
-		if acc != nil {
-			log.Printf("CRITICAL: Address already exists in the state: %x\n", addressHash[0:4])
-			return errors.New("CRITICAL: Address already exists in the state")
-		}
-		copy(fixedHash[:],addressHash[0:8])
-		newAcc := Account{Address:tx.PubKey}
-		State[fixedHash] = append(State[fixedHash],&newAcc)
-	}
-	return nil
-}
-
 func fundsStateChange(txSlice []*fundsTx) error {
 
 	for index,tx := range txSlice {
@@ -113,10 +91,52 @@ func fundsStateChange(txSlice []*fundsTx) error {
 	return nil
 }
 
-func collectTxFees(fundsTxSlice []*fundsTx, accTxSlice []*accTx, minerHash [32]byte) error {
+//possibility of state change
+//1) exchange funds from tx
+//2) revert funds from previous tx
+//3) this doesn't need a rollback, because digitally signed
+//https://golang.org/doc/faq#stack_or_heap
+func accStateChange(txSlice []*accTx) error {
+
+	for _,tx := range txSlice {
+		var fixedHash [8]byte
+		addressHash := sha3.Sum256(tx.PubKey[:])
+		acc := getAccountFromHash(addressHash)
+		if acc != nil {
+			log.Printf("CRITICAL: Address already exists in the state: %x\n", addressHash[0:4])
+			return errors.New("CRITICAL: Address already exists in the state")
+		}
+		copy(fixedHash[:],addressHash[0:8])
+		newAcc := Account{Address:tx.PubKey}
+		State[fixedHash] = append(State[fixedHash],&newAcc)
+	}
+	return nil
+}
+
+func configStateChange(configTxSlice []*configTx) {
+
+	for _,tx := range configTxSlice {
+		switch tx.Id {
+		case FEE_MINIMUM_ID:
+			FEE_MINIMUM = tx.Payload
+		case BLOCK_SIZE_ID:
+			BLOCK_SIZE = tx.Payload
+		case DIFF_INTERVAL_ID:
+			DIFF_INTERVAL = tx.Payload
+		case BLOCK_INTERVAL_ID:
+			BLOCK_INTERVAL = tx.Payload
+		case BLOCK_REWARD_ID:
+			BLOCK_REWARD = tx.Payload
+		}
+	}
+}
+
+
+func collectTxFees(fundsTxSlice []*fundsTx, accTxSlice []*accTx, configTxSlice []*configTx, minerHash [32]byte) error {
 
 	var tmpFundsTx []*fundsTx
 	var tmpAccTx []*accTx
+	var tmpConfigTx []*configTx
 
 	miner := getAccountFromHash(minerHash)
 
@@ -125,7 +145,7 @@ func collectTxFees(fundsTxSlice []*fundsTx, accTxSlice []*accTx, minerHash [32]b
 		//preventing miner account from overflowing
 		if miner.Balance + tx.Fee > MAX_MONEY {
 			//rollback of all perviously transferred transaction fees to the miner's account
-			collectTxFeesRollback(tmpFundsTx,tmpAccTx,minerHash)
+			collectTxFeesRollback(tmpFundsTx,tmpAccTx,tmpConfigTx,minerHash)
 			log.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", miner.Balance, tx.Fee)
 			return errors.New("Miner balance overflows with transaction fee.\n")
 		}
@@ -140,7 +160,7 @@ func collectTxFees(fundsTxSlice []*fundsTx, accTxSlice []*accTx, minerHash [32]b
 	for _,tx := range accTxSlice {
 		if miner.Balance + tx.Fee > MAX_MONEY {
 			//rollback of all perviously transferred transaction fees to the miner's account
-			collectTxFeesRollback(tmpFundsTx,tmpAccTx,minerHash)
+			collectTxFeesRollback(tmpFundsTx,tmpAccTx,tmpConfigTx,minerHash)
 			log.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", miner.Balance, tx.Fee)
 			return errors.New("Miner balance overflows with transaction fee.\n")
 		}
@@ -150,6 +170,21 @@ func collectTxFees(fundsTxSlice []*fundsTx, accTxSlice []*accTx, minerHash [32]b
 		miner.Balance += tx.Fee
 		tmpAccTx = append(tmpAccTx, tx)
 	}
+
+	for _,tx := range configTxSlice {
+		if miner.Balance + tx.Fee > MAX_MONEY {
+			if miner.Balance + tx.Fee > MAX_MONEY {
+				//rollback of all perviously transferred transaction fees to the miner's account
+				collectTxFeesRollback(tmpFundsTx,tmpAccTx,tmpConfigTx,minerHash)
+				log.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", miner.Balance, tx.Fee)
+				return errors.New("Miner balance overflows with transaction fee.\n")
+			}
+		}
+
+		miner.Balance += tx.Fee
+		tmpConfigTx = append(tmpConfigTx,tx)
+	}
+
 	return nil
 }
 

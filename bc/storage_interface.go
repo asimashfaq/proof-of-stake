@@ -61,6 +61,24 @@ func readClosedAccTx(hash [32]byte) (tx *accTx) {
 	return DecodeAccTx(encodedTx)
 }
 
+func readOpenConfigTx(hash [32]byte) (tx *configTx) {
+
+	encodedTx := storage.ReadOpenTx(hash)
+	if encodedTx == nil {
+		return nil
+	}
+	return DecodeConfigTx(encodedTx)
+}
+
+func readClosedConfigTx(hash [32]byte) (tx *configTx) {
+
+	encodedTx := storage.ReadClosedTx(hash)
+	if encodedTx == nil {
+		return nil
+	}
+	return DecodeConfigTx(encodedTx)
+}
+
 func writeOpenFundsTx(tx *fundsTx) {
 
 	storage.WriteOpenTx(hashFundsTx(tx),EncodeFundsTx(tx))
@@ -81,6 +99,16 @@ func writeClosedAccTx(tx *accTx) {
 	storage.WriteClosedTx(hashAccTx(tx),EncodeAccTx(tx))
 }
 
+func writeOpenConfigTx(tx *configTx) {
+
+	storage.WriteOpenTx(hashConfigTx(tx),EncodeConfigTx(tx))
+}
+
+func writeClosedConfigTx(tx *configTx) {
+
+	storage.WriteClosedTx(hashConfigTx(tx),EncodeConfigTx(tx))
+}
+
 func deleteOpenFundsTx(hash [32]byte) {
 
 	storage.WriteOpenTx(hash,nil)
@@ -98,6 +126,16 @@ func deleteOpenAccTx(hash [32]byte) {
 }
 
 func deleteClosedAccTx(hash [32]byte) {
+
+	storage.WriteClosedTx(hash, nil)
+}
+
+func deleteOpenConfigTx(hash [32]byte) {
+
+	storage.WriteOpenTx(hash, nil)
+}
+
+func deleteClosedConfigTx(hash [32]byte) {
 
 	storage.WriteClosedTx(hash, nil)
 }

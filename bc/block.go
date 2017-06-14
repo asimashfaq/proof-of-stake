@@ -13,11 +13,19 @@ import (
 const (
 	HASH_LEN = 32
 	PROOF_SIZE = 9
-	BLOCKHEADER_SIZE = 150
+	BLOCKHEADER_SIZE = 151
 )
 
 type transaction interface {
 	verify() bool
+}
+
+//acts as a temporary datastructure to fetch the payload of all transactions
+type blockData struct{
+	fundsTxSlice []*fundsTx
+	accTxSlice []*accTx
+	configTxSlice []*configTx
+	block *Block
 }
 
 type Block struct {
@@ -185,7 +193,7 @@ func (b *Block) addConfigTx(tx *configTx) error {
 func (b *Block) finalizeBlock() {
 
 	//merkle tree only built from funds transactions
-	b.MerkleRoot = buildMerkleTree(b.FundsTxData,b.AccTxData)
+	b.MerkleRoot = buildMerkleTree(b.FundsTxData,b.AccTxData,b.ConfigTxData)
 	b.Timestamp = time.Now().Unix()
 	copy(b.Beneficiary[:],MinerHash[:])
 
@@ -200,9 +208,10 @@ func (b *Block) finalizeBlock() {
 		b.Nonce[PROOF_SIZE-len(nonce.Bytes())+index] = val
 	}
 
-	//should this be hashed as well?
+	//this doesn't need to be hashed, because we already have the merkle tree taking care of consistency
 	b.NrFundsTx = uint16(len(b.FundsTxData))
 	b.NrAccTx = uint16(len(b.AccTxData))
+	b.NrConfigTx = uint8(len(b.ConfigTxData))
 
 	log.Printf("Finalized block: %v", b)
 }
@@ -215,12 +224,7 @@ func validateBlock(b *Block) error {
 	//this is necessary, because we need to first validate all blocks (need to fetch tx data)
 	//before doing any state validation, we save all of them temporarily so we don't have to
 	//refetch
-	type txsPerBlock struct{
-		fundsTxSlice []*fundsTx
-		accTxSlice []*accTx
-	}
-
-	combinedTxs := make(map[[32]byte]txsPerBlock)
+	blockDataMap := make(map[[32]byte]blockData)
 
 	blocksToRollback, blocksToValidate := getBlockSequences(b)
 
@@ -231,28 +235,21 @@ func validateBlock(b *Block) error {
 	//if not the whole chain of blocks is valid, we don't consider any of them
 	//this avoids the attack to create a fake long chain with only some blocks valid
 	for _,block := range blocksToValidate {
-		fundsTxs,accTxs,err := preValidation(block)
+		fundsTxs,accTxs,configTxs,err := preValidation(block)
 		if err != nil {
 			return err
 		}
-		combinedTxs[block.Hash] = txsPerBlock{fundsTxs,accTxs}
+		blockDataMap[block.Hash] = blockData{fundsTxs,accTxs, configTxs,block}
 	}
 
 	//no rollback needed, just a new block to validate
 	if len(blocksToRollback) == 0 {
 		for _,block := range blocksToValidate {
-			if err := stateValidation(
-				combinedTxs[block.Hash].fundsTxSlice,
-				combinedTxs[block.Hash].accTxSlice,
-				block.Beneficiary,
-			); err != nil {
+			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				//if one block fails along the way, we just stop, but this is very unlikely to happen
 				return err
 			}
-			postValidation(
-				combinedTxs[block.Hash].fundsTxSlice,
-				combinedTxs[block.Hash].accTxSlice,
-			)
+			postValidation(blockDataMap[block.Hash])
 		}
 	} else {
 		for _,block := range blocksToRollback {
@@ -262,18 +259,11 @@ func validateBlock(b *Block) error {
 			}
 		}
 		for _,block := range blocksToValidate {
-			if err := stateValidation(
-				combinedTxs[block.Hash].fundsTxSlice,
-				combinedTxs[block.Hash].accTxSlice,
-				block.Beneficiary,
-			); err != nil {
+			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				//if one block fails along the way, we just stop, but this is very unlikely to happen
 				return err
 			}
-			postValidation(
-				combinedTxs[block.Hash].fundsTxSlice,
-				combinedTxs[block.Hash].accTxSlice,
-			)
+			postValidation(blockDataMap[block.Hash])
 		}
 	}
 
@@ -283,22 +273,22 @@ func validateBlock(b *Block) error {
 	return nil
 }
 
-func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, err error) {
+func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, configTxSlice []*configTx, err error) {
 	//TODO: make sure none of the transactions are already confirmed
 	//check if fundsTxs is syntactically well-formed and signature is correct
 	for _, txHash := range b.FundsTxData {
 		closeTx := readClosedFundsTx(txHash)
 		if closeTx != nil {
-			return nil,nil,errors.New("Block validation had fundsTx that was already in a previous block")
+			return nil,nil,nil,errors.New("Block validation had fundsTx that was already in a previous block")
 		}
 		tx := readOpenFundsTx(txHash)
 		if tx == nil {
 			//TODO: fetch from the network and make sure not in the confirmed map
-			return nil,nil,errors.New("FundsTx could not be read.")
+			return nil,nil,nil,errors.New("FundsTx could not be read.")
 		}
 
 		if !(tx).verify() {
-			return nil,nil,errors.New("Malformed transaction.")
+			return nil,nil,nil,errors.New("Malformed transaction.")
 		}
 		fundsTxSlice = append(fundsTxSlice,tx)
 	}
@@ -308,12 +298,19 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, err 
 		tx := readOpenAccTx(txHash)
 		if tx == nil {
 			//TODO: fetch from the network and make sure not in the confirmed map
-			return nil,nil,errors.New("AccTx could not be read.")
+			return nil,nil,nil,errors.New("AccTx could not be read.")
 		}
 		if !(tx).verify() {
-			return nil,nil,errors.New("Malformed transaction.")
+			return nil,nil,nil,errors.New("Malformed transaction.")
 		}
 		accTxSlice = append(accTxSlice,tx)
+	}
+
+	for _, txHash := range b.ConfigTxData {
+		tx := readOpenConfigTx(txHash)
+		if tx == nil {
+
+		}
 	}
 
 	startIndex := 0
@@ -327,7 +324,7 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, err 
 
 	partialHash := hashBlock(b)
 	if b.Hash != sha3.Sum256(append(nonce, partialHash[:]...)) || !validateProofOfWork(getDifficulty(), b.Hash) {
-		return nil,nil,errors.New("Proof of work is incorrect.")
+		return nil,nil,nil,errors.New("Proof of work is incorrect.")
 		log.Println("Proof of work is incorrect.")
 
 	}
@@ -335,43 +332,49 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, err 
 	log.Println("Proof of work validation passed.")
 
 	//cmp merkle tree
-	if buildMerkleTree(b.FundsTxData, b.AccTxData) != b.MerkleRoot {
-		return nil,nil,errors.New("Merkle Root incorrect.")
+	if buildMerkleTree(b.FundsTxData, b.AccTxData, b.ConfigTxData) != b.MerkleRoot {
+		return nil,nil,nil,errors.New("Merkle Root incorrect.")
 		log.Println("Merkle Root incorrect.")
 	}
 
 	log.Println("Merkle root hash passed.")
-	return fundsTxSlice,accTxSlice,err
+	return fundsTxSlice,accTxSlice,configTxSlice,err
 }
 
 //apply to State
-func stateValidation(fundsTxSlice []*fundsTx, accTxSlice []*accTx, beneficiary [32]byte) error {
+func stateValidation(data blockData) error {
 
 	//we collect the fundsTx in local memory to rollback when needed
 	//also, we don't want to fetch the same data several times
 
 	//collect all fundsTx
-	if err := fundsStateChange(fundsTxSlice); err != nil {
+	if err := fundsStateChange(data.fundsTxSlice); err != nil {
 		return err
 	}
 
-	if err := accStateChange(accTxSlice); err != nil {
+	if err := accStateChange(data.accTxSlice); err != nil {
 		//block invalid, rollback
-		fundsStateChangeRollback(fundsTxSlice)
+		fundsStateChangeRollback(data.fundsTxSlice)
 		return err
 	}
+
+	//can't result in an error, verify() already excluded all invalid system parameters
+	//needs additionally the block hash
+	configStateChange(data.configTxSlice)
 
 	//both collectTxFees as well as collectBlockReward can throw an error when the balance of the miner overflows
 	//collect fees for both transaction types
-	if err := collectTxFees(fundsTxSlice, accTxSlice, beneficiary); err != nil {
-		accStateChangeRollback(accTxSlice)
-		fundsStateChangeRollback(fundsTxSlice)
+	if err := collectTxFees(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary); err != nil {
+		configStateChangeRollback(data.configTxSlice)
+		accStateChangeRollback(data.accTxSlice)
+		fundsStateChangeRollback(data.fundsTxSlice)
 	}
 	//collect block reward
-	if err := collectBlockReward(getBlockReward(), beneficiary); err != nil {
-		collectTxFeesRollback(fundsTxSlice,accTxSlice,beneficiary)
-		accStateChangeRollback(accTxSlice)
-		fundsStateChangeRollback(fundsTxSlice)
+	if err := collectBlockReward(BLOCK_REWARD, data.block.Beneficiary); err != nil {
+		collectTxFeesRollback(data.fundsTxSlice,data.accTxSlice,data.configTxSlice,data.block.Beneficiary)
+		configStateChangeRollback(data.configTxSlice)
+		accStateChangeRollback(data.accTxSlice)
+		fundsStateChangeRollback(data.fundsTxSlice)
 	}
 
 	log.Print("Block validated and state changed accordingly: \n")
@@ -380,20 +383,43 @@ func stateValidation(fundsTxSlice []*fundsTx, accTxSlice []*accTx, beneficiary [
 	return nil
 }
 
-func postValidation(fundsTxSlice []*fundsTx, accTxSlice []*accTx) {
+func postValidation(data blockData) {
 
 	//put all txs from the block from open to close
-	for _,tx := range fundsTxSlice {
+	for _,tx := range data.fundsTxSlice {
 		hash := hashFundsTx(tx)
 		writeClosedFundsTx(tx)
 		deleteOpenFundsTx(hash)
 	}
 
-	for _,tx := range accTxSlice {
+	for _,tx := range data.accTxSlice {
 		hash := hashAccTx(tx)
 		writeClosedAccTx(tx)
 		deleteOpenAccTx(hash)
 	}
+
+	if len(data.configTxSlice) == 0 {
+		return
+	}
+
+	//block consists of system parameter changes
+	for _,tx := range data.configTxSlice {
+		hash := hashConfigTx(tx)
+		writeClosedConfigTx(tx)
+		deleteOpenConfigTx(hash)
+	}
+
+	activeParameters = parameters{
+		data.block.Hash,
+		globalBlockCount,
+		FEE_MINIMUM,
+		BLOCK_SIZE,
+		DIFF_INTERVAL,
+		BLOCK_INTERVAL,
+		BLOCK_REWARD,
+	}
+
+	parameterSlice = append(parameterSlice,activeParameters)
 }
 
 func hashBlock(b *Block) (hash [32]byte) {
@@ -436,7 +462,8 @@ func encodeBlock(b *Block) (encodedBlock []byte) {
 	encodedBlock = make([]byte,
 		BLOCKHEADER_SIZE +
 		int(b.NrAccTx) * HASH_LEN +
-		int(b.NrFundsTx) * HASH_LEN)
+		int(b.NrFundsTx) * HASH_LEN +
+		int(b.NrConfigTx) * HASH_LEN)
 
 	encodedBlock[0] = b.Header
 
@@ -448,6 +475,7 @@ func encodeBlock(b *Block) (encodedBlock []byte) {
 	copy(encodedBlock[114:146],b.Beneficiary[:])
 	copy(encodedBlock[146:148],nrFundsTx[:])
 	copy(encodedBlock[148:150],nrAccTx[:])
+	encodedBlock[150] = byte(b.NrConfigTx)
 
 	index := BLOCKHEADER_SIZE
 
@@ -457,6 +485,11 @@ func encodeBlock(b *Block) (encodedBlock []byte) {
 	}
 
 	for _,txHash := range b.AccTxData {
+		copy(encodedBlock[index:index+HASH_LEN],txHash[:])
+		index += HASH_LEN
+	}
+
+	for _,txHash := range b.ConfigTxData {
 		copy(encodedBlock[index:index+HASH_LEN],txHash[:])
 		index += HASH_LEN
 	}

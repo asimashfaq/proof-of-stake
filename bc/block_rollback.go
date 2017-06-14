@@ -9,28 +9,30 @@ import (
 //if this is not atomic, we're doomed
 func validateBlockRollback(b *Block) error {
 
-	fundsTxSlice, accTxSlice, err := preValidationRollback(b)
+	fundsTxSlice, accTxSlice, configTxSlice, err := preValidationRollback(b)
 	if err != nil  {
 		return err
 	}
 
-	if  err := stateValidationRollback(fundsTxSlice, accTxSlice, b.Beneficiary); err != nil {
+	data := blockData{fundsTxSlice,accTxSlice, configTxSlice, b}
+
+	if  err := stateValidationRollback(data); err != nil {
 		return err
 	}
 
-	postValidationRollback(fundsTxSlice, accTxSlice)
+	postValidationRollback(data)
 	deleteBlock(b.Hash)
 	return nil
 }
 
-func preValidationRollback(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, err error) {
+func preValidationRollback(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, configTxSlice []*configTx, err error) {
 
 	//fetch all transactions
 	for _,hash := range b.FundsTxData {
 		tx := readClosedFundsTx(hash)
 		if tx == nil {
-			log.Printf("CRITICAL: Validated accTx was not in the confirmed tx storage: %v\n", hash)
-			return nil,nil,errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
+			log.Printf("CRITICAL: Validated fundsTx was not in the confirmed tx storage: %v\n", hash)
+			return nil,nil,nil,errors.New("CRITICAL: Validated fundsTx was not in the confirmed tx storage")
 		}
 		fundsTxSlice = append(fundsTxSlice,tx)
 	}
@@ -39,38 +41,54 @@ func preValidationRollback(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*acc
 		tx := readClosedAccTx(hash)
 		if tx == nil {
 			log.Printf("CRITICAL: Validated accTx was not in the confirmed tx storage: %v\n", hash)
-			return nil,nil,errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
+			return nil,nil,nil,errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
 		}
 		accTxSlice = append(accTxSlice, tx)
 	}
 
-	return fundsTxSlice, accTxSlice, nil
+	for _,hash := range b.ConfigTxData {
+		tx := readClosedConfigTx(hash)
+		if tx == nil {
+			log.Printf("CRITICAL: Validated configTx was not in the confirmed tx storage: %v\n", hash)
+			return nil,nil,nil,errors.New("CRITICAL: Validated configTx was not in the confirmed tx storage")
+		}
+		configTxSlice = append(configTxSlice,tx)
+	}
+
+	return fundsTxSlice, accTxSlice, configTxSlice, nil
 }
 
-func stateValidationRollback(fundsTxSlice []*fundsTx, accTxSlice []*accTx, beneficiary [32]byte) error {
+func stateValidationRollback(data blockData) error {
 
 	//getBlockReward needs to return a constant (same value as originally used as well)
 	//the sequence is important, otherwise we subtract money from an account that does not exist anymore
 	//it's exactly the opposite direction for stateValidation
-	collectBlockRewardRollback(getBlockReward(),beneficiary)
-	collectTxFeesRollback(fundsTxSlice, accTxSlice, beneficiary)
-	accStateChangeRollback(accTxSlice)
-	fundsStateChangeRollback(fundsTxSlice)
+	collectBlockRewardRollback(BLOCK_REWARD,data.block.Beneficiary)
+	collectTxFeesRollback(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary)
+	configStateChangeRollback(data.configTxSlice)
+	accStateChangeRollback(data.accTxSlice)
+	fundsStateChangeRollback(data.fundsTxSlice)
 	return nil
 }
 
-func postValidationRollback(fundsTxSlice []*fundsTx, accTxSlice []*accTx) {
+func postValidationRollback(data blockData) {
 
 	//put all txs from the block from open to close
-	for _,tx := range fundsTxSlice {
+	for _,tx := range data.fundsTxSlice {
 		hash := hashFundsTx(tx)
 		writeOpenFundsTx(tx)
 		deleteClosedFundsTx(hash)
 	}
 
-	for _,tx := range accTxSlice {
+	for _,tx := range data.accTxSlice {
 		hash := hashAccTx(tx)
 		writeOpenAccTx(tx)
 		deleteClosedAccTx(hash)
+	}
+	
+	for _,tx := range data.configTxSlice {
+		hash := hashConfigTx(tx)
+		writeOpenConfigTx(tx)
+		deleteClosedConfigTx(hash)
 	}
 }

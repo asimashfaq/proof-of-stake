@@ -41,7 +41,17 @@ func accStateChangeRollback(txSlice []*accTx) {
 	}
 }
 
-func collectTxFeesRollback(fundsTx []*fundsTx, accTx []*accTx, minerHash [32]byte) {
+func configStateChangeRollback(txSlice []*configTx) {
+
+	if len(txSlice) == 0 {
+		return
+	}
+	//remove the latest entry in the parameters slice
+	copy(parameterSlice[len(parameterSlice)-1:], parameterSlice[len(parameterSlice):])
+	activeParameters = parameterSlice[len(parameterSlice)-1]
+}
+
+func collectTxFeesRollback(fundsTx []*fundsTx, accTx []*accTx, configTx []*configTx, minerHash [32]byte) {
 
 	miner := getAccountFromHash(minerHash)
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)

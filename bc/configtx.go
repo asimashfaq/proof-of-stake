@@ -13,9 +13,27 @@ import (
 
 const(
 	CONFIGTX_SIZE = 82
+
 	BLOCK_SIZE_ID = 1
-	DIFFICULTY_INTERVAL_ID = 2
+	DIFF_INTERVAL_ID = 2
 	FEE_MINIMUM_ID = 3
+	BLOCK_INTERVAL_ID = 4
+	BLOCK_REWARD_ID = 5
+
+	MIN_BLOCK_SIZE = 1000 //1KB
+	MAX_BLOCK_SIZE = 100000000 //100MB
+
+	MIN_DIFF_INTERVAL = 1 //10min for 1min interval
+	MAX_DIFF_INTERVAL = 9223372036854775807
+
+	MIN_FEE_MINIMUM = 0
+	MAX_FEE_MINIMUM = 9223372036854775807
+
+	MIN_BLOCK_INTERVAL = 30 //30 seconds
+	MAX_BLOCK_INTERVAL = 86400 //24 hours
+
+	MIN_BLOCK_REWARD = 0
+	MAX_BLOCK_REWARD = 1152921504606846976 //2^60
 )
 
 type configTx struct {
@@ -68,7 +86,41 @@ func (tx *configTx) verify() bool {
 		}
 	}
 
-	return false
+	return boundsChecking(tx.Id,tx.Payload)
+}
+
+//returns if id is in the list of possible ids and rational value for payload parameter
+func boundsChecking(id uint8, payload uint64) bool {
+
+	switch id {
+	case BLOCK_SIZE_ID:
+		if payload >= MIN_BLOCK_SIZE && payload <= MAX_BLOCK_SIZE {
+			return true
+		}
+		return false
+	case DIFF_INTERVAL_ID:
+		if payload >= MIN_DIFF_INTERVAL && payload <= MAX_DIFF_INTERVAL {
+			return true
+		}
+		return false
+	case FEE_MINIMUM_ID:
+		if payload >= MIN_FEE_MINIMUM && payload <= MAX_FEE_MINIMUM {
+			return true
+		}
+		return false
+	case BLOCK_INTERVAL_ID:
+		if payload >= MIN_BLOCK_INTERVAL && payload <= MAX_BLOCK_INTERVAL {
+			return true
+		}
+		return false
+	case BLOCK_REWARD_ID:
+		if payload >= MIN_BLOCK_REWARD && payload <= MAX_BLOCK_REWARD {
+			return true
+		}
+		return false
+	default:
+		return false
+	}
 }
 
 func hashConfigTx(tx *configTx) (hash [32]byte) {

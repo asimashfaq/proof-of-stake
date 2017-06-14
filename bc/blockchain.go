@@ -34,11 +34,17 @@ var nextBlockAccess sync.Mutex
 
 var txQueue,blockQueue *Queue
 
+var timestamp []int64
+var parameterSlice []parameters
+var activeParameters parameters
+
 func Sync(){
 
 }
 
 func InitSystem() {
+	timestamp = make([]int64, 100000)
+
 	txQueue = NewQueue()
 	blockQueue = NewQueue()
 
@@ -50,10 +56,8 @@ func InitSystem() {
 	LogFile, _ = os.OpenFile("log "+time.Now().String(), os.O_RDWR | os.O_CREATE , 0666)
 	log.SetOutput(LogFile)
 
-	//set up mining account
 
 	log.Println("Starting system, initializing state map")
-
 	genesisBlock := newBlock()
 	collectStatistics(genesisBlock)
 	writeBlock(genesisBlock)
@@ -205,6 +209,4 @@ func testing_setup() {
 
 	State[shortHashA] = append(State[shortHashA],&accA)
 	State[shortHashB] = append(State[shortHashB],&accB)
-
-
 }

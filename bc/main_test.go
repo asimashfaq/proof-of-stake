@@ -114,6 +114,8 @@ func TestMain(m *testing.M) {
 	State = make(map[[8]byte][]*Account)
 	RootKeys = make(map[[32]byte]*Account)
 
+
+
 	storage.Init()
 
 	//genesis block
