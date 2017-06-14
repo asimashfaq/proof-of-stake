@@ -8,6 +8,7 @@ import (
 
 func TestFundsStateChangeRollback(t *testing.T) {
 
+	cleanAndPrepare()
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
 	accAHash := serializeHashContent(accA.Address)
@@ -15,7 +16,7 @@ func TestFundsStateChangeRollback(t *testing.T) {
 	minerAccHash := serializeHashContent(minerAcc.Address)
 
 	var testSize uint32
-	testSize = 1000
+	testSize = 10000
 
 	b := newBlock()
 	var funds []*fundsTx
@@ -37,6 +38,8 @@ func TestFundsStateChangeRollback(t *testing.T) {
 			feeA += ftx.Fee
 
 			balanceB += ftx.Amount
+		} else {
+			t.Errorf("Block rejected a valid transaction: %v\n", ftx)
 		}
 
 		ftx2,_ := ConstrFundsTx(0x01,rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accBHash, accAHash, &PrivKeyB)
@@ -46,10 +49,10 @@ func TestFundsStateChangeRollback(t *testing.T) {
 			feeB += ftx2.Fee
 
 			balanceA += ftx2.Amount
+		} else {
+			t.Errorf("Block rejected a valid transaction: %v\n", ftx2)
 		}
 	}
-	getAccountFromHash(accAHash).TxCnt = 0
-	getAccountFromHash(accBHash).TxCnt = 0
 	fundsStateChange(funds)
 	if accA.Balance != balanceA || accB.Balance != balanceB {
 		t.Error("State update failed!")
@@ -58,15 +61,8 @@ func TestFundsStateChangeRollback(t *testing.T) {
 	if accA.Balance != rollBackA || accB.Balance != rollBackB {
 		t.Error("Rollback failed!")
 	}
-	minerBal := minerAcc.Balance
-	collectTxFees(funds,nil,nil,minerAccHash)
-	if feeA+feeB != minerAcc.Balance-minerBal {
-		t.Error("Fee Collection failed!")
-	}
-	collectTxFeesRollback(funds,nil,nil,minerAccHash)
-	if minerBal != minerAcc.Balance {
-		t.Error("Fee Collection Rollback failed!")
-	}
+
+	//collectTxFees is checked below in its own test (to additionally cover overflow scenario)
 	balBeforeRew := minerAcc.Balance
 	reward := 5
 	collectBlockReward(uint64(reward),minerAccHash)
@@ -81,6 +77,7 @@ func TestFundsStateChangeRollback(t *testing.T) {
 
 func TestAccStateChangeRollback(t *testing.T) {
 
+	cleanAndPrepare()
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
 	var testSize uint32
@@ -133,8 +130,16 @@ func TestAccStateChangeRollback(t *testing.T) {
 	}
 }
 
+func TestConfigStateChangeRollback(t *testing.T) {
+	cleanAndPrepare()
+
+
+
+}
+
 func TestCollectTxFeesRollback(t *testing.T) {
 
+	cleanAndPrepare()
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
 	var funds, funds2 []*fundsTx
@@ -163,8 +168,6 @@ func TestCollectTxFeesRollback(t *testing.T) {
 		t.Errorf("Tx fees rollback failed: %v != %v\n", minerBal, minerAcc.Balance)
 	}
 
-
-
 	minerAcc.Balance = MAX_MONEY-100
 	var fee2 uint64
 	minerBal = minerAcc.Balance
@@ -175,13 +178,8 @@ func TestCollectTxFeesRollback(t *testing.T) {
 		fee2 += tx.Fee
 	}
 
-	accA.Balance = 123456789
-	accB.Balance = 234357348
-	//this tests fundsStateChange and collectTxFees (which will fail because of overflow)
-
 	accABal := accA.Balance
 	accBBal := accB.Balance
-
 	//should throw an error and result in a rollback, because of acc balance overflow
 	tmpBlock := newBlock()
 	tmpBlock.Beneficiary = minerHash
@@ -193,8 +191,4 @@ func TestCollectTxFeesRollback(t *testing.T) {
 		accB.Balance != accBBal {
 		t.Errorf("No rollback resulted, %v != %v\n", minerBal, minerAcc.Balance)
 	}
-}
-
-func TestCollectBlockRewardRollback(t *testing.T) {
-
 }

@@ -242,6 +242,7 @@ func validateBlock(b *Block) error {
 		blockDataMap[block.Hash] = blockData{fundsTxs,accTxs, configTxs,block}
 	}
 
+
 	//no rollback needed, just a new block to validate
 	if len(blocksToRollback) == 0 {
 		for _,block := range blocksToValidate {
@@ -360,7 +361,7 @@ func stateValidation(data blockData) error {
 
 	//can't result in an error, verify() already excluded all invalid system parameters
 	//needs additionally the block hash
-	configStateChange(data.configTxSlice)
+	configStateChange(data.configTxSlice,data.block.Hash)
 
 	//both collectTxFees as well as collectBlockReward can throw an error when the balance of the miner overflows
 	//collect fees for both transaction types
@@ -398,28 +399,12 @@ func postValidation(data blockData) {
 		deleteOpenAccTx(hash)
 	}
 
-	if len(data.configTxSlice) == 0 {
-		return
-	}
-
 	//block consists of system parameter changes
 	for _,tx := range data.configTxSlice {
 		hash := hashConfigTx(tx)
 		writeClosedConfigTx(tx)
 		deleteOpenConfigTx(hash)
 	}
-
-	activeParameters = parameters{
-		data.block.Hash,
-		globalBlockCount,
-		FEE_MINIMUM,
-		BLOCK_SIZE,
-		DIFF_INTERVAL,
-		BLOCK_INTERVAL,
-		BLOCK_REWARD,
-	}
-
-	parameterSlice = append(parameterSlice,activeParameters)
 }
 
 func hashBlock(b *Block) (hash [32]byte) {
@@ -524,6 +509,7 @@ func decodeBlock(encodedBlock []byte) (b *Block) {
 	copy(b.Beneficiary[:],encodedBlock[114:146])
 	b.NrFundsTx = nrFundsTx
 	b.NrAccTx = nrAccTx
+	b.NrConfigTx = uint8(encodedBlock[150])
 
 	index := BLOCKHEADER_SIZE
 
@@ -540,6 +526,12 @@ func decodeBlock(encodedBlock []byte) (b *Block) {
 		index += HASH_LEN
 	}
 
+	for cnt := 0; cnt < int(b.NrConfigTx); cnt++ {
+		copy(hash[:],encodedBlock[index:index+HASH_LEN])
+		b.ConfigTxData = append(b.ConfigTxData,hash)
+		index += HASH_LEN
+	}
+
 	return b
 }
 
@@ -552,7 +544,8 @@ func (b Block) String() string {
 		"MerkleRoot: %x\n" +
 		"Beneficiary: %x\n" +
 		"Amount of fundsTx: %v\n" +
-		"Amount of txData: %v\n",
+		"Amount of accTx: %v\n" +
+		"Amount of configTx: %v\n",
 		b.Hash[0:8],
 		b.PrevHash[0:8],
 		b.Header,
@@ -562,5 +555,6 @@ func (b Block) String() string {
 		b.Beneficiary[0:8],
 		b.NrFundsTx,
 		b.NrAccTx,
+		b.NrConfigTx,
 	)
 }

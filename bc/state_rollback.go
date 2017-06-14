@@ -48,7 +48,7 @@ func configStateChangeRollback(txSlice []*configTx) {
 	}
 	//remove the latest entry in the parameters slice
 	copy(parameterSlice[len(parameterSlice)-1:], parameterSlice[len(parameterSlice):])
-	activeParameters = parameterSlice[len(parameterSlice)-1]
+	activeParameters = &parameterSlice[len(parameterSlice)-1]
 }
 
 func collectTxFeesRollback(fundsTx []*fundsTx, accTx []*accTx, configTx []*configTx, minerHash [32]byte) {

@@ -47,13 +47,11 @@ func addTestingAccounts() {
 		privb,
 	}
 
-	accA.Balance = 123232345678
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
 	accAHash := serializeHashContent(accA.Address)
 
 	//This one is just for testing purposes
-	accB.Balance = 823237654321
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
 	accBHash := serializeHashContent(accB.Address)
@@ -108,6 +106,50 @@ func addRootAccounts() {
 	RootKeys[rootHash] = &rootAcc
 }
 
+func cleanAndPrepare() {
+
+	deleteEverything()
+
+	tmpState := make(map[[8]byte][]*Account)
+	tmpRootKeys := make(map[[32]byte]*Account)
+
+	State = tmpState
+	RootKeys = tmpRootKeys
+
+
+	genesis := newBlock()
+	lastBlock = genesis
+	writeBlock(genesis)
+
+	localBlockCount = 0
+	globalBlockCount = 0
+
+	var tmpSlice []parameters
+	var tmpTimestamp []int64
+
+	timestamp = tmpTimestamp
+
+	tmpSlice = append(tmpSlice,parameters{
+		[32]byte{},
+		1,
+		1000,
+		2016,
+		60,
+		0,
+	})
+	parameterSlice = tmpSlice
+
+
+	addTestingAccounts()
+	addRootAccounts()
+
+	minerAcc.Balance = 0
+	accA.Balance = 123232345678
+	accB.Balance = 823237654321
+	accA.TxCnt = 0
+	accB.TxCnt = 0
+}
+
 func TestMain(m *testing.M) {
 
 	//initialize states
@@ -115,6 +157,16 @@ func TestMain(m *testing.M) {
 	RootKeys = make(map[[32]byte]*Account)
 
 
+	//set system parameters
+	parameterSlice = append(parameterSlice,parameters{
+		[32]byte{},
+		1,
+		1000,
+		2016,
+		60,
+		0,
+	})
+	activeParameters = &parameterSlice[0]
 
 	storage.Init()
 

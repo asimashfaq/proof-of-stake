@@ -14,6 +14,18 @@ func Init() {
 }
 
 //debugging, will be removed later
+func DeleteEverything() {
+	for key,_ := range blocks {
+		delete(blocks,key)
+	}
+	for key,_ := range opentxs {
+		delete(opentxs,key)
+	}
+	for key,_ := range closedtxs {
+		delete(closedtxs,key)
+	}
+}
+
 func PrintOpenTxs() {
 	fmt.Println("OpenTxs:")
 	for hash := range opentxs {

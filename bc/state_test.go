@@ -4,11 +4,13 @@ import (
 	"math/rand"
 	"testing"
 	"time"
+	"reflect"
 )
 
 //Testing state change, rollback and fee collection
 func TestFundsTxStateChange(t *testing.T) {
 
+	cleanAndPrepare()
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
 	accAHash := serializeHashContent(accA.Address)
@@ -28,6 +30,7 @@ func TestFundsTxStateChange(t *testing.T) {
 	accB.Balance = 2947939489348234
 	balanceA := accA.Balance
 	balanceB := accB.Balance
+	minerBal := minerAcc.Balance
 
 	loopMax := int(rand.Uint32()%testSize+1)
 	for i := 0; i < loopMax+1; i++ {
@@ -50,13 +53,6 @@ func TestFundsTxStateChange(t *testing.T) {
 		}
 	}
 
-	getAccountFromHash(accAHash).TxCnt = 0
-	getAccountFromHash(accBHash).TxCnt = 0
-
-
-	//we have another test that checks overflows, have to set the balance to a fixed lower value
-	minerAcc.Balance = 123456
-	minerBal := minerAcc.Balance
 	fundsStateChange(funds)
 
 	if accA.Balance != balanceA || accB.Balance != balanceB {
@@ -78,6 +74,7 @@ func TestFundsTxStateChange(t *testing.T) {
 
 func TestAccountOverflow(t *testing.T) {
 
+	cleanAndPrepare()
 	var accSlice []*fundsTx
 	accAHash := serializeHashContent(accA.Address)
 	accBHash := serializeHashContent(accB.Address)
@@ -101,6 +98,7 @@ func TestAccountOverflow(t *testing.T) {
 
 func TestAccTxStateChange(t *testing.T) {
 
+	cleanAndPrepare()
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
 	var testSize uint32
@@ -140,13 +138,47 @@ func TestConfigTxStateChange(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 	var testSize uint32
 	testSize = 1000
-	var accs []*accTx
+	var configs []*configTx
 
 	loopMax := int(rand.Uint32()%testSize)+1
 	for i := 0; i < loopMax; i++ {
-		tx,_ := ConstrAccTx(rand.Uint64()%1000,&RootPrivKey)
-		accs = append(accs, tx)
+		tx,err := ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1),rand.Uint64()%10000000, rand.Uint64(), &RootPrivKey)
+		if err != nil {
+			t.Errorf("ConfigTx Creation failed (%v)\n", err)
+		}
+		if tx.verify() {
+			configs = append(configs, tx)
+		}
+	}
+	parameterSet := *activeParameters
+	tmpLen := len(parameterSlice)
+	configStateChange(configs, [32]byte{'0','1'})
+	parameterSet2 := *activeParameters
+	if tmpLen != len(parameterSlice)-1 || reflect.DeepEqual(parameterSet,parameterSet2) {
+		t.Errorf("Config State Change malfunctioned: %v != %v\n", tmpLen, len(parameterSlice)-1)
 	}
 
+	cleanAndPrepare()
+	var configs2 []*configTx
+	//test the inner workings of configStateChange as well...
+	tx,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 1,1000, rand.Uint64(), &RootPrivKey)
+	tx2,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 2,2000, rand.Uint64(), &RootPrivKey)
+	tx3,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 3,3000, rand.Uint64(), &RootPrivKey)
+	tx4,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 4,4000, rand.Uint64(), &RootPrivKey)
+	tx5,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 5,5000, rand.Uint64(), &RootPrivKey)
 
+	configs2 = append(configs2,tx)
+	configs2 = append(configs2,tx2)
+	configs2 = append(configs2,tx3)
+	configs2 = append(configs2,tx4)
+	configs2 = append(configs2,tx5)
+
+	configStateChange(configs2,[32]byte{})
+	if BLOCK_SIZE != 1000 ||
+		DIFF_INTERVAL != 2000 ||
+		FEE_MINIMUM != 3000 ||
+		BLOCK_INTERVAL != 4000 ||
+		BLOCK_REWARD != 5000 {
+		t.Error("Config StateChanged didn't set the correct parameters!")
+	}
 }

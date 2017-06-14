@@ -36,14 +36,13 @@ var txQueue,blockQueue *Queue
 
 var timestamp []int64
 var parameterSlice []parameters
-var activeParameters parameters
+var activeParameters *parameters
 
 func Sync(){
 
 }
 
 func InitSystem() {
-	timestamp = make([]int64, 100000)
 
 	txQueue = NewQueue()
 	blockQueue = NewQueue()

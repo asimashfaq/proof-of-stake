@@ -82,11 +82,11 @@ func (tx *configTx) verify() bool {
 		pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
 		txHash := hashConfigTx(tx)
 		if ecdsa.Verify(&pubKey,txHash[:],r,s) == true {
-			return true
+			return boundsChecking(tx.Id,tx.Payload)
 		}
 	}
 
-	return boundsChecking(tx.Id,tx.Payload)
+	return false
 }
 
 //returns if id is in the list of possible ids and rational value for payload parameter

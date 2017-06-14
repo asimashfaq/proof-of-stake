@@ -143,3 +143,7 @@ func deleteClosedConfigTx(hash [32]byte) {
 func deleteBlock(hash [32]byte) {
 	storage.WriteBlock(hash, nil)
 }
+
+func deleteEverything() {
+	storage.DeleteEverything()
+}

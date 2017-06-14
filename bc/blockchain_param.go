@@ -15,7 +15,6 @@ var blockDifficulty uint8
 //new struct only created when at least one parameter changes in a block
 type parameters struct {
 	blockHash [32]byte
-	blockNr uint64
 	//parameter
 	fee_minimum uint64
 	block_size uint64

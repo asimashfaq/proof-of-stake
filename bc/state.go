@@ -113,7 +113,7 @@ func accStateChange(txSlice []*accTx) error {
 	return nil
 }
 
-func configStateChange(configTxSlice []*configTx) {
+func configStateChange(configTxSlice []*configTx, blockHash [32]byte) {
 
 	for _,tx := range configTxSlice {
 		switch tx.Id {
@@ -129,6 +129,15 @@ func configStateChange(configTxSlice []*configTx) {
 			BLOCK_REWARD = tx.Payload
 		}
 	}
+	parameterSlice = append(parameterSlice,parameters{
+		blockHash,
+		FEE_MINIMUM,
+		BLOCK_SIZE,
+		DIFF_INTERVAL,
+		BLOCK_INTERVAL,
+		BLOCK_REWARD,
+	})
+	activeParameters = &parameterSlice[len(parameterSlice)-1]
 }
 
 

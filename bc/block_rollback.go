@@ -85,7 +85,7 @@ func postValidationRollback(data blockData) {
 		writeOpenAccTx(tx)
 		deleteClosedAccTx(hash)
 	}
-	
+
 	for _,tx := range data.configTxSlice {
 		hash := hashConfigTx(tx)
 		writeOpenConfigTx(tx)

@@ -7,6 +7,8 @@ import (
 
 func TestValidateBlockRollback(t *testing.T) {
 
+	cleanAndPrepare()
+
 	//this is our pre-block state
 	var accs []Account
 	for _,accSlice := range State {
@@ -15,8 +17,6 @@ func TestValidateBlockRollback(t *testing.T) {
 		}
 	}
 
-	genesis := newBlock()
-	lastBlock = genesis
 	b := newBlock()
 	createBlockWithTxs(b)
 	b.finalizeBlock()
