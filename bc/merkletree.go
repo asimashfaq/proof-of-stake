@@ -50,6 +50,11 @@ func buildMerkleTree(txHashSlice ...[][32]byte) ([32]byte) {
 		}
 	}
 
+	//if there are arguments, but all are nil (if not caught -> sefault)
+	if len(completeSlice) == 0 {
+		return [32]byte{}
+	}
+
 	stepOver := -1
 	var leftChild, rightChild, parentChild *merkleNode
 	var cumulativeHash []byte

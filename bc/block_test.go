@@ -4,8 +4,8 @@ import (
 	"testing"
 	"math/rand"
 	"time"
-	"reflect"
 	"fmt"
+	"reflect"
 )
 
 //Tests block adding, verification, serialization and deserialization
@@ -18,9 +18,7 @@ func TestBlock(t *testing.T) {
 	b.finalizeBlock()
 
 	encodedBlock := encodeBlock(b)
-	fmt.Printf("%v\n", b)
 	decodedBlock := decodeBlock(encodedBlock)
-	fmt.Printf("%v\n", decodedBlock)
 	err := validateBlock(decodedBlock)
 
 	b.stateCopy = nil
@@ -51,7 +49,7 @@ func TestMultipleBlocks(t *testing.T) {
 	createBlockWithTxs(b)
 	b.finalizeBlock()
 	if err := validateBlock(b); err != nil {
-		t.Errorf("Block failed: %v\n", b)
+		t.Errorf("Block validation for (%v) failed: %v\n", b, err)
 	}
 
 	b2 := newBlock()
@@ -60,6 +58,22 @@ func TestMultipleBlocks(t *testing.T) {
 	b2.finalizeBlock()
 	if err := validateBlock(b2); err != nil {
 		t.Errorf("Block failed: %v\n", b2)
+	}
+
+	b3 := newBlock()
+	b3.PrevHash = b2.Hash
+	createBlockWithTxs(b3)
+	b3.finalizeBlock()
+	if err := validateBlock(b3); err != nil {
+		t.Errorf("Block failed: %v\n", b3)
+	}
+
+	b4 := newBlock()
+	b4.PrevHash = b3.Hash
+	createBlockWithTxs(b4)
+	b4.finalizeBlock()
+	if err := validateBlock(b4); err != nil {
+		t.Errorf("Block failed: %v\n", b4)
 	}
 }
 
@@ -82,6 +96,7 @@ func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
 		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accAHash, accBHash, &PrivKeyA)
 		if err := b.addTx(tx); err == nil {
 			hashFundsSlice = append(hashFundsSlice, hashFundsTx(tx))
+			writeOpenFundsTx(tx)
 		}
 	}
 
@@ -90,14 +105,21 @@ func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
 		tx, _ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
 		if err := b.addTx(tx); err == nil {
 			hashAccSlice = append(hashAccSlice, hashAccTx(tx))
+			writeOpenAccTx(tx)
 		}
 	}
 
-	loopMax = int(rand.Uint32() % testSize)+1
+	//NrConfigTx is saved in a uint8
+	loopMax = int(rand.Uint32() % 255)+1
 	for cnt := 0; cnt < loopMax; cnt++ {
-		tx,_:= ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1),rand.Uint64(), rand.Uint64(), &RootPrivKey)
+		tx,_:= ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1),rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
+		//don't mess with the minimum fee
+		if tx.Id == 3 {
+			continue
+		}
 		if err := b.addTx(tx); err == nil {
 			hashConfigSlice = append(hashConfigSlice, hashConfigTx(tx))
+			writeOpenConfigTx(tx)
 		}
 	}
 

@@ -182,14 +182,11 @@ func collectTxFees(fundsTxSlice []*fundsTx, accTxSlice []*accTx, configTxSlice [
 
 	for _,tx := range configTxSlice {
 		if miner.Balance + tx.Fee > MAX_MONEY {
-			if miner.Balance + tx.Fee > MAX_MONEY {
-				//rollback of all perviously transferred transaction fees to the miner's account
-				collectTxFeesRollback(tmpFundsTx,tmpAccTx,tmpConfigTx,minerHash)
-				log.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", miner.Balance, tx.Fee)
-				return errors.New("Miner balance overflows with transaction fee.\n")
-			}
+			//rollback of all perviously transferred transaction fees to the miner's account
+			collectTxFeesRollback(tmpFundsTx,tmpAccTx,tmpConfigTx,minerHash)
+			log.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", miner.Balance, tx.Fee)
+			return errors.New("Miner balance overflows with transaction fee.\n")
 		}
-
 		miner.Balance += tx.Fee
 		tmpConfigTx = append(tmpConfigTx,tx)
 	}

@@ -73,16 +73,19 @@ func (b *Block) addTx(tx transaction) error {
 		err := b.addFundsTx(tx.(*fundsTx))
 		if err != nil {
 			log.Printf("Adding fundsTx tx failed (%v): %v\n",err, tx.(*fundsTx))
+			return err
 		}
 	case *accTx:
 		err := b.addAccTx(tx.(*accTx))
 		if err != nil {
 			log.Printf("Adding accTx tx failed (%v): %v\n", err,tx.(*accTx))
+			return err
 		}
 	case *configTx:
 		err := b.addConfigTx(tx.(*configTx))
 		if err != nil {
 			log.Printf("Adding configTx tx failed (%v): %v\n", err,tx.(*configTx))
+			return err
 		}
 	default:
 		return errors.New("Transaction type not recognized.")
@@ -93,7 +96,7 @@ func (b *Block) addTx(tx transaction) error {
 
 func (b *Block) addFundsTx(tx *fundsTx) error {
 
-	//I think we don't have to check for nil here as well, since this was already implicitly done with addTx(...)
+		//I think we don't have to check for nil here as well, since this was already implicitly done with addTx(...)
 	if tx.Fee < FEE_MINIMUM {
 		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
 		return errors.New(err)
@@ -187,11 +190,12 @@ func (b *Block) addConfigTx(tx *configTx) error {
 	}
 
 	b.ConfigTxData = append(b.ConfigTxData,hashConfigTx(tx))
+	writeOpenConfigTx(tx)
+	log.Printf("Added tx to the ConfigTxData slice: %v", *tx)
 	return nil
 }
 
 func (b *Block) finalizeBlock() {
-
 	//merkle tree only built from funds transactions
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData,b.AccTxData,b.ConfigTxData)
 	b.Timestamp = time.Now().Unix()
@@ -212,8 +216,6 @@ func (b *Block) finalizeBlock() {
 	b.NrFundsTx = uint16(len(b.FundsTxData))
 	b.NrAccTx = uint16(len(b.AccTxData))
 	b.NrConfigTx = uint8(len(b.ConfigTxData))
-
-	log.Printf("Finalized block: %v", b)
 }
 
 //this function needs to be split into block syntax/PoW check and actual state change
@@ -242,7 +244,6 @@ func validateBlock(b *Block) error {
 		blockDataMap[block.Hash] = blockData{fundsTxs,accTxs, configTxs,block}
 	}
 
-
 	//no rollback needed, just a new block to validate
 	if len(blocksToRollback) == 0 {
 		for _,block := range blocksToValidate {
@@ -253,13 +254,12 @@ func validateBlock(b *Block) error {
 			postValidation(blockDataMap[block.Hash])
 		}
 	} else {
-		for _,block := range blocksToRollback {
-			err := validateBlockRollback(block)
-			if err != nil {
-				log.Print(err)
+		for _, block := range blocksToRollback {
+			if err := validateBlockRollback(block); err != nil {
+				return err
 			}
 		}
-		for _,block := range blocksToValidate {
+		for _, block := range blocksToValidate {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				//if one block fails along the way, we just stop, but this is very unlikely to happen
 				return err
@@ -310,8 +310,13 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, conf
 	for _, txHash := range b.ConfigTxData {
 		tx := readOpenConfigTx(txHash)
 		if tx == nil {
-
+			//TODO: fetch from the network and make sure not in the confirmed map
+			return nil,nil,nil,errors.New("ConfigTx could not be read.")
 		}
+		if !(tx).verify() {
+			return nil,nil,nil,errors.New("Malformed transaction.")
+		}
+		configTxSlice = append(configTxSlice,tx)
 	}
 
 	startIndex := 0
@@ -344,7 +349,6 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, conf
 
 //apply to State
 func stateValidation(data blockData) error {
-
 	//we collect the fundsTx in local memory to rollback when needed
 	//also, we don't want to fetch the same data several times
 
@@ -369,6 +373,7 @@ func stateValidation(data blockData) error {
 		configStateChangeRollback(data.configTxSlice)
 		accStateChangeRollback(data.accTxSlice)
 		fundsStateChangeRollback(data.fundsTxSlice)
+		return err
 	}
 	//collect block reward
 	if err := collectBlockReward(BLOCK_REWARD, data.block.Beneficiary); err != nil {
@@ -376,6 +381,7 @@ func stateValidation(data blockData) error {
 		configStateChangeRollback(data.configTxSlice)
 		accStateChangeRollback(data.accTxSlice)
 		fundsStateChangeRollback(data.fundsTxSlice)
+		return err
 	}
 
 	log.Print("Block validated and state changed accordingly: \n")

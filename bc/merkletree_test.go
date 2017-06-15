@@ -55,3 +55,16 @@ func TestBuildMerkleTree(t *testing.T) {
 		t.Errorf("Hashes don't match: %x != %x\n", serializeHashContent(finalHash), buildMerkleTree(hashSlice,hashSlice2,hashSlice3))
 	}
 }
+
+func TestEmptyMerkleTree(t *testing.T) {
+
+	//nil slices
+	if !([32]byte{} == buildMerkleTree(nil,nil,nil,nil)) {
+		t.Error("Empty Merkle Tree calculation failed\n")
+	}
+
+	//no slices at all
+	if !([32]byte{} == buildMerkleTree()) {
+		t.Error("Empty Merkle Tree calculation failed\n")
+	}
+}

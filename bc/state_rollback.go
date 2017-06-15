@@ -46,8 +46,8 @@ func configStateChangeRollback(txSlice []*configTx) {
 	if len(txSlice) == 0 {
 		return
 	}
-	//remove the latest entry in the parameters slice
-	copy(parameterSlice[len(parameterSlice)-1:], parameterSlice[len(parameterSlice):])
+	//remove the latest entry in the parameters slice$
+	parameterSlice = parameterSlice[:len(parameterSlice)-1]
 	activeParameters = &parameterSlice[len(parameterSlice)-1]
 }
 
@@ -64,6 +64,11 @@ func collectTxFeesRollback(fundsTx []*fundsTx, accTx []*accTx, configTx []*confi
 
 	for _,tx := range accTx {
 		//money gets created from thin air
+		//no need to subtract money from root key
+		miner.Balance -= tx.Fee
+	}
+
+	for _,tx := range configTx {
 		//no need to subtract money from root key
 		miner.Balance -= tx.Fee
 	}

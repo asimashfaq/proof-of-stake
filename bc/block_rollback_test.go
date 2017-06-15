@@ -8,37 +8,30 @@ import (
 func TestValidateBlockRollback(t *testing.T) {
 
 	cleanAndPrepare()
+	b := newBlock()
 
-	//this is our pre-block state
-	var accs []Account
-	for _,accSlice := range State {
-		for _,acc := range accSlice {
-			accs = append(accs,*acc)
-		}
+	var stateCopy map[[8]byte][]*Account
+	stateCopy = make(map[[8]byte][]*Account)
+
+	for k, v := range State {
+		stateCopy[k] = v
 	}
 
-	b := newBlock()
 	createBlockWithTxs(b)
 	b.finalizeBlock()
-
 	validateBlock(b)
 
-	//maybe also add the Open/ClosedTx memory check for postValidationRollback
-	if len(State) == len(accs) {
-		t.Error("Block validation failed!\n")
+	if reflect.DeepEqual(stateCopy, State) {
+		t.Error("State wasn't changed despite validating a block!")
 	}
 
 	validateBlockRollback(b)
-	//we need to have the same acc state as before
-	if len(State) != len(accs) {
-		t.Errorf("Rollback failed: len(State) = %v vs. len(accs) = %v\n", len(State), len(accs))
-	}
 
-	for _,acc := range accs {
-		accHash := serializeHashContent(acc.Address)
-		stateAcc := getAccountFromHash(accHash)
-		if !reflect.DeepEqual(*stateAcc,acc) {
-			t.Errorf("The following accounts were not the same after the rollback\n%v\n\nvs.\n\n%v\n", stateAcc,acc)
-		}
+	if !reflect.DeepEqual(stateCopy, State) {
+		t.Error("State wasn't rolled back")
 	}
+}
+
+func TestMultipleBlocksRollback(t *testing.T) {
+
 }
