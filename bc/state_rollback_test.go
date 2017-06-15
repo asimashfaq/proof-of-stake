@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 	"math/rand"
+	"reflect"
 )
 
 func TestFundsStateChangeRollback(t *testing.T) {
@@ -133,8 +134,29 @@ func TestAccStateChangeRollback(t *testing.T) {
 func TestConfigStateChangeRollback(t *testing.T) {
 	cleanAndPrepare()
 
+	var configSlice []*configTx
 
+	tx,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 1,1000, rand.Uint64(), &RootPrivKey)
+	tx2,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 2,2000, rand.Uint64(), &RootPrivKey)
+	tx3,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 3,3000, rand.Uint64(), &RootPrivKey)
+	tx4,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 4,4000, rand.Uint64(), &RootPrivKey)
+	tx5,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 5,5000, rand.Uint64(), &RootPrivKey)
 
+	configSlice = append(configSlice,tx)
+	configSlice = append(configSlice,tx2)
+	configSlice = append(configSlice,tx3)
+	configSlice = append(configSlice,tx4)
+	configSlice = append(configSlice,tx5)
+
+	before := *activeParameters
+	configStateChange(configSlice, [32]byte{})
+	if reflect.DeepEqual(before,*activeParameters) {
+		t.Error("No config state change.")
+	}
+	configStateChangeRollback(configSlice)
+	if !reflect.DeepEqual(before,*activeParameters) {
+		t.Error("Config state rollback failed.")
+	}
 }
 
 func TestCollectTxFeesRollback(t *testing.T) {

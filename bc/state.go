@@ -115,6 +115,10 @@ func accStateChange(txSlice []*accTx) error {
 
 func configStateChange(configTxSlice []*configTx, blockHash [32]byte) {
 
+	if len(configTxSlice) == 0 {
+		return
+	}
+
 	for _,tx := range configTxSlice {
 		switch tx.Id {
 		case FEE_MINIMUM_ID:

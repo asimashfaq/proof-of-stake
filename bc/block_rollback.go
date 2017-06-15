@@ -21,7 +21,6 @@ func validateBlockRollback(b *Block) error {
 	}
 
 	postValidationRollback(data)
-	deleteBlock(b.Hash)
 	return nil
 }
 
@@ -63,9 +62,12 @@ func stateValidationRollback(data blockData) error {
 	//getBlockReward needs to return a constant (same value as originally used as well)
 	//the sequence is important, otherwise we subtract money from an account that does not exist anymore
 	//it's exactly the opposite direction for stateValidation
-	collectBlockRewardRollback(BLOCK_REWARD,data.block.Beneficiary)
-	collectTxFeesRollback(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary)
+
+	//this has to go first, because the block that was mined, was mined with previous set system parameters
 	configStateChangeRollback(data.configTxSlice)
+
+	collectBlockRewardRollback(activeParameters.block_reward,data.block.Beneficiary)
+	collectTxFeesRollback(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary)
 	accStateChangeRollback(data.accTxSlice)
 	fundsStateChangeRollback(data.fundsTxSlice)
 	return nil
@@ -91,4 +93,7 @@ func postValidationRollback(data blockData) {
 		writeOpenConfigTx(tx)
 		deleteClosedConfigTx(hash)
 	}
+
+	collectStatisticsRollback(data.block)
+	deleteBlock(data.block.Hash)
 }

@@ -116,7 +116,6 @@ func cleanAndPrepare() {
 	State = tmpState
 	RootKeys = tmpRootKeys
 
-
 	genesis := newBlock()
 	lastBlock = genesis
 	writeBlock(genesis)
@@ -138,7 +137,7 @@ func cleanAndPrepare() {
 		0,
 	})
 	parameterSlice = tmpSlice
-
+	activeParameters = &parameterSlice[0]
 
 	addTestingAccounts()
 	addRootAccounts()

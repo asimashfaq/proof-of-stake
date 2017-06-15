@@ -80,7 +80,7 @@ func TestMultipleBlocks(t *testing.T) {
 func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
 
 	var testSize uint32
-	testSize = 1000
+	testSize = 1
 
 	var hashFundsSlice [][32]byte
 	var hashAccSlice [][32]byte

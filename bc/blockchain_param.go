@@ -48,6 +48,11 @@ func collectStatistics(b *Block) {
 
 func collectStatisticsRollback(b *Block) {
 
+	timestamp[localBlockCount] = 0
+	globalBlockCount--
+	localBlockCount--
+	newLastBlock := readBlock(b.PrevHash)
+	lastBlock = newLastBlock
 }
 
 func getBlockSequences(newBlock *Block) (blocksToRollback, blocksToValidate []*Block) {

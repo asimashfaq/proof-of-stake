@@ -268,9 +268,6 @@ func validateBlock(b *Block) error {
 		}
 	}
 
-	writeBlock(b)
-	collectStatistics(b)
-
 	return nil
 }
 
@@ -365,20 +362,17 @@ func stateValidation(data blockData) error {
 
 	//can't result in an error, verify() already excluded all invalid system parameters
 	//needs additionally the block hash
-	configStateChange(data.configTxSlice,data.block.Hash)
 
 	//both collectTxFees as well as collectBlockReward can throw an error when the balance of the miner overflows
 	//collect fees for both transaction types
 	if err := collectTxFees(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary); err != nil {
-		configStateChangeRollback(data.configTxSlice)
 		accStateChangeRollback(data.accTxSlice)
 		fundsStateChangeRollback(data.fundsTxSlice)
 		return err
 	}
 	//collect block reward
-	if err := collectBlockReward(BLOCK_REWARD, data.block.Beneficiary); err != nil {
+	if err := collectBlockReward(activeParameters.block_reward, data.block.Beneficiary); err != nil {
 		collectTxFeesRollback(data.fundsTxSlice,data.accTxSlice,data.configTxSlice,data.block.Beneficiary)
-		configStateChangeRollback(data.configTxSlice)
 		accStateChangeRollback(data.accTxSlice)
 		fundsStateChangeRollback(data.fundsTxSlice)
 		return err
@@ -411,6 +405,12 @@ func postValidation(data blockData) {
 		writeClosedConfigTx(tx)
 		deleteOpenConfigTx(hash)
 	}
+
+
+	//the new system parameters get active if the block was successfully validated
+	configStateChange(data.configTxSlice,data.block.Hash)
+	writeBlock(data.block)
+	collectStatistics(data.block)
 }
 
 func hashBlock(b *Block) (hash [32]byte) {
