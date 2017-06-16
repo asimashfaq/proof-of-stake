@@ -198,3 +198,21 @@ func (tx configTx) String() string {
 		tx.Fee,
 	)
 }
+
+func (param parameters) String() string {
+	return fmt.Sprintf(
+	"\n" +
+		"Block Hash: %x\n" +
+		"Block size: %v\n" +
+		"Difficulty interval: %v\n" +
+		"Fee minimum: %v\n" +
+		"Block interval: %v\n" +
+		"Block reward: %v\n",
+		param.blockHash[0:8],
+		param.block_size,
+		param.diff_interval,
+		param.fee_minimum,
+		param.block_interval,
+		param.block_reward,
+	)
+}

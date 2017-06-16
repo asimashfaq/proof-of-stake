@@ -60,11 +60,11 @@ func newBlock() *Block {
 func (b *Block) addTx(tx transaction) error {
 	//verifies correctness for the specific transaction
 	//i'd actually like to use !(&tx).verify to pass by pointer, but golang doesn't allow this
+
 	if !(tx).verify() {
 		log.Printf("Transaction could not be verified: %v\n", tx)
 		return errors.New("Transaction could not be verified.")
 	}
-
 	//it would be much nicer if we could do a minimal fee check here, but this isn't so easy
 	//with the lack of OOP support from golang. It would require to access "parent data" (tx.Fee),
 	//so I'll just check for both FundsTx and AccTx
@@ -96,7 +96,11 @@ func (b *Block) addTx(tx transaction) error {
 
 func (b *Block) addFundsTx(tx *fundsTx) error {
 
-		//I think we don't have to check for nil here as well, since this was already implicitly done with addTx(...)
+	//I think we don't have to check for nil here as well, since this was already implicitly done with addTx(...)
+	if readClosedFundsTx(hashFundsTx(tx)) != nil {
+		return errors.New("This transaction was already included in a previous block.")
+	}
+
 	if tx.Fee < FEE_MINIMUM {
 		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
 		return errors.New(err)
@@ -161,6 +165,10 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 
 func (b *Block) addAccTx(tx *accTx) error {
 
+	if readClosedAccTx(hashAccTx(tx)) != nil {
+		return errors.New("This transaction was already included in a previous block.")
+	}
+
 	if tx.Fee < FEE_MINIMUM {
 		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
 		return errors.New(err)
@@ -183,6 +191,10 @@ func (b *Block) addAccTx(tx *accTx) error {
 }
 
 func (b *Block) addConfigTx(tx *configTx) error {
+
+	if readClosedConfigTx(hashConfigTx(tx)) != nil {
+		return errors.New("This transaction was already included in a previous block.")
+	}
 
 	if tx.Fee < FEE_MINIMUM {
 		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
@@ -409,8 +421,8 @@ func postValidation(data blockData) {
 
 	//the new system parameters get active if the block was successfully validated
 	configStateChange(data.configTxSlice,data.block.Hash)
-	writeBlock(data.block)
 	collectStatistics(data.block)
+	writeBlock(data.block)
 }
 
 func hashBlock(b *Block) (hash [32]byte) {

@@ -129,7 +129,9 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	}
 
 	//STARTING ROLLBACKS---------------------------------------------
-	validateBlockRollback(b4)
+	if err := validateBlockRollback(b4); err != nil {
+		t.Errorf("%v\n", err)
+	}
 	for _, accSlice := range State {
 		for _, acc := range accSlice {
 			tmpState[acc.Address] = *acc
@@ -144,7 +146,9 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		delete(tmpState, k)
 	}
 
-	validateBlockRollback(b3)
+	if err := validateBlockRollback(b3); err != nil {
+		t.Errorf("%v\n", err)
+	}
 	for _, accSlice := range State {
 		for _, acc := range accSlice {
 			tmpState[acc.Address] = *acc
@@ -166,7 +170,9 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		delete(tmpState, k)
 	}
 
-	validateBlockRollback(b2)
+	if err := validateBlockRollback(b2); err != nil {
+		t.Errorf("%v\n", err)
+	}
 	for _, accSlice := range State {
 		for _, acc := range accSlice {
 			tmpState[acc.Address] = *acc
@@ -179,7 +185,9 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		delete(tmpState, k)
 	}
 
-	validateBlockRollback(b)
+	if err := validateBlockRollback(b); err != nil {
+		t.Errorf("%v\n", err)
+	}
 	for _, accSlice := range State {
 		for _, acc := range accSlice {
 			tmpState[acc.Address] = *acc
@@ -190,11 +198,5 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	}
 	for k := range tmpState {
 		delete(tmpState, k)
-	}
-
-	for key,val := range State {
-		for _,acc := range val {
-			fmt.Printf("%x: %v\n", key[0:8], acc)
-		}
 	}
 }

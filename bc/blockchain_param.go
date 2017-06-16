@@ -28,7 +28,7 @@ func collectStatistics(b *Block) {
 	//long is defined as the added difficulty from the genesis block
 
 	//Careful, this might lead to problems when run on 32-bit systems!, len(...) results an int, whose size
-	//depends on the underlying architecture
+	// /depends on the underlying architecture
 	if uint64(len(timestamp)) <= localBlockCount {
 		newTimeStamp := make([]int64, 2*(len(timestamp)+1))
 		copy(newTimeStamp,timestamp)
@@ -36,8 +36,11 @@ func collectStatistics(b *Block) {
 	}
 
 	timestamp[localBlockCount] = b.Timestamp
+
 	globalBlockCount++
 	localBlockCount++
+
+
 	if localBlockCount == BLOCK_INTERVAL {
 		calculateNewDifficulty()
 		localBlockCount = 0
@@ -48,9 +51,11 @@ func collectStatistics(b *Block) {
 
 func collectStatisticsRollback(b *Block) {
 
-	timestamp[localBlockCount] = 0
 	globalBlockCount--
 	localBlockCount--
+
+	timestamp[int(localBlockCount)] = 0
+
 	newLastBlock := readBlock(b.PrevHash)
 	lastBlock = newLastBlock
 }

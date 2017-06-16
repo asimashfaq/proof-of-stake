@@ -3,6 +3,7 @@ package bc
 import (
 	"log"
 	"errors"
+	"fmt"
 )
 
 //for blocks that already have been validated but were overwritten by a longer chain
@@ -16,6 +17,8 @@ func validateBlockRollback(b *Block) error {
 
 	data := blockData{fundsTxSlice,accTxSlice, configTxSlice, b}
 
+	//before manipulating the state, we need to go back to pre-block system parameters
+	configStateChangeRollback(data.configTxSlice)
 	if  err := stateValidationRollback(data); err != nil {
 		return err
 	}
@@ -48,6 +51,7 @@ func preValidationRollback(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*acc
 	for _,hash := range b.ConfigTxData {
 		tx := readClosedConfigTx(hash)
 		if tx == nil {
+			fmt.Printf("###%x\n", hash)
 			log.Printf("CRITICAL: Validated configTx was not in the confirmed tx storage: %v\n", hash)
 			return nil,nil,nil,errors.New("CRITICAL: Validated configTx was not in the confirmed tx storage")
 		}
@@ -64,8 +68,6 @@ func stateValidationRollback(data blockData) error {
 	//it's exactly the opposite direction for stateValidation
 
 	//this has to go first, because the block that was mined, was mined with previous set system parameters
-	configStateChangeRollback(data.configTxSlice)
-
 	collectBlockRewardRollback(activeParameters.block_reward,data.block.Beneficiary)
 	collectTxFeesRollback(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary)
 	accStateChangeRollback(data.accTxSlice)

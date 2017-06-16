@@ -116,12 +116,13 @@ func cleanAndPrepare() {
 	State = tmpState
 	RootKeys = tmpRootKeys
 
-	genesis := newBlock()
-	lastBlock = genesis
-	writeBlock(genesis)
-
 	localBlockCount = 0
 	globalBlockCount = 0
+	genesis := newBlock()
+	collectStatistics(genesis)
+	writeBlock(genesis)
+
+
 
 	var tmpSlice []parameters
 	var tmpTimestamp []int64
@@ -155,24 +156,7 @@ func TestMain(m *testing.M) {
 	State = make(map[[8]byte][]*Account)
 	RootKeys = make(map[[32]byte]*Account)
 
-
-	//set system parameters
-	parameterSlice = append(parameterSlice,parameters{
-		[32]byte{},
-		1,
-		1000,
-		2016,
-		60,
-		0,
-	})
-	activeParameters = &parameterSlice[0]
-
 	storage.Init()
-
-	//genesis block
-	genesis := newBlock()
-	writeBlock(genesis)
-	collectStatistics(genesis)
 
 	//setting a new random seed
 	addTestingAccounts()

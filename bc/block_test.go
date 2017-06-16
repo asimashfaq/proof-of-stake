@@ -2,10 +2,10 @@ package bc
 
 import (
 	"testing"
-	"math/rand"
 	"time"
 	"fmt"
 	"reflect"
+	"math/rand"
 )
 
 //Tests block adding, verification, serialization and deserialization
@@ -80,7 +80,7 @@ func TestMultipleBlocks(t *testing.T) {
 func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
 
 	var testSize uint32
-	testSize = 1
+	testSize = 1000
 
 	var hashFundsSlice [][32]byte
 	var hashAccSlice [][32]byte
@@ -113,6 +113,7 @@ func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
 	loopMax = int(rand.Uint32() % 255)+1
 	for cnt := 0; cnt < loopMax; cnt++ {
 		tx,_:= ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1),rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
+
 		//don't mess with the minimum fee
 		if tx.Id == 3 {
 			continue

@@ -4,6 +4,7 @@ import (
 	"log"
 	"golang.org/x/crypto/sha3"
 	"errors"
+	"fmt"
 )
 
 func isRootKey(hash [32]byte) (bool) {
@@ -124,6 +125,9 @@ func configStateChange(configTxSlice []*configTx, blockHash [32]byte) {
 		case FEE_MINIMUM_ID:
 			FEE_MINIMUM = tx.Payload
 		case BLOCK_SIZE_ID:
+			if tx.Payload == 0 {
+				fmt.Printf("¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬%v\n", tx)
+			}
 			BLOCK_SIZE = tx.Payload
 		case DIFF_INTERVAL_ID:
 			DIFF_INTERVAL = tx.Payload
