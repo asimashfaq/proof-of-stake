@@ -1,9 +1,17 @@
 package storage
 
+import "github.com/boltdb/bolt"
+
 func WriteBlock(hash [32]byte, encodedBlock []byte) {
 
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("bc"))
+		err := b.Put(hash[:], encodedBlock)
+		return err
+	})
+
 	if encodedBlock == nil {
-		delete(blocks,hash)
+		delete(blocks, hash)
 		return
 	}
 	blocks[hash] = encodedBlock
@@ -14,7 +22,7 @@ func WriteBlock(hash [32]byte, encodedBlock []byte) {
 func WriteOpenTx(hash [32]byte, encodedTx []byte) {
 
 	if encodedTx == nil {
-		delete(opentxs,hash)
+		delete(opentxs, hash)
 		return
 	}
 	opentxs[hash] = encodedTx
@@ -23,7 +31,7 @@ func WriteOpenTx(hash [32]byte, encodedTx []byte) {
 func WriteClosedTx(hash [32]byte, encodedTx []byte) {
 
 	if encodedTx == nil {
-		delete(closedtxs,hash)
+		delete(closedtxs, hash)
 		return
 	}
 	closedtxs[hash] = encodedTx

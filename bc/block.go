@@ -1,18 +1,18 @@
 package bc
 
 import (
-	"golang.org/x/crypto/sha3"
-	"time"
-	"errors"
-	"log"
-	"fmt"
 	"bytes"
 	"encoding/binary"
+	"errors"
+	"fmt"
+	"golang.org/x/crypto/sha3"
+	"log"
+	"time"
 )
 
 const (
-	HASH_LEN = 32
-	PROOF_SIZE = 9
+	HASH_LEN         = 32
+	PROOF_SIZE       = 9
 	BLOCKHEADER_SIZE = 151
 )
 
@@ -21,28 +21,28 @@ type transaction interface {
 }
 
 //acts as a temporary datastructure to fetch the payload of all transactions
-type blockData struct{
-	fundsTxSlice []*fundsTx
-	accTxSlice []*accTx
+type blockData struct {
+	fundsTxSlice  []*fundsTx
+	accTxSlice    []*accTx
 	configTxSlice []*configTx
-	block *Block
+	block         *Block
 }
 
 type Block struct {
-	Header byte
-	Hash [32]byte
-	PrevHash [32]byte
-	Nonce [PROOF_SIZE]byte //72-bit, enough even if the network gets really large
-	Timestamp int64
-	MerkleRoot [32]byte
+	Header      byte
+	Hash        [32]byte
+	PrevHash    [32]byte
+	Nonce       [PROOF_SIZE]byte //72-bit, enough even if the network gets really large
+	Timestamp   int64
+	MerkleRoot  [32]byte
 	Beneficiary [32]byte
-	NrFundsTx uint16
-	NrAccTx uint16
-	NrConfigTx uint8
+	NrFundsTx   uint16
+	NrAccTx     uint16
+	NrConfigTx  uint8
 	//this field will not be exported, this is just to avoid race conditions for the global state
-	stateCopy map[[32]byte]*Account
-	FundsTxData [][32]byte
-	AccTxData [][32]byte
+	stateCopy    map[[32]byte]*Account
+	FundsTxData  [][32]byte
+	AccTxData    [][32]byte
 	ConfigTxData [][32]byte
 }
 
@@ -72,19 +72,19 @@ func (b *Block) addTx(tx transaction) error {
 	case *fundsTx:
 		err := b.addFundsTx(tx.(*fundsTx))
 		if err != nil {
-			log.Printf("Adding fundsTx tx failed (%v): %v\n",err, tx.(*fundsTx))
+			log.Printf("Adding fundsTx tx failed (%v): %v\n", err, tx.(*fundsTx))
 			return err
 		}
 	case *accTx:
 		err := b.addAccTx(tx.(*accTx))
 		if err != nil {
-			log.Printf("Adding accTx tx failed (%v): %v\n", err,tx.(*accTx))
+			log.Printf("Adding accTx tx failed (%v): %v\n", err, tx.(*accTx))
 			return err
 		}
 	case *configTx:
 		err := b.addConfigTx(tx.(*configTx))
 		if err != nil {
-			log.Printf("Adding configTx tx failed (%v): %v\n", err,tx.(*configTx))
+			log.Printf("Adding configTx tx failed (%v): %v\n", err, tx.(*configTx))
 			return err
 		}
 	default:
@@ -107,8 +107,8 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	}
 
 	//checking if the sender account is already in the local state copy
-	if _,exists := b.stateCopy[tx.fromHash]; !exists {
-		for _,acc := range State[tx.From] {
+	if _, exists := b.stateCopy[tx.fromHash]; !exists {
+		for _, acc := range State[tx.From] {
 			hash := serializeHashContent(acc.Address)
 			if hash == tx.fromHash {
 				newAcc := Account{}
@@ -119,8 +119,8 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	}
 
 	//vice versa for receiver account
-	if _,exists := b.stateCopy[tx.toHash]; !exists {
-		for _,acc := range State[tx.To] {
+	if _, exists := b.stateCopy[tx.toHash]; !exists {
+		for _, acc := range State[tx.To] {
 			hash := serializeHashContent(acc.Address)
 			if hash == tx.toHash {
 				newAcc := Account{}
@@ -133,19 +133,19 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	//rootkey doesn't need to get checked for balance
 	//however, txcnt is still increased, makes things a little easiert in the state manipulation
 	if !isRootKey(tx.fromHash) {
-		if (tx.Amount+tx.Fee) > b.stateCopy[tx.fromHash].Balance {
+		if (tx.Amount + tx.Fee) > b.stateCopy[tx.fromHash].Balance {
 			return errors.New("Not enough funds to complete the transaction!")
 		}
 	}
 
 	//check if txcnt makes sense
 	if b.stateCopy[tx.fromHash].TxCnt != tx.TxCnt {
-		err := fmt.Sprintf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)",tx.TxCnt, b.stateCopy[tx.fromHash].TxCnt)
+		err := fmt.Sprintf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)", tx.TxCnt, b.stateCopy[tx.fromHash].TxCnt)
 		return errors.New(err)
 	}
 
 	//don't add tx if amount leads to overflow at receiver acc (amount == 0 has already been checked with verify())
-	if b.stateCopy[tx.toHash].Balance + tx.Amount > MAX_MONEY {
+	if b.stateCopy[tx.toHash].Balance+tx.Amount > MAX_MONEY {
 		err := fmt.Sprintf("Transaction amount (%v) leads to overflow at receiver account balance (%v).\n", tx.Amount, b.stateCopy[tx.toHash].Balance)
 		return errors.New(err)
 	}
@@ -177,14 +177,14 @@ func (b *Block) addAccTx(tx *accTx) error {
 	//at this point the tx has already been verified
 	var mapId [8]byte
 	accHash := sha3.Sum256(tx.PubKey[:])
-	copy(mapId[:],accHash[0:8])
-	for _,j := range State[mapId] {
-		if bytes.Compare(tx.PubKey[:],j.Address[:]) == 0 {
+	copy(mapId[:], accHash[0:8])
+	for _, j := range State[mapId] {
+		if bytes.Compare(tx.PubKey[:], j.Address[:]) == 0 {
 			return errors.New("Account already exists.")
 		}
 	}
 
-	b.AccTxData = append(b.AccTxData,hashAccTx(tx))
+	b.AccTxData = append(b.AccTxData, hashAccTx(tx))
 	writeOpenAccTx(tx)
 	log.Printf("Added tx to the AccTxData slice: %v", *tx)
 	return nil
@@ -201,7 +201,7 @@ func (b *Block) addConfigTx(tx *configTx) error {
 		return errors.New(err)
 	}
 
-	b.ConfigTxData = append(b.ConfigTxData,hashConfigTx(tx))
+	b.ConfigTxData = append(b.ConfigTxData, hashConfigTx(tx))
 	writeOpenConfigTx(tx)
 	log.Printf("Added tx to the ConfigTxData slice: %v", *tx)
 	return nil
@@ -209,18 +209,18 @@ func (b *Block) addConfigTx(tx *configTx) error {
 
 func (b *Block) finalizeBlock() {
 	//merkle tree only built from funds transactions
-	b.MerkleRoot = buildMerkleTree(b.FundsTxData,b.AccTxData,b.ConfigTxData)
+	b.MerkleRoot = buildMerkleTree(b.FundsTxData, b.AccTxData, b.ConfigTxData)
 	b.Timestamp = time.Now().Unix()
-	copy(b.Beneficiary[:],MinerHash[:])
+	copy(b.Beneficiary[:], MinerHash[:])
 
 	//anonymous struct
 	partialHash := hashBlock(b)
 	nonce := proofOfWork(getDifficulty(), partialHash)
-	b.Hash = sha3.Sum256(append(nonce.Bytes(),partialHash[:]...))
+	b.Hash = sha3.Sum256(append(nonce.Bytes(), partialHash[:]...))
 
 	//we need to write the proof at the end of the fixed-size byte array of length 9
 	//needs to be decoded by the receiver
-	for index,val := range nonce.Bytes() {
+	for index, val := range nonce.Bytes() {
 		b.Nonce[PROOF_SIZE-len(nonce.Bytes())+index] = val
 	}
 
@@ -248,17 +248,17 @@ func validateBlock(b *Block) error {
 
 	//if not the whole chain of blocks is valid, we don't consider any of them
 	//this avoids the attack to create a fake long chain with only some blocks valid
-	for _,block := range blocksToValidate {
-		fundsTxs,accTxs,configTxs,err := preValidation(block)
+	for _, block := range blocksToValidate {
+		fundsTxs, accTxs, configTxs, err := preValidation(block)
 		if err != nil {
 			return err
 		}
-		blockDataMap[block.Hash] = blockData{fundsTxs,accTxs, configTxs,block}
+		blockDataMap[block.Hash] = blockData{fundsTxs, accTxs, configTxs, block}
 	}
 
 	//no rollback needed, just a new block to validate
 	if len(blocksToRollback) == 0 {
-		for _,block := range blocksToValidate {
+		for _, block := range blocksToValidate {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				//if one block fails along the way, we just stop, but this is very unlikely to happen
 				return err
@@ -289,18 +289,18 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, conf
 	for _, txHash := range b.FundsTxData {
 		closeTx := readClosedFundsTx(txHash)
 		if closeTx != nil {
-			return nil,nil,nil,errors.New("Block validation had fundsTx that was already in a previous block")
+			return nil, nil, nil, errors.New("Block validation had fundsTx that was already in a previous block")
 		}
 		tx := readOpenFundsTx(txHash)
 		if tx == nil {
 			//TODO: fetch from the network and make sure not in the confirmed map
-			return nil,nil,nil,errors.New("FundsTx could not be read.")
+			return nil, nil, nil, errors.New("FundsTx could not be read.")
 		}
 
 		if !(tx).verify() {
-			return nil,nil,nil,errors.New("Malformed transaction.")
+			return nil, nil, nil, errors.New("Malformed transaction.")
 		}
-		fundsTxSlice = append(fundsTxSlice,tx)
+		fundsTxSlice = append(fundsTxSlice, tx)
 	}
 
 	//check if accTxs are syntactically well-formed and signature is correct
@@ -308,24 +308,24 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, conf
 		tx := readOpenAccTx(txHash)
 		if tx == nil {
 			//TODO: fetch from the network and make sure not in the confirmed map
-			return nil,nil,nil,errors.New("AccTx could not be read.")
+			return nil, nil, nil, errors.New("AccTx could not be read.")
 		}
 		if !(tx).verify() {
-			return nil,nil,nil,errors.New("Malformed transaction.")
+			return nil, nil, nil, errors.New("Malformed transaction.")
 		}
-		accTxSlice = append(accTxSlice,tx)
+		accTxSlice = append(accTxSlice, tx)
 	}
 
 	for _, txHash := range b.ConfigTxData {
 		tx := readOpenConfigTx(txHash)
 		if tx == nil {
 			//TODO: fetch from the network and make sure not in the confirmed map
-			return nil,nil,nil,errors.New("ConfigTx could not be read.")
+			return nil, nil, nil, errors.New("ConfigTx could not be read.")
 		}
 		if !(tx).verify() {
-			return nil,nil,nil,errors.New("Malformed transaction.")
+			return nil, nil, nil, errors.New("Malformed transaction.")
 		}
-		configTxSlice = append(configTxSlice,tx)
+		configTxSlice = append(configTxSlice, tx)
 	}
 
 	startIndex := 0
@@ -339,7 +339,7 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, conf
 
 	partialHash := hashBlock(b)
 	if b.Hash != sha3.Sum256(append(nonce, partialHash[:]...)) || !validateProofOfWork(getDifficulty(), b.Hash) {
-		return nil,nil,nil,errors.New("Proof of work is incorrect.")
+		return nil, nil, nil, errors.New("Proof of work is incorrect.")
 		log.Println("Proof of work is incorrect.")
 
 	}
@@ -348,12 +348,12 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, conf
 
 	//cmp merkle tree
 	if buildMerkleTree(b.FundsTxData, b.AccTxData, b.ConfigTxData) != b.MerkleRoot {
-		return nil,nil,nil,errors.New("Merkle Root incorrect.")
+		return nil, nil, nil, errors.New("Merkle Root incorrect.")
 		log.Println("Merkle Root incorrect.")
 	}
 
 	log.Println("Merkle root hash passed.")
-	return fundsTxSlice,accTxSlice,configTxSlice,err
+	return fundsTxSlice, accTxSlice, configTxSlice, err
 }
 
 //apply to State
@@ -384,7 +384,7 @@ func stateValidation(data blockData) error {
 	}
 	//collect block reward
 	if err := collectBlockReward(activeParameters.block_reward, data.block.Beneficiary); err != nil {
-		collectTxFeesRollback(data.fundsTxSlice,data.accTxSlice,data.configTxSlice,data.block.Beneficiary)
+		collectTxFeesRollback(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary)
 		accStateChangeRollback(data.accTxSlice)
 		fundsStateChangeRollback(data.fundsTxSlice)
 		return err
@@ -399,28 +399,27 @@ func stateValidation(data blockData) error {
 func postValidation(data blockData) {
 
 	//put all txs from the block from open to close
-	for _,tx := range data.fundsTxSlice {
+	for _, tx := range data.fundsTxSlice {
 		hash := hashFundsTx(tx)
 		writeClosedFundsTx(tx)
 		deleteOpenFundsTx(hash)
 	}
 
-	for _,tx := range data.accTxSlice {
+	for _, tx := range data.accTxSlice {
 		hash := hashAccTx(tx)
 		writeClosedAccTx(tx)
 		deleteOpenAccTx(hash)
 	}
 
 	//block consists of system parameter changes
-	for _,tx := range data.configTxSlice {
+	for _, tx := range data.configTxSlice {
 		hash := hashConfigTx(tx)
 		writeClosedConfigTx(tx)
 		deleteOpenConfigTx(hash)
 	}
 
-
 	//the new system parameters get active if the block was successfully validated
-	configStateChange(data.configTxSlice,data.block.Hash)
+	configStateChange(data.configTxSlice, data.block.Hash)
 	collectStatistics(data.block)
 	writeBlock(data.block)
 }
@@ -431,7 +430,7 @@ func hashBlock(b *Block) (hash [32]byte) {
 
 	blockToHash := struct {
 		prevHash    [32]byte
-		header     uint8
+		header      uint8
 		timestamp   int64
 		merkleRoot  [32]byte
 		beneficiary [32]byte
@@ -443,7 +442,7 @@ func hashBlock(b *Block) (hash [32]byte) {
 		b.Beneficiary,
 	}
 
-	binary.Write(&buf,binary.BigEndian, blockToHash)
+	binary.Write(&buf, binary.BigEndian, blockToHash)
 	return sha3.Sum256(buf.Bytes())
 }
 
@@ -463,37 +462,37 @@ func encodeBlock(b *Block) (encodedBlock []byte) {
 
 	//reserve space
 	encodedBlock = make([]byte,
-		BLOCKHEADER_SIZE +
-		int(b.NrAccTx) * HASH_LEN +
-		int(b.NrFundsTx) * HASH_LEN +
-		int(b.NrConfigTx) * HASH_LEN)
+		BLOCKHEADER_SIZE+
+			int(b.NrAccTx)*HASH_LEN+
+			int(b.NrFundsTx)*HASH_LEN+
+			int(b.NrConfigTx)*HASH_LEN)
 
 	encodedBlock[0] = b.Header
 
-	copy(encodedBlock[1:33],b.Hash[:])
-	copy(encodedBlock[33:65],b.PrevHash[:])
-	copy(encodedBlock[65:74],b.Nonce[:])
-	copy(encodedBlock[74:82],timeStamp[:])
-	copy(encodedBlock[82:114],b.MerkleRoot[:])
-	copy(encodedBlock[114:146],b.Beneficiary[:])
-	copy(encodedBlock[146:148],nrFundsTx[:])
-	copy(encodedBlock[148:150],nrAccTx[:])
+	copy(encodedBlock[1:33], b.Hash[:])
+	copy(encodedBlock[33:65], b.PrevHash[:])
+	copy(encodedBlock[65:74], b.Nonce[:])
+	copy(encodedBlock[74:82], timeStamp[:])
+	copy(encodedBlock[82:114], b.MerkleRoot[:])
+	copy(encodedBlock[114:146], b.Beneficiary[:])
+	copy(encodedBlock[146:148], nrFundsTx[:])
+	copy(encodedBlock[148:150], nrAccTx[:])
 	encodedBlock[150] = byte(b.NrConfigTx)
 
 	index := BLOCKHEADER_SIZE
 
-	for _,txHash := range b.FundsTxData {
-		copy(encodedBlock[index:index+HASH_LEN],txHash[:])
+	for _, txHash := range b.FundsTxData {
+		copy(encodedBlock[index:index+HASH_LEN], txHash[:])
 		index += HASH_LEN
 	}
 
-	for _,txHash := range b.AccTxData {
-		copy(encodedBlock[index:index+HASH_LEN],txHash[:])
+	for _, txHash := range b.AccTxData {
+		copy(encodedBlock[index:index+HASH_LEN], txHash[:])
 		index += HASH_LEN
 	}
 
-	for _,txHash := range b.ConfigTxData {
-		copy(encodedBlock[index:index+HASH_LEN],txHash[:])
+	for _, txHash := range b.ConfigTxData {
+		copy(encodedBlock[index:index+HASH_LEN], txHash[:])
 		index += HASH_LEN
 	}
 
@@ -519,12 +518,12 @@ func decodeBlock(encodedBlock []byte) (b *Block) {
 	timeStamp = int64(timeStampTmp)
 
 	b.Header = encodedBlock[0]
-	copy(b.Hash[:],encodedBlock[1:33])
-	copy(b.PrevHash[:],encodedBlock[33:65])
-	copy(b.Nonce[:],encodedBlock[65:74])
+	copy(b.Hash[:], encodedBlock[1:33])
+	copy(b.PrevHash[:], encodedBlock[33:65])
+	copy(b.Nonce[:], encodedBlock[65:74])
 	b.Timestamp = timeStamp
-	copy(b.MerkleRoot[:],encodedBlock[82:114])
-	copy(b.Beneficiary[:],encodedBlock[114:146])
+	copy(b.MerkleRoot[:], encodedBlock[82:114])
+	copy(b.Beneficiary[:], encodedBlock[114:146])
 	b.NrFundsTx = nrFundsTx
 	b.NrAccTx = nrAccTx
 	b.NrConfigTx = uint8(encodedBlock[150])
@@ -533,20 +532,20 @@ func decodeBlock(encodedBlock []byte) (b *Block) {
 
 	var hash [32]byte
 	for cnt := 0; cnt < int(nrFundsTx); cnt++ {
-		copy(hash[:],encodedBlock[index:index+HASH_LEN])
-		b.FundsTxData = append(b.FundsTxData,hash)
+		copy(hash[:], encodedBlock[index:index+HASH_LEN])
+		b.FundsTxData = append(b.FundsTxData, hash)
 		index += HASH_LEN
 	}
 
 	for cnt := 0; cnt < int(nrAccTx); cnt++ {
-		copy(hash[:],encodedBlock[index:index+HASH_LEN])
-		b.AccTxData = append(b.AccTxData,hash)
+		copy(hash[:], encodedBlock[index:index+HASH_LEN])
+		b.AccTxData = append(b.AccTxData, hash)
 		index += HASH_LEN
 	}
 
 	for cnt := 0; cnt < int(b.NrConfigTx); cnt++ {
-		copy(hash[:],encodedBlock[index:index+HASH_LEN])
-		b.ConfigTxData = append(b.ConfigTxData,hash)
+		copy(hash[:], encodedBlock[index:index+HASH_LEN])
+		b.ConfigTxData = append(b.ConfigTxData, hash)
 		index += HASH_LEN
 	}
 
@@ -554,15 +553,15 @@ func decodeBlock(encodedBlock []byte) (b *Block) {
 }
 
 func (b Block) String() string {
-	return fmt.Sprintf("\nHash: %x\n" +
-		"Previous Hash: %x\n" +
-		"Header: %v\n" +
-		"Nonce: %x\n" +
-		"Timestamp: %v\n" +
-		"MerkleRoot: %x\n" +
-		"Beneficiary: %x\n" +
-		"Amount of fundsTx: %v\n" +
-		"Amount of accTx: %v\n" +
+	return fmt.Sprintf("\nHash: %x\n"+
+		"Previous Hash: %x\n"+
+		"Header: %v\n"+
+		"Nonce: %x\n"+
+		"Timestamp: %v\n"+
+		"MerkleRoot: %x\n"+
+		"Beneficiary: %x\n"+
+		"Amount of fundsTx: %v\n"+
+		"Amount of accTx: %v\n"+
 		"Amount of configTx: %v\n",
 		b.Hash[0:8],
 		b.PrevHash[0:8],

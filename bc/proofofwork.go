@@ -1,8 +1,8 @@
 package bc
 
 import (
-	"math/big"
 	"golang.org/x/crypto/sha3"
+	"math/big"
 )
 
 func validateProofOfWork(diff uint8, hash [32]byte) bool {
@@ -27,10 +27,10 @@ func proofOfWork(diff uint8, partialHash [32]byte) *big.Int {
 	oneIncr := big.NewInt(1)
 	cnt := big.NewInt(0)
 
-	for ;; cnt.Add(cnt,oneIncr) {
+	for ; ; cnt.Add(cnt, oneIncr) {
 		abort = false
 
-		tmp = sha3.Sum256(append(cnt.Bytes(),partialHash[:]...))
+		tmp = sha3.Sum256(append(cnt.Bytes(), partialHash[:]...))
 		for byteNr = 0; byteNr < (uint8)(diff/8); byteNr++ {
 			if tmp[byteNr] != 0 {
 				abort = true

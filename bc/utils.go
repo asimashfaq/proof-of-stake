@@ -10,7 +10,7 @@ func serializeHashContent(data interface{}) (hash [32]byte) {
 	// Create a struct and write it.
 	var buf bytes.Buffer
 
-	binary.Write(&buf,binary.BigEndian, data)
+	binary.Write(&buf, binary.BigEndian, data)
 
 	return sha3.Sum256(buf.Bytes())
 }

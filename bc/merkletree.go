@@ -6,7 +6,7 @@ import (
 
 type merkleNode struct {
 	right, left *merkleNode
-	hash [32]byte
+	hash        [32]byte
 }
 
 func prepareMerkleTree(txHashSlice [][32]byte) []merkleNode {
@@ -35,7 +35,7 @@ func prepareMerkleTree(txHashSlice [][32]byte) []merkleNode {
 	return levelNodes
 }
 
-func buildMerkleTree(txHashSlice ...[][32]byte) ([32]byte) {
+func buildMerkleTree(txHashSlice ...[][32]byte) [32]byte {
 
 	var completeSlice [][32]byte
 
@@ -44,9 +44,9 @@ func buildMerkleTree(txHashSlice ...[][32]byte) ([32]byte) {
 	}
 
 	//the argument is variadic, need to break down and rebuild
-	for _,hashSlice := range txHashSlice {
-		for _,singleHash := range hashSlice {
-			completeSlice = append(completeSlice,singleHash)
+	for _, hashSlice := range txHashSlice {
+		for _, singleHash := range hashSlice {
+			completeSlice = append(completeSlice, singleHash)
 		}
 	}
 
@@ -58,8 +58,6 @@ func buildMerkleTree(txHashSlice ...[][32]byte) ([32]byte) {
 	stepOver := -1
 	var leftChild, rightChild, parentChild *merkleNode
 	var cumulativeHash []byte
-
-
 
 	levelNodes := prepareMerkleTree(completeSlice)
 	levelUpNodes := levelNodes
@@ -79,7 +77,7 @@ func buildMerkleTree(txHashSlice ...[][32]byte) ([32]byte) {
 			rightChild = new(merkleNode)
 			*rightChild = node
 
-			cumulativeHash = append(leftChild.hash[:],rightChild.hash[:]...)
+			cumulativeHash = append(leftChild.hash[:], rightChild.hash[:]...)
 
 			parentChild = new(merkleNode)
 			parentChild.left = leftChild
@@ -102,7 +100,7 @@ func nextTwoExponent(start, nrTransact int) int {
 		return 0
 	}
 	if start < nrTransact {
-		return nextTwoExponent(start*2,nrTransact)
+		return nextTwoExponent(start*2, nrTransact)
 	}
 	return start
 }

@@ -16,11 +16,11 @@ var blockDifficulty uint8
 type parameters struct {
 	blockHash [32]byte
 	//parameter
-	fee_minimum uint64
-	block_size uint64
-	diff_interval uint64
+	fee_minimum    uint64
+	block_size     uint64
+	diff_interval  uint64
 	block_interval uint64
-	block_reward uint64
+	block_reward   uint64
 }
 
 func collectStatistics(b *Block) {
@@ -31,7 +31,7 @@ func collectStatistics(b *Block) {
 	// /depends on the underlying architecture
 	if uint64(len(timestamp)) <= localBlockCount {
 		newTimeStamp := make([]int64, 2*(len(timestamp)+1))
-		copy(newTimeStamp,timestamp)
+		copy(newTimeStamp, timestamp)
 		timestamp = newTimeStamp
 	}
 
@@ -39,7 +39,6 @@ func collectStatistics(b *Block) {
 
 	globalBlockCount++
 	localBlockCount++
-
 
 	if localBlockCount == BLOCK_INTERVAL {
 		calculateNewDifficulty()
@@ -76,7 +75,7 @@ func getBlockSequences(newBlock *Block) (blocksToRollback, blocksToValidate []*B
 		if tmpBlock.Hash == ancestor.Hash {
 			break
 		}
-		blocksToRollback = append(blocksToRollback,tmpBlock)
+		blocksToRollback = append(blocksToRollback, tmpBlock)
 		tmpBlock = readBlock(tmpBlock.PrevHash)
 	}
 
@@ -89,7 +88,6 @@ func getBlockSequences(newBlock *Block) (blocksToRollback, blocksToValidate []*B
 		return blocksToRollback, newChain
 	}
 }
-
 
 func getNewChain(newBlock *Block) (ancestor *Block, newChain []*Block) {
 

@@ -1,26 +1,26 @@
 package bc
 
 import (
-	"log"
-	"fmt"
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"math/big"
-	"bytes"
-	"encoding/binary"
 	"crypto/rand"
+	"encoding/binary"
+	"fmt"
+	"log"
+	"math/big"
 )
 
-const(
+const (
 	CONFIGTX_SIZE = 82
 
-	BLOCK_SIZE_ID = 1
-	DIFF_INTERVAL_ID = 2
-	FEE_MINIMUM_ID = 3
+	BLOCK_SIZE_ID     = 1
+	DIFF_INTERVAL_ID  = 2
+	FEE_MINIMUM_ID    = 3
 	BLOCK_INTERVAL_ID = 4
-	BLOCK_REWARD_ID = 5
+	BLOCK_REWARD_ID   = 5
 
-	MIN_BLOCK_SIZE = 1000 //1KB
+	MIN_BLOCK_SIZE = 1000      //1KB
 	MAX_BLOCK_SIZE = 100000000 //100MB
 
 	MIN_DIFF_INTERVAL = 1 //10min for 1min interval
@@ -29,7 +29,7 @@ const(
 	MIN_FEE_MINIMUM = 0
 	MAX_FEE_MINIMUM = 9223372036854775807
 
-	MIN_BLOCK_INTERVAL = 30 //30 seconds
+	MIN_BLOCK_INTERVAL = 30    //30 seconds
 	MAX_BLOCK_INTERVAL = 86400 //24 hours
 
 	MIN_BLOCK_REWARD = 0
@@ -37,11 +37,11 @@ const(
 )
 
 type configTx struct {
-	Header uint8
-	Id uint8
+	Header  uint8
+	Id      uint8
 	Payload uint64
-	Fee uint64
-	Sig [64]byte
+	Fee     uint64
+	Sig     [64]byte
 }
 
 func ConstrConfigTx(header uint8, id uint8, payload uint64, fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *configTx, err error) {
@@ -54,35 +54,35 @@ func ConstrConfigTx(header uint8, id uint8, payload uint64, fee uint64, rootPriv
 
 	txHash := hashConfigTx(tx)
 
-	r,s,err := ecdsa.Sign(rand.Reader, rootPrivKey, txHash[:])
+	r, s, err := ecdsa.Sign(rand.Reader, rootPrivKey, txHash[:])
 
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
-	copy(tx.Sig[32-len(r.Bytes()):32],r.Bytes())
-	copy(tx.Sig[64-len(s.Bytes()):],s.Bytes())
+	copy(tx.Sig[32-len(r.Bytes()):32], r.Bytes())
+	copy(tx.Sig[64-len(s.Bytes()):], s.Bytes())
 
-	return tx,nil
+	return tx, nil
 }
 
 func (tx *configTx) verify() bool {
 
 	//account creation can only be done with a valid priv/pub key which is hard-coded
-	r,s := new(big.Int), new(big.Int)
-	pub1,pub2 := new(big.Int), new(big.Int)
+	r, s := new(big.Int), new(big.Int)
+	pub1, pub2 := new(big.Int), new(big.Int)
 
 	r.SetBytes(tx.Sig[:32])
 	s.SetBytes(tx.Sig[32:])
 
-	for _,rootAcc := range RootKeys {
+	for _, rootAcc := range RootKeys {
 		pub1.SetBytes(rootAcc.Address[:32])
 		pub2.SetBytes(rootAcc.Address[32:])
 
 		pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
 		txHash := hashConfigTx(tx)
-		if ecdsa.Verify(&pubKey,txHash[:],r,s) == true {
-			return boundsChecking(tx.Id,tx.Payload)
+		if ecdsa.Verify(&pubKey, txHash[:], r, s) == true {
+			return boundsChecking(tx.Id, tx.Payload)
 		}
 	}
 
@@ -130,11 +130,11 @@ func hashConfigTx(tx *configTx) (hash [32]byte) {
 	}
 
 	txHash := struct {
-		Header uint8
-		Id uint8
+		Header  uint8
+		Id      uint8
 		Payload uint64
-		Fee uint64
-	} {
+		Fee     uint64
+	}{
 		tx.Header,
 		tx.Id,
 		tx.Payload,
@@ -154,18 +154,18 @@ func EncodeConfigTx(tx *configTx) (encodedTx []byte) {
 	var feeBuf [8]byte
 
 	binary.Write(&buf, binary.BigEndian, tx.Payload)
-	copy(payloadBuf[:],buf.Bytes())
+	copy(payloadBuf[:], buf.Bytes())
 	buf.Reset()
 	binary.Write(&buf, binary.BigEndian, tx.Fee)
-	copy(feeBuf[:],buf.Bytes())
+	copy(feeBuf[:], buf.Bytes())
 	buf.Reset()
 
-	encodedTx = make([]byte,CONFIGTX_SIZE)
+	encodedTx = make([]byte, CONFIGTX_SIZE)
 	encodedTx[0] = tx.Header
 	encodedTx[1] = tx.Id
-	copy(encodedTx[2:10],payloadBuf[:])
-	copy(encodedTx[10:18],feeBuf[:])
-	copy(encodedTx[18:82],tx.Sig[:])
+	copy(encodedTx[2:10], payloadBuf[:])
+	copy(encodedTx[10:18], feeBuf[:])
+	copy(encodedTx[18:82], tx.Sig[:])
 
 	return encodedTx
 }
@@ -182,16 +182,16 @@ func DecodeConfigTx(encodedTx []byte) (tx *configTx) {
 	tx.Id = encodedTx[1]
 	tx.Payload = binary.BigEndian.Uint64(encodedTx[2:10])
 	tx.Fee = binary.BigEndian.Uint64(encodedTx[10:18])
-	copy(tx.Sig[:],encodedTx[18:82])
+	copy(tx.Sig[:], encodedTx[18:82])
 
 	return tx
 }
 
 func (tx configTx) String() string {
 	return fmt.Sprintf(
-		"\n" +
-			"Id: %v\n" +
-			"Payload: %v\n" +
+		"\n"+
+			"Id: %v\n"+
+			"Payload: %v\n"+
 			"Fee: %v\n\n",
 		tx.Id,
 		tx.Payload,
@@ -201,13 +201,13 @@ func (tx configTx) String() string {
 
 func (param parameters) String() string {
 	return fmt.Sprintf(
-	"\n" +
-		"Block Hash: %x\n" +
-		"Block size: %v\n" +
-		"Difficulty interval: %v\n" +
-		"Fee minimum: %v\n" +
-		"Block interval: %v\n" +
-		"Block reward: %v\n",
+		"\n"+
+			"Block Hash: %x\n"+
+			"Block size: %v\n"+
+			"Difficulty interval: %v\n"+
+			"Fee minimum: %v\n"+
+			"Block interval: %v\n"+
+			"Block reward: %v\n",
 		param.blockHash[0:8],
 		param.block_size,
 		param.diff_interval,

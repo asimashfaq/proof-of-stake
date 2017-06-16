@@ -1,11 +1,11 @@
 package bc
 
 import (
+	"fmt"
+	"math/rand"
+	"reflect"
 	"testing"
 	"time"
-	"fmt"
-	"reflect"
-	"math/rand"
 )
 
 //Tests block adding, verification, serialization and deserialization
@@ -14,7 +14,7 @@ func TestBlock(t *testing.T) {
 	cleanAndPrepare()
 
 	b := newBlock()
-	hashFundsSlice,hashAccSlice,hashConfigSlice := createBlockWithTxs(b)
+	hashFundsSlice, hashAccSlice, hashConfigSlice := createBlockWithTxs(b)
 	b.finalizeBlock()
 
 	encodedBlock := encodeBlock(b)
@@ -88,9 +88,9 @@ func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
 	//in order to create valid funds transactions we need to know the tx count of acc A
 
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
-	loopMax := int(rand.Uint32() % testSize)+1
+	loopMax := int(rand.Uint32()%testSize) + 1
 	loopMax += int(accA.TxCnt)
-	for cnt := int(accA.TxCnt); cnt < loopMax ; cnt++ {
+	for cnt := int(accA.TxCnt); cnt < loopMax; cnt++ {
 		accAHash := serializeHashContent(accA.Address)
 		accBHash := serializeHashContent(accB.Address)
 		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accAHash, accBHash, &PrivKeyA)
@@ -100,7 +100,7 @@ func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
 		}
 	}
 
-	loopMax = int(rand.Uint32() % testSize)+1
+	loopMax = int(rand.Uint32()%testSize) + 1
 	for cnt := 0; cnt < loopMax; cnt++ {
 		tx, _ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
 		if err := b.addTx(tx); err == nil {
@@ -110,9 +110,9 @@ func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
 	}
 
 	//NrConfigTx is saved in a uint8
-	loopMax = int(rand.Uint32() % 255)+1
+	loopMax = int(rand.Uint32()%255) + 1
 	for cnt := 0; cnt < loopMax; cnt++ {
-		tx,_:= ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1),rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
+		tx, _ := ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
 
 		//don't mess with the minimum fee
 		if tx.Id == 3 {
@@ -124,5 +124,5 @@ func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
 		}
 	}
 
-	return hashFundsSlice,hashAccSlice,hashConfigSlice
+	return hashFundsSlice, hashAccSlice, hashConfigSlice
 }

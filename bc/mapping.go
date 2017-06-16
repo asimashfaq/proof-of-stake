@@ -1,7 +1,7 @@
 package bc
 
 const (
-	ACCTX = 1
+	ACCTX   = 1
 	FUNDSTX = 2
 
 	BLOCK = 10

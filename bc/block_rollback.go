@@ -1,9 +1,9 @@
 package bc
 
 import (
-	"log"
 	"errors"
 	"fmt"
+	"log"
 )
 
 //for blocks that already have been validated but were overwritten by a longer chain
@@ -11,15 +11,15 @@ import (
 func validateBlockRollback(b *Block) error {
 
 	fundsTxSlice, accTxSlice, configTxSlice, err := preValidationRollback(b)
-	if err != nil  {
+	if err != nil {
 		return err
 	}
 
-	data := blockData{fundsTxSlice,accTxSlice, configTxSlice, b}
+	data := blockData{fundsTxSlice, accTxSlice, configTxSlice, b}
 
 	//before manipulating the state, we need to go back to pre-block system parameters
 	configStateChangeRollback(data.configTxSlice)
-	if  err := stateValidationRollback(data); err != nil {
+	if err := stateValidationRollback(data); err != nil {
 		return err
 	}
 
@@ -30,32 +30,32 @@ func validateBlockRollback(b *Block) error {
 func preValidationRollback(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, configTxSlice []*configTx, err error) {
 
 	//fetch all transactions
-	for _,hash := range b.FundsTxData {
+	for _, hash := range b.FundsTxData {
 		tx := readClosedFundsTx(hash)
 		if tx == nil {
 			log.Printf("CRITICAL: Validated fundsTx was not in the confirmed tx storage: %v\n", hash)
-			return nil,nil,nil,errors.New("CRITICAL: Validated fundsTx was not in the confirmed tx storage")
+			return nil, nil, nil, errors.New("CRITICAL: Validated fundsTx was not in the confirmed tx storage")
 		}
-		fundsTxSlice = append(fundsTxSlice,tx)
+		fundsTxSlice = append(fundsTxSlice, tx)
 	}
 
-	for _,hash := range b.AccTxData {
+	for _, hash := range b.AccTxData {
 		tx := readClosedAccTx(hash)
 		if tx == nil {
 			log.Printf("CRITICAL: Validated accTx was not in the confirmed tx storage: %v\n", hash)
-			return nil,nil,nil,errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
+			return nil, nil, nil, errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
 		}
 		accTxSlice = append(accTxSlice, tx)
 	}
 
-	for _,hash := range b.ConfigTxData {
+	for _, hash := range b.ConfigTxData {
 		tx := readClosedConfigTx(hash)
 		if tx == nil {
 			fmt.Printf("###%x\n", hash)
 			log.Printf("CRITICAL: Validated configTx was not in the confirmed tx storage: %v\n", hash)
-			return nil,nil,nil,errors.New("CRITICAL: Validated configTx was not in the confirmed tx storage")
+			return nil, nil, nil, errors.New("CRITICAL: Validated configTx was not in the confirmed tx storage")
 		}
-		configTxSlice = append(configTxSlice,tx)
+		configTxSlice = append(configTxSlice, tx)
 	}
 
 	return fundsTxSlice, accTxSlice, configTxSlice, nil
@@ -68,7 +68,7 @@ func stateValidationRollback(data blockData) error {
 	//it's exactly the opposite direction for stateValidation
 
 	//this has to go first, because the block that was mined, was mined with previous set system parameters
-	collectBlockRewardRollback(activeParameters.block_reward,data.block.Beneficiary)
+	collectBlockRewardRollback(activeParameters.block_reward, data.block.Beneficiary)
 	collectTxFeesRollback(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary)
 	accStateChangeRollback(data.accTxSlice)
 	fundsStateChangeRollback(data.fundsTxSlice)
@@ -78,19 +78,19 @@ func stateValidationRollback(data blockData) error {
 func postValidationRollback(data blockData) {
 
 	//put all txs from the block from open to close
-	for _,tx := range data.fundsTxSlice {
+	for _, tx := range data.fundsTxSlice {
 		hash := hashFundsTx(tx)
 		writeOpenFundsTx(tx)
 		deleteClosedFundsTx(hash)
 	}
 
-	for _,tx := range data.accTxSlice {
+	for _, tx := range data.accTxSlice {
 		hash := hashAccTx(tx)
 		writeOpenAccTx(tx)
 		deleteClosedAccTx(hash)
 	}
 
-	for _,tx := range data.configTxSlice {
+	for _, tx := range data.configTxSlice {
 		hash := hashConfigTx(tx)
 		writeOpenConfigTx(tx)
 		deleteClosedConfigTx(hash)

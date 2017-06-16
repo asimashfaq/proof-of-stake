@@ -1,9 +1,9 @@
 package bc
 
 import (
+	"encoding/binary"
 	"net"
 	"time"
-	"encoding/binary"
 )
 
 func prepareRequest(typeID uint8) (responseData []byte) {
@@ -24,21 +24,21 @@ func timeRes(conn net.Conn) {
 	time := time.Now().Unix()
 	binary.BigEndian.PutUint64(buf[:], uint64(time))
 	toSend := make([]byte, len(buf)+HEADER_LEN)
-	header := ConstructHeader(len(buf),TIME_RES)
-	copy(toSend[0:HEADER_LEN],header[:])
-	copy(toSend[HEADER_LEN:],buf[:])
+	header := ConstructHeader(len(buf), TIME_RES)
+	copy(toSend[0:HEADER_LEN], header[:])
+	copy(toSend[HEADER_LEN:], buf[:])
 	conn.Write(toSend)
 }
 
 func accRes(conn net.Conn, data []byte) {
 
 	var hash [32]byte
-	copy(hash[:],data[0:32])
+	copy(hash[:], data[0:32])
 	acc := getAccountFromHash(hash)
 	encodedAcc := EncodeAcc(acc)
-	header := ConstructHeader(len(encodedAcc),ACC_RES)
+	header := ConstructHeader(len(encodedAcc), ACC_RES)
 	toSend := make([]byte, len(header)+len(encodedAcc))
-	copy(toSend[:HEADER_LEN],header[:])
-	copy(toSend[HEADER_LEN:],encodedAcc)
+	copy(toSend[:HEADER_LEN], header[:])
+	copy(toSend[HEADER_LEN:], encodedAcc)
 	conn.Write(toSend)
 }

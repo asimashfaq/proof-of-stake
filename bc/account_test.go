@@ -1,8 +1,8 @@
 package bc
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 )
 
 func TestAccountSerialization(t *testing.T) {

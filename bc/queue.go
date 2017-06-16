@@ -4,7 +4,7 @@ import "sync"
 
 type Queue struct {
 	elements []interface{}
-	lock sync.Mutex
+	lock     sync.Mutex
 }
 
 func NewQueue() *Queue {

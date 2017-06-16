@@ -1,9 +1,9 @@
 package bc
 
 import (
-	"testing"
-	"reflect"
 	"fmt"
+	"reflect"
+	"testing"
 )
 
 func TestValidateBlockRollback(t *testing.T) {
@@ -16,7 +16,7 @@ func TestValidateBlockRollback(t *testing.T) {
 	accsAfter := make(map[[64]byte]Account)
 
 	for _, accSlice := range State {
-		for _,acc := range accSlice {
+		for _, acc := range accSlice {
 			accsBefore[acc.Address] = *acc
 		}
 	}
@@ -26,24 +26,24 @@ func TestValidateBlockRollback(t *testing.T) {
 	validateBlock(b)
 
 	for _, accSlice := range State {
-		for _,acc := range accSlice {
+		for _, acc := range accSlice {
 			accsAfter[acc.Address] = *acc
 		}
 	}
 
-	if reflect.DeepEqual(accsBefore,accsAfter) {
+	if reflect.DeepEqual(accsBefore, accsAfter) {
 		t.Error("State wasn't changed despite validating a block!")
 	}
 
 	validateBlockRollback(b)
 
 	for _, accSlice := range State {
-		for _,acc := range accSlice {
+		for _, acc := range accSlice {
 			accsBefore2[acc.Address] = *acc
 		}
 	}
 
-	if !reflect.DeepEqual(accsBefore,accsBefore2) {
+	if !reflect.DeepEqual(accsBefore, accsBefore2) {
 		t.Error("State wasn't rolled back")
 	}
 }
@@ -154,13 +154,13 @@ func TestMultipleBlocksRollback(t *testing.T) {
 			tmpState[acc.Address] = *acc
 		}
 	}
-	if !reflect.DeepEqual(tmpState, stateb2) || !reflect.DeepEqual(paramb2,parameterSlice) {
+	if !reflect.DeepEqual(tmpState, stateb2) || !reflect.DeepEqual(paramb2, parameterSlice) {
 
-		for _,entry := range paramb2 {
+		for _, entry := range paramb2 {
 			fmt.Printf("%v\n", entry)
 		}
 		fmt.Println()
-		for _,entry := range parameterSlice {
+		for _, entry := range parameterSlice {
 			fmt.Printf("%v\n", entry)
 		}
 
@@ -178,7 +178,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 			tmpState[acc.Address] = *acc
 		}
 	}
-	if !reflect.DeepEqual(tmpState,stateb) || !reflect.DeepEqual(paramb,parameterSlice) {
+	if !reflect.DeepEqual(tmpState, stateb) || !reflect.DeepEqual(paramb, parameterSlice) {
 		t.Error("Block rollback failed.")
 	}
 	for k := range tmpState {
@@ -193,7 +193,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 			tmpState[acc.Address] = *acc
 		}
 	}
-	if !reflect.DeepEqual(tmpState,stategenesis) || !reflect.DeepEqual(paramgenesis,parameterSlice) {
+	if !reflect.DeepEqual(tmpState, stategenesis) || !reflect.DeepEqual(paramgenesis, parameterSlice) {
 		t.Error("Block rollback failed.")
 	}
 	for k := range tmpState {

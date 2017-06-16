@@ -2,15 +2,14 @@ package bc
 
 import (
 	"crypto/ecdsa"
-	"log"
-	"os"
-	"time"
-	"math/big"
 	"crypto/elliptic"
 	"crypto/rand"
-	"sync"
 	"fmt"
-
+	"log"
+	"math/big"
+	"os"
+	"sync"
+	"time"
 )
 
 const (
@@ -32,13 +31,13 @@ var MinerPrivKey *ecdsa.PrivateKey
 
 var nextBlockAccess sync.Mutex
 
-var txQueue,blockQueue *Queue
+var txQueue, blockQueue *Queue
 
 var timestamp []int64
 var parameterSlice []parameters
 var activeParameters *parameters
 
-func Sync(){
+func Sync() {
 
 }
 
@@ -52,15 +51,13 @@ func InitSystem() {
 
 	testing_setup()
 
-	LogFile, _ = os.OpenFile("log "+time.Now().String(), os.O_RDWR | os.O_CREATE , 0666)
+	LogFile, _ = os.OpenFile("log "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
-
 
 	log.Println("Starting system, initializing state map")
 	genesisBlock := newBlock()
 	collectStatistics(genesisBlock)
 	writeBlock(genesisBlock)
-
 
 	currentBlock = newBlock()
 	nextBlock = newBlock()
@@ -82,7 +79,7 @@ func consumeTx() {
 			nextBlock.addTx(txQueue.Dequeue().(transaction))
 			nextBlockAccess.Unlock()
 		}
-		time.Sleep(20*time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 	}
 }
 
@@ -133,7 +130,6 @@ func InAccTx(data []byte) {
 
 func InBlock(data []byte) {
 
-
 }
 
 //some testing code
@@ -141,31 +137,31 @@ func testing_setup() {
 	MinerPrivKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	var pubKey [64]byte
 	var shortMiner [8]byte
-	copy(pubKey[:32],MinerPrivKey.X.Bytes())
-	copy(pubKey[32:],MinerPrivKey.Y.Bytes())
-  	MinerHash = serializeHashContent(pubKey)
-	copy(shortMiner[:],MinerHash[0:8])
-	minerAcc := Account{Address:pubKey}
-	State[shortMiner] = append(State[shortMiner],&minerAcc)
+	copy(pubKey[:32], MinerPrivKey.X.Bytes())
+	copy(pubKey[32:], MinerPrivKey.Y.Bytes())
+	MinerHash = serializeHashContent(pubKey)
+	copy(shortMiner[:], MinerHash[0:8])
+	minerAcc := Account{Address: pubKey}
+	State[shortMiner] = append(State[shortMiner], &minerAcc)
 
-	pub1,_ := new(big.Int).SetString(RootPub1,16)
-	pub2,_ := new(big.Int).SetString(RootPub2,16)
+	pub1, _ := new(big.Int).SetString(RootPub1, 16)
+	pub2, _ := new(big.Int).SetString(RootPub2, 16)
 
-	copy(pubKey[:32],pub1.Bytes())
-	copy(pubKey[32:],pub2.Bytes())
+	copy(pubKey[:32], pub1.Bytes())
+	copy(pubKey[32:], pub2.Bytes())
 
 	rootHash := serializeHashContent(pubKey)
 
 	var shortRootHash [8]byte
 	copy(shortRootHash[:], rootHash[0:8])
-	rootAcc := Account{Address:pubKey}
+	rootAcc := Account{Address: pubKey}
 	State[shortRootHash] = append(State[shortRootHash], &rootAcc)
 	RootKeys[rootHash] = &rootAcc
 	var accA, accB Account
 
-	puba1,_ := new(big.Int).SetString(pubA1,16)
-	puba2,_ := new(big.Int).SetString(pubA2,16)
-	priva,_ := new(big.Int).SetString(privA,16)
+	puba1, _ := new(big.Int).SetString(pubA1, 16)
+	puba2, _ := new(big.Int).SetString(pubA2, 16)
+	priva, _ := new(big.Int).SetString(privA, 16)
 	PubKeyA := ecdsa.PublicKey{
 		elliptic.P256(),
 		puba1,
@@ -176,9 +172,9 @@ func testing_setup() {
 		priva,
 	}
 
-	pubb1,_ := new(big.Int).SetString(pubB1,16)
-	pubb2,_ := new(big.Int).SetString(pubB2,16)
-	privb,_ := new(big.Int).SetString(privB,16)
+	pubb1, _ := new(big.Int).SetString(pubB1, 16)
+	pubb2, _ := new(big.Int).SetString(pubB2, 16)
+	privb, _ := new(big.Int).SetString(privB, 16)
 	PubKeyB := ecdsa.PublicKey{
 		elliptic.P256(),
 		pubb1,
@@ -206,6 +202,6 @@ func testing_setup() {
 	copy(shortHashA[:], hashA[0:8])
 	copy(shortHashB[:], hashB[0:8])
 
-	State[shortHashA] = append(State[shortHashA],&accA)
-	State[shortHashB] = append(State[shortHashB],&accB)
+	State[shortHashA] = append(State[shortHashA], &accA)
+	State[shortHashB] = append(State[shortHashB], &accB)
 }

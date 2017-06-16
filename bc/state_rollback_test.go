@@ -1,10 +1,10 @@
 package bc
 
 import (
-	"testing"
-	"time"
 	"math/rand"
 	"reflect"
+	"testing"
+	"time"
 )
 
 func TestFundsStateChangeRollback(t *testing.T) {
@@ -30,11 +30,11 @@ func TestFundsStateChangeRollback(t *testing.T) {
 	balanceA := accA.Balance
 	balanceB := accB.Balance
 
-	loopMax := int(rand.Uint32()%testSize+1)
+	loopMax := int(rand.Uint32()%testSize + 1)
 	for i := 0; i < loopMax+1; i++ {
-		ftx, _ := ConstrFundsTx(0x01,rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
+		ftx, _ := ConstrFundsTx(0x01, rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
 		if b.addTx(ftx) == nil {
-			funds = append(funds,ftx)
+			funds = append(funds, ftx)
 			balanceA -= ftx.Amount
 			feeA += ftx.Fee
 
@@ -43,9 +43,9 @@ func TestFundsStateChangeRollback(t *testing.T) {
 			t.Errorf("Block rejected a valid transaction: %v\n", ftx)
 		}
 
-		ftx2,_ := ConstrFundsTx(0x01,rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accBHash, accAHash, &PrivKeyB)
+		ftx2, _ := ConstrFundsTx(0x01, rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accBHash, accAHash, &PrivKeyB)
 		if b.addTx(ftx2) == nil {
-			funds = append(funds,ftx2)
+			funds = append(funds, ftx2)
 			balanceB -= ftx2.Amount
 			feeB += ftx2.Fee
 
@@ -66,11 +66,11 @@ func TestFundsStateChangeRollback(t *testing.T) {
 	//collectTxFees is checked below in its own test (to additionally cover overflow scenario)
 	balBeforeRew := minerAcc.Balance
 	reward := 5
-	collectBlockReward(uint64(reward),minerAccHash)
+	collectBlockReward(uint64(reward), minerAccHash)
 	if minerAcc.Balance != balBeforeRew+uint64(reward) {
 		t.Error("Block reward collection failed!")
 	}
-	collectBlockRewardRollback(uint64(reward),minerAccHash)
+	collectBlockRewardRollback(uint64(reward), minerAccHash)
 	if minerAcc.Balance != balBeforeRew {
 		t.Error("Block reward collection rollback failed!")
 	}
@@ -86,21 +86,21 @@ func TestAccStateChangeRollback(t *testing.T) {
 
 	var accs []*accTx
 
-	loopMax := int(rand.Uint32()%testSize)+1
+	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
-		tx,_ := ConstrAccTx(rand.Uint64()%1000,&RootPrivKey)
+		tx, _ := ConstrAccTx(rand.Uint64()%1000, &RootPrivKey)
 		accs = append(accs, tx)
 	}
 
 	accStateChange(accs)
 
 	var shortHash [8]byte
-	for _,acc := range accs {
+	for _, acc := range accs {
 		found := false
 		accHash := serializeHashContent(acc.PubKey)
-		copy(shortHash[:],accHash[0:8])
+		copy(shortHash[:], accHash[0:8])
 		accSlice := State[shortHash]
-		for _,singleAcc := range accSlice {
+		for _, singleAcc := range accSlice {
 			singleAccHash := serializeHashContent(singleAcc.Address)
 			if singleAccHash == accHash {
 				found = true
@@ -111,15 +111,14 @@ func TestAccStateChangeRollback(t *testing.T) {
 		}
 	}
 
-
 	accStateChangeRollback(accs)
 
-	for _,acc := range accs {
+	for _, acc := range accs {
 		found := false
 		accHash := serializeHashContent(acc.PubKey)
-		copy(shortHash[:],accHash[0:8])
+		copy(shortHash[:], accHash[0:8])
 		accSlice := State[shortHash]
-		for _,singleAcc := range accSlice {
+		for _, singleAcc := range accSlice {
 			singleAccHash := serializeHashContent(singleAcc.Address)
 			if singleAccHash == accHash {
 				found = true
@@ -136,25 +135,25 @@ func TestConfigStateChangeRollback(t *testing.T) {
 
 	var configSlice []*configTx
 
-	tx,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 1,1000, rand.Uint64(), &RootPrivKey)
-	tx2,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 2,2000, rand.Uint64(), &RootPrivKey)
-	tx3,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 3,3000, rand.Uint64(), &RootPrivKey)
-	tx4,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 4,4000, rand.Uint64(), &RootPrivKey)
-	tx5,_ := ConstrConfigTx(uint8(rand.Uint32()%256), 5,5000, rand.Uint64(), &RootPrivKey)
+	tx, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 1, 1000, rand.Uint64(), &RootPrivKey)
+	tx2, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 2, 2000, rand.Uint64(), &RootPrivKey)
+	tx3, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 3, 3000, rand.Uint64(), &RootPrivKey)
+	tx4, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 4, 4000, rand.Uint64(), &RootPrivKey)
+	tx5, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(), &RootPrivKey)
 
-	configSlice = append(configSlice,tx)
-	configSlice = append(configSlice,tx2)
-	configSlice = append(configSlice,tx3)
-	configSlice = append(configSlice,tx4)
-	configSlice = append(configSlice,tx5)
+	configSlice = append(configSlice, tx)
+	configSlice = append(configSlice, tx2)
+	configSlice = append(configSlice, tx3)
+	configSlice = append(configSlice, tx4)
+	configSlice = append(configSlice, tx5)
 
 	before := *activeParameters
 	configStateChange(configSlice, [32]byte{})
-	if reflect.DeepEqual(before,*activeParameters) {
+	if reflect.DeepEqual(before, *activeParameters) {
 		t.Error("No config state change.")
 	}
 	configStateChangeRollback(configSlice)
-	if !reflect.DeepEqual(before,*activeParameters) {
+	if !reflect.DeepEqual(before, *activeParameters) {
 		t.Error("Config state rollback failed.")
 	}
 }
@@ -173,30 +172,30 @@ func TestCollectTxFeesRollback(t *testing.T) {
 	minerBal := minerAcc.Balance
 	//rollback everything
 	var fee uint64
-	loopMax := int(rand.Uint64()%1000)
+	loopMax := int(rand.Uint64() % 1000)
 	for i := 0; i < loopMax+1; i++ {
-		tx, _ := ConstrFundsTx(0x01,rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
+		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
 
-		funds = append(funds,tx)
+		funds = append(funds, tx)
 		fee += tx.Fee
 	}
 
-	collectTxFees(funds,nil,nil,minerHash)
+	collectTxFees(funds, nil, nil, minerHash)
 	if minerBal+fee != minerAcc.Balance {
-		t.Errorf("%v + %v != %v\n", minerBal,fee,minerAcc.Balance)
+		t.Errorf("%v + %v != %v\n", minerBal, fee, minerAcc.Balance)
 	}
-	collectTxFeesRollback(funds,nil,nil,minerHash)
+	collectTxFeesRollback(funds, nil, nil, minerHash)
 	if minerBal != minerAcc.Balance {
 		t.Errorf("Tx fees rollback failed: %v != %v\n", minerBal, minerAcc.Balance)
 	}
 
-	minerAcc.Balance = MAX_MONEY-100
+	minerAcc.Balance = MAX_MONEY - 100
 	var fee2 uint64
 	minerBal = minerAcc.Balance
 	//interrupt somewhere in between
 	for i := 2; i < 100; i++ {
-		tx, _ := ConstrFundsTx(0x01,rand.Uint64()%1000000+1, uint64(i), uint32(i), accAHash, accBHash, &PrivKeyA)
-		funds2 = append(funds2,tx)
+		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%1000000+1, uint64(i), uint32(i), accAHash, accBHash, &PrivKeyA)
+		funds2 = append(funds2, tx)
 		fee2 += tx.Fee
 	}
 
@@ -205,9 +204,8 @@ func TestCollectTxFeesRollback(t *testing.T) {
 	//should throw an error and result in a rollback, because of acc balance overflow
 	tmpBlock := newBlock()
 	tmpBlock.Beneficiary = minerHash
-	data := blockData{funds2,nil,nil,tmpBlock}
-	if err := stateValidation(data);
-		err == nil ||
+	data := blockData{funds2, nil, nil, tmpBlock}
+	if err := stateValidation(data); err == nil ||
 		minerBal != minerAcc.Balance ||
 		accA.Balance != accABal ||
 		accB.Balance != accBBal {

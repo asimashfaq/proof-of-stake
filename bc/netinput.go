@@ -1,22 +1,22 @@
 package bc
 
 import (
-	"net"
 	"bufio"
-	"log"
 	"encoding/binary"
+	"log"
+	"net"
 )
 
 const (
 	MAX_BUF_SIZE = 10000000 //10MB
-	HEADER_LEN = 7
-	VERSION_ID = 1
+	HEADER_LEN   = 7
+	VERSION_ID   = 1
 )
 
 type Header struct {
-	Len uint32
-	TypeID uint8
-	Version uint8
+	Len      uint32
+	TypeID   uint8
+	Version  uint8
 	Reserved uint8
 }
 
@@ -44,7 +44,7 @@ func handleConn(conn net.Conn) {
 	inputBuf := make([]byte, header.Len)
 	for i := 0; i < int(header.Len); i++ {
 
-		in,err := reader.ReadByte()
+		in, err := reader.ReadByte()
 		if err != nil {
 			log.Printf("Error while reading the payload (%v)\n", err)
 			break
@@ -69,14 +69,14 @@ func ConstructHeader(size int, typeID uint8) (header [HEADER_LEN]byte) {
 	return header
 }
 
-func ExtractHeader(reader *bufio.Reader) (*Header) {
+func ExtractHeader(reader *bufio.Reader) *Header {
 	//the first four bytes of any incoming messages is the length of the payload
 	//error catching after every read is necessary to avoid panicking
 	var headerArr [HEADER_LEN]byte
 
 	//reading byte by byte is surprisingly fast and works a lot better for concurrent connections
 	for i := range headerArr {
-		extr,err := reader.ReadByte()
+		extr, err := reader.ReadByte()
 		if err != nil {
 			log.Printf("Invalid packet received (%v)\n", err)
 			return nil
@@ -84,7 +84,7 @@ func ExtractHeader(reader *bufio.Reader) (*Header) {
 		headerArr[i] = extr
 	}
 
-	lenBuf := [4]byte{headerArr[0],headerArr[1],headerArr[2],headerArr[3]}
+	lenBuf := [4]byte{headerArr[0], headerArr[1], headerArr[2], headerArr[3]}
 
 	packetLen := binary.BigEndian.Uint32(lenBuf[:])
 
@@ -95,7 +95,6 @@ func ExtractHeader(reader *bufio.Reader) (*Header) {
 	header.Reserved = uint8(headerArr[6])
 	return header
 }
-
 
 func parseInput(conn net.Conn, header *Header, data []byte) {
 
@@ -115,4 +114,3 @@ func parseInput(conn net.Conn, header *Header, data []byte) {
 	}
 	conn.Close()
 }
-
