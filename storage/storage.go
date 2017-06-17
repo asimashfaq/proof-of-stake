@@ -11,7 +11,7 @@ var db *bolt.DB
 func Init() {
 
 	var err error
-	db, err = bolt.Open("bc.db", 0600, nil)
+	db, err = bolt.Open("miner.db", 0600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
