@@ -109,7 +109,6 @@ func addRootAccounts() {
 func cleanAndPrepare() {
 
 	deleteEverything()
-
 	tmpState := make(map[[8]byte][]*Account)
 	tmpRootKeys := make(map[[32]byte]*Account)
 
@@ -162,4 +161,6 @@ func TestMain(m *testing.M) {
 	//we don't want logging msgs when testing, designated messages
 	log.SetOutput(ioutil.Discard)
 	os.Exit(m.Run())
+
+	storage.TearDown()
 }

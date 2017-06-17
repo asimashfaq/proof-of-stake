@@ -1,38 +1,57 @@
 package storage
 
-import "github.com/boltdb/bolt"
+import (
+	"github.com/boltdb/bolt"
+)
 
 func WriteBlock(hash [32]byte, encodedBlock []byte) {
 
-	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("bc"))
-		err := b.Put(hash[:], encodedBlock)
-		return err
-	})
-
 	if encodedBlock == nil {
-		delete(blocks, hash)
-		return
+		db.Update(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte("blocks"))
+			err := b.Delete(hash[:])
+			return err
+		})
+	} else {
+		db.Update(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte("blocks"))
+			err := b.Put(hash[:], encodedBlock)
+			return err
+		})
 	}
-	blocks[hash] = encodedBlock
 }
 
 //can't make fixed-size byte, because all tx types go in there
 //we'll see later if this is a sensible design choice
 func WriteOpenTx(hash [32]byte, encodedTx []byte) {
-
 	if encodedTx == nil {
-		delete(opentxs, hash)
-		return
+		db.Update(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte("opentxs"))
+			err := b.Delete(hash[:])
+			return err
+		})
+	} else {
+		db.Update(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte("opentxs"))
+			err := b.Put(hash[:], encodedTx)
+			return err
+		})
 	}
-	opentxs[hash] = encodedTx
 }
 
 func WriteClosedTx(hash [32]byte, encodedTx []byte) {
 
 	if encodedTx == nil {
-		delete(closedtxs, hash)
-		return
+		db.Update(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte("closedtxs"))
+			err := b.Delete(hash[:])
+			return err
+		})
+	} else {
+		db.Update(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte("closedtxs"))
+			err := b.Put(hash[:], encodedTx)
+			return err
+		})
 	}
-	closedtxs[hash] = encodedTx
 }

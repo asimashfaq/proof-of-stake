@@ -7,7 +7,7 @@ import (
 func ReadBlock(hash [32]byte) (encodedBlock []byte) {
 
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("bc"))
+		b := tx.Bucket([]byte("blocks"))
 		encodedBlock = b.Get(hash[:])
 		return nil
 	})
@@ -17,25 +17,34 @@ func ReadBlock(hash [32]byte) (encodedBlock []byte) {
 	}
 
 	return encodedBlock
-
-	if block, exists := blocks[hash]; exists {
-		return block[:]
-	}
-	return nil
 }
 
 func ReadOpenTx(hash [32]byte) (encodedTx []byte) {
 
-	if tx, exists := opentxs[hash]; exists {
-		return tx[:]
+	db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("opentxs"))
+		encodedTx = b.Get(hash[:])
+		return nil
+	})
+
+	if encodedTx == nil {
+		return nil
 	}
-	return nil
+
+	return encodedTx
 }
 
 func ReadClosedTx(hash [32]byte) (encodedTx []byte) {
 
-	if tx, exists := closedtxs[hash]; exists {
-		return tx[:]
+	db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("closedtxs"))
+		encodedTx = b.Get(hash[:])
+		return nil
+	})
+
+	if encodedTx == nil {
+		return nil
 	}
-	return nil
+
+	return encodedTx
 }

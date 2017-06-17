@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"github.com/lisgie/bazo_miner/storage"
 )
 
 func TestValidateBlockRollback(t *testing.T) {
@@ -76,6 +77,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	b := newBlock()
 	createBlockWithTxs(b)
 	b.finalizeBlock()
+	fmt.Printf("%v\n", b)
 	if err := validateBlock(b); err != nil {
 		t.Errorf("Block validation for (%v) failed: %v\n", b, err)
 	}
@@ -92,6 +94,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	b2.PrevHash = b.Hash
 	createBlockWithTxs(b2)
 	b2.finalizeBlock()
+	fmt.Printf("%v\n", b2)
 	if err := validateBlock(b2); err != nil {
 		t.Errorf("Block failed: %v\n", b2)
 	}
@@ -108,6 +111,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	b3.PrevHash = b2.Hash
 	createBlockWithTxs(b3)
 	b3.finalizeBlock()
+	fmt.Printf("%v\n", b3)
 	if err := validateBlock(b3); err != nil {
 		t.Errorf("Block failed: %v\n", b3)
 	}
@@ -129,6 +133,8 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	}
 
 	//STARTING ROLLBACKS---------------------------------------------
+	storage.PrintOpenTxs()
+	storage.PrintClosedTxs()
 	if err := validateBlockRollback(b4); err != nil {
 		t.Errorf("%v\n", err)
 	}
@@ -146,6 +152,8 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		delete(tmpState, k)
 	}
 
+	storage.PrintOpenTxs()
+	storage.PrintClosedTxs()
 	if err := validateBlockRollback(b3); err != nil {
 		t.Errorf("%v\n", err)
 	}
@@ -185,6 +193,8 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		delete(tmpState, k)
 	}
 
+	storage.PrintOpenTxs()
+	storage.PrintClosedTxs()
 	if err := validateBlockRollback(b); err != nil {
 		t.Errorf("%v\n", err)
 	}
@@ -196,6 +206,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	if !reflect.DeepEqual(tmpState, stategenesis) || !reflect.DeepEqual(paramgenesis, parameterSlice) {
 		t.Error("Block rollback failed.")
 	}
+
 	for k := range tmpState {
 		delete(tmpState, k)
 	}
