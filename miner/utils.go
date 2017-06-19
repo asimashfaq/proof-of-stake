@@ -1,4 +1,4 @@
-package protocol
+package miner
 
 import (
 	"bytes"
@@ -11,8 +11,4 @@ func serializeHashContent(data interface{}) (hash [32]byte) {
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.BigEndian, data)
 	return sha3.Sum256(buf.Bytes())
-}
-
-func ignoreMSB(input *uint64) uint64 {
-	return (*input) & 0x7FFFFFFFFFFFFFFF
 }

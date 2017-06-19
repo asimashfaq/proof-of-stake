@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"github.com/lisgie/bazo_miner/protocol"
 	"testing"
 )
 
@@ -14,20 +15,20 @@ func TestBuildMerkleTree(t *testing.T) {
 	var hashSlice3 [][32]byte
 	var hash1, hash2, hash3 [32]byte
 	var tmpHash []byte
-	var tx *fundsTx
-	var tx2 *accTx
-	var tx3 *configTx
+	var tx *protocol.FundsTx
+	var tx2 *protocol.AccTx
+	var tx3 *protocol.ConfigTx
 
 	//generating a private key and prepare data
 	privA, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	tx, _ = ConstrFundsTx(0x01, 23, 1, 0, [32]byte{'0'}, [32]byte{'1'}, privA)
-	tx2, _ = ConstrAccTx(23, privA)
-	tx3, _ = ConstrConfigTx(0x02, 2, 5000, 34, privA)
+	tx, _ = protocol.ConstrFundsTx(0x01, 23, 1, 0, [32]byte{'0'}, [32]byte{'1'}, privA)
+	tx2, _ = protocol.ConstrAccTx(23, privA)
+	tx3, _ = protocol.ConstrConfigTx(0x02, 2, 5000, 34, privA)
 
 	//testing with 1,2,3 nodes
-	hash1 = hashFundsTx(tx)
-	hash2 = hashAccTx(tx2)
-	hash3 = hashConfigTx(tx3)
+	hash1 = tx.Hash()
+	hash2 = tx2.Hash()
+	hash3 = tx3.Hash()
 
 	//test with one node
 	//self hash

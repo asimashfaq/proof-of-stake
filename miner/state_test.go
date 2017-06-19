@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/lisgie/bazo_miner/protocol"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -21,7 +22,7 @@ func TestFundsTxStateChange(t *testing.T) {
 	testSize = 1000
 
 	b := newBlock()
-	var funds []*fundsTx
+	var funds []*protocol.FundsTx
 
 	var feeA, feeB uint64
 
@@ -34,8 +35,8 @@ func TestFundsTxStateChange(t *testing.T) {
 
 	loopMax := int(rand.Uint32()%testSize + 1)
 	for i := 0; i < loopMax+1; i++ {
-		ftx, _ := ConstrFundsTx(0x01, rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
-		if b.addTx(ftx) == nil {
+		ftx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
+		if addTx(b, ftx) == nil {
 			funds = append(funds, ftx)
 			balanceA -= ftx.Amount
 			feeA += ftx.Fee
@@ -43,8 +44,8 @@ func TestFundsTxStateChange(t *testing.T) {
 			balanceB += ftx.Amount
 		}
 
-		ftx2, _ := ConstrFundsTx(0x01, rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accAHash, accAHash, &PrivKeyB)
-		if b.addTx(ftx2) == nil {
+		ftx2, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accAHash, accAHash, &PrivKeyB)
+		if addTx(b, ftx2) == nil {
 			funds = append(funds, ftx2)
 			balanceB -= ftx2.Amount
 			feeB += ftx2.Fee
@@ -74,14 +75,14 @@ func TestFundsTxStateChange(t *testing.T) {
 func TestAccountOverflow(t *testing.T) {
 
 	cleanAndPrepare()
-	var accSlice []*fundsTx
+	var accSlice []*protocol.FundsTx
 	accAHash := serializeHashContent(accA.Address)
 	accBHash := serializeHashContent(accB.Address)
 
-	accA.Balance = MAX_MONEY
+	accA.Balance = protocol.MAX_MONEY
 	accA.TxCnt = 0
-	tx, err := ConstrFundsTx(0x01, 1, 1, 0, accBHash, accAHash, &PrivKeyB)
-	if !tx.verify() || err != nil {
+	tx, err := protocol.ConstrFundsTx(0x01, 1, 1, 0, accBHash, accAHash, &PrivKeyB)
+	if !verifyFundsTx(tx) || err != nil {
 		t.Error("Failed to create reasonable fundsTx\n")
 		return
 	}
@@ -90,7 +91,7 @@ func TestAccountOverflow(t *testing.T) {
 
 	//err shouldn't be nil, because the tx can't have been successful
 	//also, the balance of A shouldn't have changed
-	if err == nil || accA.Balance != MAX_MONEY {
+	if err == nil || accA.Balance != protocol.MAX_MONEY {
 		t.Errorf("Failed to block overflowing transaction to account with balance: %v\n", accA.Balance)
 	}
 }
@@ -103,11 +104,11 @@ func TestAccTxStateChange(t *testing.T) {
 	var testSize uint32
 	testSize = 1000
 
-	var accs []*accTx
+	var accs []*protocol.AccTx
 
 	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
-		tx, _ := ConstrAccTx(rand.Uint64()%1000, &RootPrivKey)
+		tx, _ := protocol.ConstrAccTx(rand.Uint64()%1000, &RootPrivKey)
 		accs = append(accs, tx)
 	}
 
@@ -137,15 +138,15 @@ func TestConfigTxStateChange(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 	var testSize uint32
 	testSize = 1000
-	var configs []*configTx
+	var configs []*protocol.ConfigTx
 
 	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
-		tx, err := ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%10000000, rand.Uint64(), &RootPrivKey)
+		tx, err := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%10000000, rand.Uint64(), &RootPrivKey)
 		if err != nil {
 			t.Errorf("ConfigTx Creation failed (%v)\n", err)
 		}
-		if tx.verify() {
+		if verifyConfigTx(tx) {
 			configs = append(configs, tx)
 		}
 	}
@@ -158,13 +159,13 @@ func TestConfigTxStateChange(t *testing.T) {
 	}
 
 	cleanAndPrepare()
-	var configs2 []*configTx
+	var configs2 []*protocol.ConfigTx
 	//test the inner workings of configStateChange as well...
-	tx, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 1, 1000, rand.Uint64(), &RootPrivKey)
-	tx2, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 2, 2000, rand.Uint64(), &RootPrivKey)
-	tx3, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 3, 3000, rand.Uint64(), &RootPrivKey)
-	tx4, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 4, 4000, rand.Uint64(), &RootPrivKey)
-	tx5, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(), &RootPrivKey)
+	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 1, 1000, rand.Uint64(), &RootPrivKey)
+	tx2, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 2000, rand.Uint64(), &RootPrivKey)
+	tx3, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 3, 3000, rand.Uint64(), &RootPrivKey)
+	tx4, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 4, 4000, rand.Uint64(), &RootPrivKey)
+	tx5, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(), &RootPrivKey)
 
 	configs2 = append(configs2, tx)
 	configs2 = append(configs2, tx2)

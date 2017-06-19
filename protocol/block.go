@@ -3,8 +3,8 @@ package protocol
 import (
 	"bytes"
 	"encoding/binary"
-	"golang.org/x/crypto/sha3"
 	"fmt"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -29,13 +29,14 @@ type Block struct {
 	NrAccTx     uint16
 	NrConfigTx  uint8
 	//this field will not be exported, this is just to avoid race conditions for the global state
-	stateCopy    map[[32]byte]*Account
+	StateCopy    map[[32]byte]*Account //won't be serialized, just keeping track of local state changes
 	FundsTxData  [][32]byte
 	AccTxData    [][32]byte
 	ConfigTxData [][32]byte
 }
 
-func hashBlock(b *Block) (hash [32]byte) {
+//Just Hash() conflicts with struct field
+func (b *Block) HashBlock() (hash [32]byte) {
 
 	var buf bytes.Buffer
 
@@ -57,7 +58,7 @@ func hashBlock(b *Block) (hash [32]byte) {
 	return sha3.Sum256(buf.Bytes())
 }
 
-func encodeBlock(b *Block) (encodedBlock []byte) {
+func (b *Block) Encode() (encodedBlock []byte) {
 
 	if b == nil {
 		return nil
@@ -110,7 +111,7 @@ func encodeBlock(b *Block) (encodedBlock []byte) {
 	return encodedBlock
 }
 
-func decodeBlock(encodedBlock []byte) (b *Block) {
+func (*Block) Decode(encodedBlock []byte) (b *Block) {
 
 	b = new(Block)
 

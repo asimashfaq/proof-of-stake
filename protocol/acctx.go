@@ -8,15 +8,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
-	"math/big"
-)
-
-//just for test cases
-const (
-	//P-256
-	RootPub1 = "6323cc034597195ae69bcfb628ecdffa5989c7503154c566bab4a87f3e9910ac"
-	RootPub2 = "f6115b77a15852764c609c6a5c1739e698ebc6e49bf14617c561b9110039cec7"
-	RootPriv = "277ed539f56122c25a6fc115d07d632b47e71416c9aebf1beb54ee704f11842c"
 )
 
 const (
@@ -60,29 +51,6 @@ func ConstrAccTx(fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *AccTx, err erro
 	copy(tx.Sig[64-len(s.Bytes()):], s.Bytes())
 
 	return tx, nil
-}
-
-func (tx *AccTx) Verify() bool {
-
-	//account creation can only be done with a valid priv/pub key which is hard-coded
-	r, s := new(big.Int), new(big.Int)
-	pub1, pub2 := new(big.Int), new(big.Int)
-
-	r.SetBytes(tx.Sig[:32])
-	s.SetBytes(tx.Sig[32:])
-
-	for _, rootAcc := range RootKeys {
-		pub1.SetBytes(rootAcc.Address[:32])
-		pub2.SetBytes(rootAcc.Address[32:])
-
-		pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
-		txHash := tx.Hash()
-		if ecdsa.Verify(&pubKey, txHash[:], r, s) == true {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (tx *AccTx) Hash() (hash [32]byte) {

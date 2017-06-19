@@ -3,12 +3,13 @@ package miner
 import (
 	"errors"
 	"fmt"
+	"github.com/lisgie/bazo_miner/protocol"
 	"log"
 )
 
 //for blocks that already have been validated but were overwritten by a longer chain
 //if this is not atomic, we're doomed
-func validateBlockRollback(b *Block) error {
+func validateBlockRollback(b *protocol.Block) error {
 
 	fundsTxSlice, accTxSlice, configTxSlice, err := preValidationRollback(b)
 	if err != nil {
@@ -27,7 +28,7 @@ func validateBlockRollback(b *Block) error {
 	return nil
 }
 
-func preValidationRollback(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, configTxSlice []*configTx, err error) {
+func preValidationRollback(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, err error) {
 
 	//fetch all transactions
 	for _, hash := range b.FundsTxData {
@@ -79,21 +80,21 @@ func postValidationRollback(data blockData) {
 
 	//put all txs from the block from open to close
 	for _, tx := range data.fundsTxSlice {
-		hash := hashFundsTx(tx)
-		writeOpenFundsTx(tx)
-		deleteClosedFundsTx(hash)
+		hash := tx.Hash()
+		writeOpenTx(tx)
+		deleteClosedTx(hash)
 	}
 
 	for _, tx := range data.accTxSlice {
-		hash := hashAccTx(tx)
-		writeOpenAccTx(tx)
-		deleteClosedAccTx(hash)
+		hash := tx.Hash()
+		writeOpenTx(tx)
+		deleteClosedTx(hash)
 	}
 
 	for _, tx := range data.configTxSlice {
-		hash := hashConfigTx(tx)
-		writeOpenConfigTx(tx)
-		deleteClosedConfigTx(hash)
+		hash := tx.Hash()
+		writeOpenTx(tx)
+		deleteClosedTx(hash)
 	}
 
 	collectStatisticsRollback(data.block)

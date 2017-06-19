@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"log"
+	"os"
 )
 
 var db *bolt.DB
@@ -40,11 +41,16 @@ func Init() {
 }
 
 func TearDown() {
+
+	var err = os.Remove("miner.db")
+	if err != nil {
+		fmt.Printf("%v\n", err)
+	}
 	db.Close()
 }
 
 //debugging, will be removed later
-func DeleteEverything() {
+func DeleteAll() {
 
 	db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("blocks"))

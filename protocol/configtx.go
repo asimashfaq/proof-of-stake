@@ -3,12 +3,10 @@ package protocol
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"log"
-	"math/big"
 )
 
 const (
@@ -66,63 +64,6 @@ func ConstrConfigTx(header uint8, id uint8, payload uint64, fee uint64, rootPriv
 	return tx, nil
 }
 
-func (tx *ConfigTx) verify() bool {
-
-	//account creation can only be done with a valid priv/pub key which is hard-coded
-	r, s := new(big.Int), new(big.Int)
-	pub1, pub2 := new(big.Int), new(big.Int)
-
-	r.SetBytes(tx.Sig[:32])
-	s.SetBytes(tx.Sig[32:])
-
-	for _, rootAcc := range RootKeys {
-		pub1.SetBytes(rootAcc.Address[:32])
-		pub2.SetBytes(rootAcc.Address[32:])
-
-		pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
-		txHash := tx.Hash()
-		if ecdsa.Verify(&pubKey, txHash[:], r, s) == true {
-			return boundsChecking(tx.Id, tx.Payload)
-		}
-	}
-
-	return false
-}
-
-//returns if id is in the list of possible ids and rational value for payload parameter
-func boundsChecking(id uint8, payload uint64) bool {
-
-	switch id {
-	case BLOCK_SIZE_ID:
-		if payload >= MIN_BLOCK_SIZE && payload <= MAX_BLOCK_SIZE {
-			return true
-		}
-		return false
-	case DIFF_INTERVAL_ID:
-		if payload >= MIN_DIFF_INTERVAL && payload <= MAX_DIFF_INTERVAL {
-			return true
-		}
-		return false
-	case FEE_MINIMUM_ID:
-		if payload >= MIN_FEE_MINIMUM && payload <= MAX_FEE_MINIMUM {
-			return true
-		}
-		return false
-	case BLOCK_INTERVAL_ID:
-		if payload >= MIN_BLOCK_INTERVAL && payload <= MAX_BLOCK_INTERVAL {
-			return true
-		}
-		return false
-	case BLOCK_REWARD_ID:
-		if payload >= MIN_BLOCK_REWARD && payload <= MAX_BLOCK_REWARD {
-			return true
-		}
-		return false
-	default:
-		return false
-	}
-}
-
 func (tx *ConfigTx) Hash() (hash [32]byte) {
 
 	if tx == nil {
@@ -170,14 +111,14 @@ func (tx *ConfigTx) Encode() (encodedTx []byte) {
 	return encodedTx
 }
 
-func (*configTx) Decode(encodedTx []byte) (tx *ConfigTx) {
+func (*ConfigTx) Decode(encodedTx []byte) (tx *ConfigTx) {
 
 	if len(encodedTx) < CONFIGTX_SIZE {
 		log.Printf("DecodeConfigTx, received buffer is too short: %v\n", len(encodedTx))
 		return nil
 	}
 
-	tx = new(configTx)
+	tx = new(ConfigTx)
 	tx.Header = encodedTx[0]
 	tx.Id = encodedTx[1]
 	tx.Payload = binary.BigEndian.Uint64(encodedTx[2:10])

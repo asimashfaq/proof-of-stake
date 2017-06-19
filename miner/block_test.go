@@ -2,6 +2,7 @@ package miner
 
 import (
 	"fmt"
+	"github.com/lisgie/bazo_miner/protocol"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -15,14 +16,15 @@ func TestBlock(t *testing.T) {
 
 	b := newBlock()
 	hashFundsSlice, hashAccSlice, hashConfigSlice := createBlockWithTxs(b)
-	b.finalizeBlock()
+	finalizeBlock(b)
 
-	encodedBlock := encodeBlock(b)
-	decodedBlock := decodeBlock(encodedBlock)
+	encodedBlock := b.Encode()
+	var decodedBlock *protocol.Block
+	decodedBlock = decodedBlock.Decode(encodedBlock)
 	err := validateBlock(decodedBlock)
 
-	b.stateCopy = nil
-	decodedBlock.stateCopy = nil
+	b.StateCopy = nil
+	decodedBlock.StateCopy = nil
 
 	if err != nil {
 		t.Errorf("Block validation failed (%v)\n", err)
@@ -47,7 +49,7 @@ func TestMultipleBlocks(t *testing.T) {
 	cleanAndPrepare()
 	b := newBlock()
 	createBlockWithTxs(b)
-	b.finalizeBlock()
+	finalizeBlock(b)
 	if err := validateBlock(b); err != nil {
 		t.Errorf("Block validation for (%v) failed: %v\n", b, err)
 	}
@@ -55,7 +57,7 @@ func TestMultipleBlocks(t *testing.T) {
 	b2 := newBlock()
 	b2.PrevHash = b.Hash
 	createBlockWithTxs(b2)
-	b2.finalizeBlock()
+	finalizeBlock(b2)
 	if err := validateBlock(b2); err != nil {
 		t.Errorf("Block failed: %v\n", b2)
 	}
@@ -63,7 +65,7 @@ func TestMultipleBlocks(t *testing.T) {
 	b3 := newBlock()
 	b3.PrevHash = b2.Hash
 	createBlockWithTxs(b3)
-	b3.finalizeBlock()
+	finalizeBlock(b3)
 	if err := validateBlock(b3); err != nil {
 		t.Errorf("Block failed: %v\n", b3)
 	}
@@ -71,13 +73,13 @@ func TestMultipleBlocks(t *testing.T) {
 	b4 := newBlock()
 	b4.PrevHash = b3.Hash
 	createBlockWithTxs(b4)
-	b4.finalizeBlock()
+	finalizeBlock(b4)
 	if err := validateBlock(b4); err != nil {
 		t.Errorf("Block failed: %v\n", b4)
 	}
 }
 
-func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
+func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) {
 
 	var testSize uint32
 	testSize = 100
@@ -93,34 +95,34 @@ func createBlockWithTxs(b *Block) ([][32]byte, [][32]byte, [][32]byte) {
 	for cnt := int(accA.TxCnt); cnt < loopMax; cnt++ {
 		accAHash := serializeHashContent(accA.Address)
 		accBHash := serializeHashContent(accB.Address)
-		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accAHash, accBHash, &PrivKeyA)
-		if err := b.addTx(tx); err == nil {
-			hashFundsSlice = append(hashFundsSlice, hashFundsTx(tx))
-			writeOpenFundsTx(tx)
+		tx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accAHash, accBHash, &PrivKeyA)
+		if err := addTx(b, tx); err == nil {
+			hashFundsSlice = append(hashFundsSlice, tx.Hash())
+			writeOpenTx(tx)
 		}
 	}
 
 	loopMax = int(rand.Uint32()%testSize) + 1
 	for cnt := 0; cnt < loopMax; cnt++ {
-		tx, _ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
-		if err := b.addTx(tx); err == nil {
-			hashAccSlice = append(hashAccSlice, hashAccTx(tx))
-			writeOpenAccTx(tx)
+		tx, _ := protocol.ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
+		if err := addTx(b, tx); err == nil {
+			hashAccSlice = append(hashAccSlice, tx.Hash())
+			writeOpenTx(tx)
 		}
 	}
 
 	//NrConfigTx is saved in a uint8
 	loopMax = int(rand.Uint32()%10) + 1
 	for cnt := 0; cnt < loopMax; cnt++ {
-		tx, _ := ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
+		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
 
 		//don't mess with the minimum fee
 		if tx.Id == 3 {
 			continue
 		}
-		if err := b.addTx(tx); err == nil {
-			hashConfigSlice = append(hashConfigSlice, hashConfigTx(tx))
-			writeOpenConfigTx(tx)
+		if err := addTx(b, tx); err == nil {
+			hashConfigSlice = append(hashConfigSlice, tx.Hash())
+			writeOpenTx(tx)
 		}
 	}
 

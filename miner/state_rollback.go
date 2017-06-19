@@ -1,11 +1,13 @@
 package miner
 
-func fundsStateChangeRollback(txSlice []*fundsTx) {
+import "github.com/lisgie/bazo_miner/protocol"
+
+func fundsStateChangeRollback(txSlice []*protocol.FundsTx) {
 
 	for cnt := len(txSlice) - 1; cnt >= 0; cnt-- {
 		tx := txSlice[cnt]
 
-		accSender, accReceiver := getAccountFromHash(tx.fromHash), getAccountFromHash(tx.toHash)
+		accSender, accReceiver := getAccountFromHash(tx.FromHash), getAccountFromHash(tx.ToHash)
 
 		accSender.TxCnt -= 1
 		accSender.Balance += tx.Amount
@@ -15,7 +17,7 @@ func fundsStateChangeRollback(txSlice []*fundsTx) {
 }
 
 //this only happens for complete block rollbacks, therefore no index because everything has to be rolled back
-func accStateChangeRollback(txSlice []*accTx) {
+func accStateChangeRollback(txSlice []*protocol.AccTx) {
 
 	for _, tx := range txSlice {
 		accHash := serializeHashContent(tx.PubKey)
@@ -41,7 +43,7 @@ func accStateChangeRollback(txSlice []*accTx) {
 	}
 }
 
-func configStateChangeRollback(txSlice []*configTx) {
+func configStateChangeRollback(txSlice []*protocol.ConfigTx) {
 
 	if len(txSlice) == 0 {
 		return
@@ -51,14 +53,14 @@ func configStateChangeRollback(txSlice []*configTx) {
 	activeParameters = &parameterSlice[len(parameterSlice)-1]
 }
 
-func collectTxFeesRollback(fundsTx []*fundsTx, accTx []*accTx, configTx []*configTx, minerHash [32]byte) {
+func collectTxFeesRollback(fundsTx []*protocol.FundsTx, accTx []*protocol.AccTx, configTx []*protocol.ConfigTx, minerHash [32]byte) {
 
 	miner := getAccountFromHash(minerHash)
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
 	for _, tx := range fundsTx {
 		miner.Balance -= tx.Fee
 
-		senderAcc := getAccountFromHash(tx.fromHash)
+		senderAcc := getAccountFromHash(tx.FromHash)
 		senderAcc.Balance += tx.Fee
 	}
 

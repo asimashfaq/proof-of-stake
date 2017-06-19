@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/lisgie/bazo_miner/protocol"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -20,7 +21,7 @@ func TestFundsStateChangeRollback(t *testing.T) {
 	testSize = 1000
 
 	b := newBlock()
-	var funds []*fundsTx
+	var funds []*protocol.FundsTx
 
 	var feeA, feeB uint64
 
@@ -32,8 +33,8 @@ func TestFundsStateChangeRollback(t *testing.T) {
 
 	loopMax := int(rand.Uint32()%testSize + 1)
 	for i := 0; i < loopMax+1; i++ {
-		ftx, _ := ConstrFundsTx(0x01, rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
-		if b.addTx(ftx) == nil {
+		ftx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
+		if addTx(b, ftx) == nil {
 			funds = append(funds, ftx)
 			balanceA -= ftx.Amount
 			feeA += ftx.Fee
@@ -43,8 +44,8 @@ func TestFundsStateChangeRollback(t *testing.T) {
 			t.Errorf("Block rejected a valid transaction: %v\n", ftx)
 		}
 
-		ftx2, _ := ConstrFundsTx(0x01, rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accBHash, accAHash, &PrivKeyB)
-		if b.addTx(ftx2) == nil {
+		ftx2, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%1000+1, rand.Uint64()%100+1, uint32(i), accBHash, accAHash, &PrivKeyB)
+		if addTx(b, ftx2) == nil {
 			funds = append(funds, ftx2)
 			balanceB -= ftx2.Amount
 			feeB += ftx2.Fee
@@ -84,11 +85,11 @@ func TestAccStateChangeRollback(t *testing.T) {
 	var testSize uint32
 	testSize = 1000
 
-	var accs []*accTx
+	var accs []*protocol.AccTx
 
 	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
-		tx, _ := ConstrAccTx(rand.Uint64()%1000, &RootPrivKey)
+		tx, _ := protocol.ConstrAccTx(rand.Uint64()%1000, &RootPrivKey)
 		accs = append(accs, tx)
 	}
 
@@ -133,13 +134,13 @@ func TestAccStateChangeRollback(t *testing.T) {
 func TestConfigStateChangeRollback(t *testing.T) {
 	cleanAndPrepare()
 
-	var configSlice []*configTx
+	var configSlice []*protocol.ConfigTx
 
-	tx, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 1, 1000, rand.Uint64(), &RootPrivKey)
-	tx2, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 2, 2000, rand.Uint64(), &RootPrivKey)
-	tx3, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 3, 3000, rand.Uint64(), &RootPrivKey)
-	tx4, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 4, 4000, rand.Uint64(), &RootPrivKey)
-	tx5, _ := ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(), &RootPrivKey)
+	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 1, 1000, rand.Uint64(), &RootPrivKey)
+	tx2, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 2000, rand.Uint64(), &RootPrivKey)
+	tx3, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 3, 3000, rand.Uint64(), &RootPrivKey)
+	tx4, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 4, 4000, rand.Uint64(), &RootPrivKey)
+	tx5, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(), &RootPrivKey)
 
 	configSlice = append(configSlice, tx)
 	configSlice = append(configSlice, tx2)
@@ -163,7 +164,7 @@ func TestCollectTxFeesRollback(t *testing.T) {
 	cleanAndPrepare()
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
-	var funds, funds2 []*fundsTx
+	var funds, funds2 []*protocol.FundsTx
 
 	accAHash := serializeHashContent(accA.Address)
 	accBHash := serializeHashContent(accB.Address)
@@ -174,7 +175,7 @@ func TestCollectTxFeesRollback(t *testing.T) {
 	var fee uint64
 	loopMax := int(rand.Uint64() % 1000)
 	for i := 0; i < loopMax+1; i++ {
-		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
+		tx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%1000000+1, rand.Uint64()%100+1, uint32(i), accAHash, accBHash, &PrivKeyA)
 
 		funds = append(funds, tx)
 		fee += tx.Fee
@@ -189,12 +190,12 @@ func TestCollectTxFeesRollback(t *testing.T) {
 		t.Errorf("Tx fees rollback failed: %v != %v\n", minerBal, minerAcc.Balance)
 	}
 
-	minerAcc.Balance = MAX_MONEY - 100
+	minerAcc.Balance = protocol.MAX_MONEY - 100
 	var fee2 uint64
 	minerBal = minerAcc.Balance
 	//interrupt somewhere in between
 	for i := 2; i < 100; i++ {
-		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%1000000+1, uint64(i), uint32(i), accAHash, accBHash, &PrivKeyA)
+		tx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%1000000+1, uint64(i), uint32(i), accAHash, accBHash, &PrivKeyA)
 		funds2 = append(funds2, tx)
 		fee2 += tx.Fee
 	}

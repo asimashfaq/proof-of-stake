@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/lisgie/bazo_miner/protocol"
 	"reflect"
 	"testing"
 )
@@ -10,9 +11,9 @@ func TestValidateBlockRollback(t *testing.T) {
 	cleanAndPrepare()
 	b := newBlock()
 
-	accsBefore := make(map[[64]byte]Account)
-	accsBefore2 := make(map[[64]byte]Account)
-	accsAfter := make(map[[64]byte]Account)
+	accsBefore := make(map[[64]byte]protocol.Account)
+	accsBefore2 := make(map[[64]byte]protocol.Account)
+	accsAfter := make(map[[64]byte]protocol.Account)
 
 	for _, accSlice := range State {
 		for _, acc := range accSlice {
@@ -21,7 +22,7 @@ func TestValidateBlockRollback(t *testing.T) {
 	}
 
 	createBlockWithTxs(b)
-	b.finalizeBlock()
+	finalizeBlock(b)
 	validateBlock(b)
 
 	for _, accSlice := range State {
@@ -51,11 +52,11 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	//create 4 blocks after genesis, rollback 3
 	cleanAndPrepare()
 
-	stategenesis := make(map[[64]byte]Account)
-	stateb := make(map[[64]byte]Account)
-	stateb2 := make(map[[64]byte]Account)
-	stateb3 := make(map[[64]byte]Account)
-	tmpState := make(map[[64]byte]Account)
+	stategenesis := make(map[[64]byte]protocol.Account)
+	stateb := make(map[[64]byte]protocol.Account)
+	stateb2 := make(map[[64]byte]protocol.Account)
+	stateb3 := make(map[[64]byte]protocol.Account)
+	tmpState := make(map[[64]byte]protocol.Account)
 
 	//system parameters
 	var paramgenesis []parameters
@@ -74,7 +75,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 
 	b := newBlock()
 	createBlockWithTxs(b)
-	b.finalizeBlock()
+	finalizeBlock(b)
 	if err := validateBlock(b); err != nil {
 		t.Errorf("Block validation for (%v) failed: %v\n", b, err)
 	}
@@ -90,7 +91,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	b2 := newBlock()
 	b2.PrevHash = b.Hash
 	createBlockWithTxs(b2)
-	b2.finalizeBlock()
+	finalizeBlock(b2)
 	if err := validateBlock(b2); err != nil {
 		t.Errorf("Block failed: %v\n", b2)
 	}
@@ -106,7 +107,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	b3 := newBlock()
 	b3.PrevHash = b2.Hash
 	createBlockWithTxs(b3)
-	b3.finalizeBlock()
+	finalizeBlock(b3)
 	if err := validateBlock(b3); err != nil {
 		t.Errorf("Block failed: %v\n", b3)
 	}
@@ -122,7 +123,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	b4 := newBlock()
 	b4.PrevHash = b3.Hash
 	createBlockWithTxs(b4)
-	b4.finalizeBlock()
+	finalizeBlock(b4)
 	if err := validateBlock(b4); err != nil {
 		t.Errorf("Block failed: %v\n", b4)
 	}

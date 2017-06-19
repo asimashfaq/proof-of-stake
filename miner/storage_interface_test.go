@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/lisgie/bazo_miner/protocol"
 	"math/rand"
 	"testing"
 	"time"
@@ -19,24 +20,25 @@ func TestReadWriteTx(t *testing.T) {
 
 	loopMax := int(rand.Uint32() % 100)
 	for i := 0; i < loopMax; i++ {
-		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%100000+1, rand.Uint64()%10+1, uint32(i), accAHash, accBHash, &PrivKeyA)
-		writeOpenFundsTx(tx)
-		hashFundsSlice = append(hashFundsSlice, hashFundsTx(tx))
+		tx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%100000+1, rand.Uint64()%10+1, uint32(i), accAHash, accBHash, &PrivKeyA)
+		writeOpenTx(tx)
+		hashFundsSlice = append(hashFundsSlice, tx.Hash())
 	}
 
 	loopMax = int(rand.Uint32() % 100)
 	for i := 0; i < loopMax; i++ {
-		tx, _ := ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
-		writeOpenAccTx(tx)
-		hashAccSlice = append(hashAccSlice, hashAccTx(tx))
+		tx, _ := protocol.ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
+		tx.Hash()
+		writeOpenTx(tx)
+		hashAccSlice = append(hashAccSlice, tx.Hash())
 	}
 
-	loopMax = int(rand.Uint32()%100)
+	loopMax = int(rand.Uint32() % 100)
 	for cnt := 0; cnt < loopMax; cnt++ {
-		tx, _ := ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
+		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
 		//don't mess with the minimum fee
-		hashConfigSlice = append(hashConfigSlice, hashConfigTx(tx))
-		writeOpenConfigTx(tx)
+		hashConfigSlice = append(hashConfigSlice, tx.Hash())
+		writeOpenTx(tx)
 
 	}
 
@@ -60,15 +62,15 @@ func TestReadWriteTx(t *testing.T) {
 
 	//deleting open txs
 	for _, hash := range hashFundsSlice {
-		deleteOpenFundsTx(hash)
+		deleteOpenTx(hash)
 	}
 
 	for _, hash := range hashAccSlice {
-		deleteOpenAccTx(hash)
+		deleteOpenTx(hash)
 	}
 
 	for _, hash := range hashConfigSlice {
-		deleteOpenConfigTx(hash)
+		deleteOpenTx(hash)
 	}
 
 	for _, hash := range hashFundsSlice {

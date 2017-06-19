@@ -6,8 +6,7 @@ import (
 )
 
 const (
-	ACC_SIZE  = 108
-	MAX_MONEY = 9223372036854775807 //(2^63)-1
+	ACC_SIZE = 108
 )
 
 type Account struct {
@@ -16,7 +15,7 @@ type Account struct {
 	TxCnt   uint32
 }
 
-func EncodeAcc(acc *Account) (encodedAcc []byte) {
+func (acc *Account) Encode() (encodedAcc []byte) {
 
 	if acc == nil {
 		return nil
@@ -36,7 +35,7 @@ func EncodeAcc(acc *Account) (encodedAcc []byte) {
 	return encodedAcc
 }
 
-func DecodeAcc(encodedAcc []byte) (acc *Account) {
+func (*Account) Decode(encodedAcc []byte) (acc *Account) {
 
 	acc = new(Account)
 	copy(acc.Address[:], encodedAcc[0:64])

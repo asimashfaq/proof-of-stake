@@ -1,11 +1,9 @@
-package miner
+package protocol
 
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"github.com/lisgie/bazo_miner/protocol"
-	"github.com/lisgie/bazo_miner/storage"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -13,14 +11,41 @@ import (
 	"testing"
 )
 
-var accA, accB, minerAcc *protocol.Account
+const (
+	pubA1 = "c2be9abbeaec39a066c2a09cee23bb9ab2a0b88f2880b1e785b4d317adf0dc7c"
+	pubA2 = "8ce020fde838d9c443f6c93345dafe7fd74f091c4d2f30b37e2453679a257ed5"
+	privA = "ba127fa8f802b008b9cdb58f4e44809d48f1b000cff750dda9cd6b312395c1c5"
+	pubB1 = "5d7eefd58e3d2f309471928ab4bbd104e52973372c159fa652b8ca6b57ff68b8"
+	pubB2 = "ab301a6a77b201c416ddc13a2d33fdf200a5302f6f687e0ea09085debaf8a1d9"
+	privB = "7a0a9babcc97ea7991ed67ed7f800f70c5e04e99718960ad8efab2ca052f00c7"
+)
+
+const (
+	//P-256
+	RootPub1 = "6323cc034597195ae69bcfb628ecdffa5989c7503154c566bab4a87f3e9910ac"
+	RootPub2 = "f6115b77a15852764c609c6a5c1739e698ebc6e49bf14617c561b9110039cec7"
+	RootPriv = "277ed539f56122c25a6fc115d07d632b47e71416c9aebf1beb54ee704f11842c"
+)
+
+var accA, accB, minerAcc *Account
 var PrivKeyA, PrivKeyB ecdsa.PrivateKey
 var PubKeyA, PubKeyB ecdsa.PublicKey
 var RootPrivKey ecdsa.PrivateKey
+var MinerHash [32]byte
+var MinerPrivKey *ecdsa.PrivateKey
+
+func TestMain(m *testing.M) {
+
+	addTestingAccounts()
+	addRootAccounts()
+
+	log.SetOutput(ioutil.Discard)
+	os.Exit(m.Run())
+}
 
 func addTestingAccounts() {
 
-	accA, accB, minerAcc = new(protocol.Account), new(protocol.Account), new(protocol.Account)
+	accA, accB, minerAcc = new(Account), new(Account), new(Account)
 
 	puba1, _ := new(big.Int).SetString(pubA1, 16)
 	puba2, _ := new(big.Int).SetString(pubA2, 16)
@@ -63,9 +88,6 @@ func addTestingAccounts() {
 	copy(shortHashA[:], accAHash[0:8])
 	copy(shortHashB[:], accBHash[0:8])
 
-	State[shortHashA] = append(State[shortHashA], accA)
-	State[shortHashB] = append(State[shortHashB], accB)
-
 	MinerPrivKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	var pubKey [64]byte
 	var shortMiner [8]byte
@@ -74,8 +96,6 @@ func addTestingAccounts() {
 	MinerHash = serializeHashContent(pubKey)
 	copy(shortMiner[:], MinerHash[0:8])
 	minerAcc.Address = pubKey
-	State[shortMiner] = append(State[shortMiner], minerAcc)
-
 }
 
 func addRootAccounts() {
@@ -102,66 +122,4 @@ func addRootAccounts() {
 
 	var shortRootHash [8]byte
 	copy(shortRootHash[:], rootHash[0:8])
-	rootAcc := protocol.Account{Address: pubKey}
-	State[shortRootHash] = append(State[shortRootHash], &rootAcc)
-	RootKeys[rootHash] = &rootAcc
-}
-
-func cleanAndPrepare() {
-
-	deleteAll()
-	tmpState := make(map[[8]byte][]*protocol.Account)
-	tmpRootKeys := make(map[[32]byte]*protocol.Account)
-
-	State = tmpState
-	RootKeys = tmpRootKeys
-
-	localBlockCount = 0
-	globalBlockCount = 0
-	genesis := newBlock()
-	collectStatistics(genesis)
-	writeBlock(genesis)
-
-	var tmpSlice []parameters
-	var tmpTimestamp []int64
-
-	timestamp = tmpTimestamp
-
-	tmpSlice = append(tmpSlice, parameters{
-		[32]byte{},
-		1,
-		1000,
-		2016,
-		60,
-		0,
-	})
-	parameterSlice = tmpSlice
-	activeParameters = &parameterSlice[0]
-
-	addTestingAccounts()
-	addRootAccounts()
-
-	minerAcc.Balance = 0
-	accA.Balance = 123232345678
-	accB.Balance = 823237654321
-	accA.TxCnt = 0
-	accB.TxCnt = 0
-}
-
-func TestMain(m *testing.M) {
-
-	//initialize states
-	State = make(map[[8]byte][]*protocol.Account)
-	RootKeys = make(map[[32]byte]*protocol.Account)
-
-	storage.Init()
-
-	//setting a new random seed
-	addTestingAccounts()
-	addRootAccounts()
-	//we don't want logging msgs when testing, designated messages
-	log.SetOutput(ioutil.Discard)
-	os.Exit(m.Run())
-
-	storage.TearDown()
 }

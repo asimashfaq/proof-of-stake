@@ -7,19 +7,6 @@ import (
 	"time"
 )
 
-func TestFundsTxVerification(t *testing.T) {
-	rand := rand.New(rand.NewSource(time.Now().Unix()))
-	accAHash := serializeHashContent(accA.Address)
-	accBHash := serializeHashContent(accB.Address)
-	loopMax := int(rand.Uint32() % 10000)
-	for i := 0; i < loopMax; i++ {
-		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%100000+1, rand.Uint64()%10+1, uint32(i), accAHash, accBHash, &PrivKeyA)
-		if tx.verify() == false {
-			t.Errorf("Tx could not be verified: \n%v", tx)
-		}
-	}
-}
-
 func TestFundsTxSerialization(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 	accAHash := serializeHashContent(accA.Address)
@@ -27,9 +14,14 @@ func TestFundsTxSerialization(t *testing.T) {
 	loopMax := int(rand.Uint32() % 10000)
 	for i := 0; i < loopMax; i++ {
 		tx, _ := ConstrFundsTx(0x01, rand.Uint64()%100000+1, rand.Uint64()%10+1, uint32(i), accAHash, accBHash, &PrivKeyA)
-		data := EncodeFundsTx(tx)
-		decodedTx := DecodeFundsTx(data)
-		decodedTx.verify()
+		data := tx.Encode()
+		var decodedTx *FundsTx
+		decodedTx = decodedTx.Decode(data)
+
+		//this is done by verify() which is outside protocol package, we're just testing serialization here
+		decodedTx.FromHash = accAHash
+		decodedTx.ToHash = accBHash
+
 		if !reflect.DeepEqual(tx, decodedTx) {
 			t.Errorf("FundsTx Serialization failed (%v) vs. (%v)\n", tx, decodedTx)
 		}

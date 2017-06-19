@@ -5,12 +5,12 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
+	"github.com/lisgie/bazo_miner/protocol"
 	"log"
 	"math/big"
 	"os"
 	"sync"
 	"time"
-	"github.com/lisgie/bazo_miner/protocol"
 )
 
 const (
@@ -22,10 +22,17 @@ const (
 	privB = "7a0a9babcc97ea7991ed67ed7f800f70c5e04e99718960ad8efab2ca052f00c7"
 )
 
+const (
+	//P-256
+	RootPub1 = "6323cc034597195ae69bcfb628ecdffa5989c7503154c566bab4a87f3e9910ac"
+	RootPub2 = "f6115b77a15852764c609c6a5c1739e698ebc6e49bf14617c561b9110039cec7"
+	RootPriv = "277ed539f56122c25a6fc115d07d632b47e71416c9aebf1beb54ee704f11842c"
+)
+
 var State map[[8]byte][]*protocol.Account
 var RootKeys map[[32]byte]*protocol.Account
 var LogFile *os.File
-var currentBlock, nextBlock *Block
+var currentBlock, nextBlock *protocol.Block
 
 var MinerHash [32]byte
 var MinerPrivKey *ecdsa.PrivateKey
@@ -77,7 +84,7 @@ func consumeTx() {
 	for {
 		if txQueue.Size() != 0 {
 			nextBlockAccess.Lock()
-			nextBlock.addTx(txQueue.Dequeue().(transaction))
+			addTx(nextBlock, txQueue.Dequeue().(protocol.Transaction))
 			nextBlockAccess.Unlock()
 		}
 		time.Sleep(20 * time.Millisecond)
@@ -89,13 +96,13 @@ func publishBlock() {
 }
 
 func publishTx() {
-	fmt.Printf("%v\n", HEADER_LEN)
+
 }
 
 func mining() {
 
 	for {
-		currentBlock.finalizeBlock()
+		finalizeBlock(currentBlock)
 		fmt.Print("Block mined.\n")
 		if err := validateBlock(currentBlock); err != nil {
 			fmt.Printf("%v\n", err)
@@ -113,20 +120,15 @@ func mining() {
 
 func InFundsTx(data []byte) {
 
-	tx := DecodeFundsTx(data)
-	if tx == nil {
-		return
-	}
-	txQueue.Enqueue(tx)
 }
 
 func InAccTx(data []byte) {
 
-	tx := DecodeAccTx(data)
+	/*tx := DecodeAccTx(data)
 	if tx == nil {
 		return
 	}
-	txQueue.Enqueue(tx)
+	txQueue.Enqueue(tx)*/
 }
 
 func InBlock(data []byte) {
@@ -142,7 +144,7 @@ func testing_setup() {
 	copy(pubKey[32:], MinerPrivKey.Y.Bytes())
 	MinerHash = serializeHashContent(pubKey)
 	copy(shortMiner[:], MinerHash[0:8])
-	minerAcc := Account{Address: pubKey}
+	minerAcc := protocol.Account{Address: pubKey}
 	State[shortMiner] = append(State[shortMiner], &minerAcc)
 
 	pub1, _ := new(big.Int).SetString(RootPub1, 16)
@@ -155,10 +157,10 @@ func testing_setup() {
 
 	var shortRootHash [8]byte
 	copy(shortRootHash[:], rootHash[0:8])
-	rootAcc := Account{Address: pubKey}
+	rootAcc := protocol.Account{Address: pubKey}
 	State[shortRootHash] = append(State[shortRootHash], &rootAcc)
 	RootKeys[rootHash] = &rootAcc
-	var accA, accB Account
+	var accA, accB protocol.Account
 
 	puba1, _ := new(big.Int).SetString(pubA1, 16)
 	puba2, _ := new(big.Int).SetString(pubA2, 16)
@@ -186,13 +188,13 @@ func testing_setup() {
 		privb,
 	}
 
-	accA = Account{Balance: 1500000}
+	accA = protocol.Account{Balance: 1500000}
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
 	hashA := serializeHashContent(accA.Address)
 
 	//This one is just for testing purposes
-	accB = Account{Balance: 702000}
+	accB = protocol.Account{Balance: 702000}
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
 	hashB := serializeHashContent(accB.Address)

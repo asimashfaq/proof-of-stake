@@ -5,20 +5,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/lisgie/bazo_miner/protocol"
 	"golang.org/x/crypto/sha3"
 	"log"
 	"time"
-	"github.com/lisgie/bazo_miner/protocol"
-	"math/big"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"reflect"
-)
-
-const (
-	HASH_LEN         = 32
-	PROOF_SIZE       = 9
-	BLOCKHEADER_SIZE = 151
 )
 
 //acts as a temporary datastructure to fetch the payload of all transactions
@@ -26,39 +16,21 @@ type blockData struct {
 	fundsTxSlice  []*protocol.FundsTx
 	accTxSlice    []*protocol.AccTx
 	configTxSlice []*protocol.ConfigTx
-	block         *Block
-}
-
-type Block struct {
-	Header      byte
-	Hash        [32]byte
-	PrevHash    [32]byte
-	Nonce       [PROOF_SIZE]byte //72-bit, enough even if the network gets really large
-	Timestamp   int64
-	MerkleRoot  [32]byte
-	Beneficiary [32]byte
-	NrFundsTx   uint16
-	NrAccTx     uint16
-	NrConfigTx  uint8
-	//this field will not be exported, this is just to avoid race conditions for the global state
-	stateCopy    map[[32]byte]*protocol.Account
-	FundsTxData  [][32]byte
-	AccTxData    [][32]byte
-	ConfigTxData [][32]byte
+	block         *protocol.Block
 }
 
 //imitating constructor
-func newBlock() *Block {
-	b := Block{}
+func newBlock() *protocol.Block {
+	b := protocol.Block{}
 	b.Header = 0x01
-	b.stateCopy = make(map[[32]byte]*protocol.Account)
+	b.StateCopy = make(map[[32]byte]*protocol.Account)
 	return &b
 }
 
 //this method is to validate transactions, a copy of the state
 // is used for every instead of manipulating the global state
-//because we the work might get interrupted by receiving a block
-func (b *Block) addTx(tx protocol.Transaction) error {
+//because we the work might get interrupted by receiving a protocol.Block
+func addTx(b *protocol.Block, tx protocol.Transaction) error {
 	//verifies correctness for the specific transaction
 	//i'd actually like to use !(&tx).verify to pass by pointer, but golang doesn't allow this
 
@@ -68,22 +40,22 @@ func (b *Block) addTx(tx protocol.Transaction) error {
 	}
 
 	switch tx.(type) {
-	case *fundsTx:
-		err := b.addFundsTx(tx.(*fundsTx))
+	case *protocol.FundsTx:
+		err := addFundsTx(b, tx.(*protocol.FundsTx))
 		if err != nil {
-			log.Printf("Adding fundsTx tx failed (%v): %v\n", err, tx.(*fundsTx))
+			log.Printf("Adding fundsTx tx failed (%v): %v\n", err, tx.(*protocol.FundsTx))
 			return err
 		}
-	case *accTx:
-		err := b.addAccTx(tx.(*accTx))
+	case *protocol.AccTx:
+		err := addAccTx(b, tx.(*protocol.AccTx))
 		if err != nil {
-			log.Printf("Adding accTx tx failed (%v): %v\n", err, tx.(*accTx))
+			log.Printf("Adding accTx tx failed (%v): %v\n", err, tx.(*protocol.AccTx))
 			return err
 		}
-	case *configTx:
-		err := b.addConfigTx(tx.(*configTx))
+	case *protocol.ConfigTx:
+		err := addConfigTx(b, tx.(*protocol.ConfigTx))
 		if err != nil {
-			log.Printf("Adding configTx tx failed (%v): %v\n", err, tx.(*configTx))
+			log.Printf("Adding configTx tx failed (%v): %v\n", err, tx.(*protocol.ConfigTx))
 			return err
 		}
 	default:
@@ -93,90 +65,11 @@ func (b *Block) addTx(tx protocol.Transaction) error {
 	return nil
 }
 
-//we can't use polymorphism, e.g. we can't use tx.verify() because the Transaction interface doesn't declare
-//the verify method. This is because verification depends on the State (e.g., dynamic properties), which
-//should only be of concern to the miner, not to the protocol package. However, this has the disadvantage
-//that we have to do cas distinction here. We could use a wrapper type and do an interface for it, but
-//that's too much complication
-func verify(tx protocol.Transaction) bool {
-
-	var verified bool
-
-	switch tx.(type) {
-	case *protocol.FundsTx:
-		verified = verifyFundsTx(tx.(*protocol.FundsTx))
-	case *protocol.AccTx:
-		verified = verifyAccTx(tx.(*protocol.AccTx))
-	case *protocol.ConfigTx:
-		verified = verifyConfigTx(tx.(*protocol.ConfigTx))
-	}
-	return verified
-}
-
-func verifyFundsTx(tx *protocol.FundsTx) bool {
-
-	var sig [24]byte
-	var concatSig [64]byte
-	pub1, pub2 := new(big.Int), new(big.Int)
-	r, s := new(big.Int), new(big.Int)
-
-	//fundstx only makes sense if amount > 0
-	if tx.Amount == 0 || tx.Amount > MAX_MONEY {
-		log.Printf("Invalid transaction amount %v\n", tx.Amount)
-		return false
-	}
-
-	//check if accounts are present in the actual state
-	for _, accFrom := range State[tx.From] {
-		accFromHash := serializeHashContent(accFrom.Address)
-		for _, accTo := range State[tx.To] {
-			accToHash := serializeHashContent(accTo.Address)
-			sig = [24]byte{}
-			for cnt := 0; cnt < 24; cnt++ {
-				sig[cnt] = tx.Xored[cnt] ^ accFromHash[cnt+8] ^ accToHash[cnt+8]
-			}
-			copy(concatSig[:24], sig[0:24])
-			copy(concatSig[24:], tx.Sig[:])
-
-			pub1.SetBytes(accFrom.Address[:32])
-			pub2.SetBytes(accFrom.Address[32:])
-
-			r.SetBytes(concatSig[:32])
-			s.SetBytes(concatSig[32:])
-
-			tx.FromHash = accFromHash
-			tx.ToHash = accToHash
-
-			txHash := tx.Hash()
-
-			pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
-			if ecdsa.Verify(&pubKey, txHash[:], r, s) == true && !reflect.DeepEqual(accFrom, accTo) {
-				tx.FromHash = accFromHash
-				tx.ToHash = accToHash
-				return true
-			}
-		}
-	}
-
-	return false
-
-}
-
-func verifyAccTx(tx *protocol.AccTx) bool {
-
-	return false
-}
-
-func verifyConfigTx(tx *protocol.ConfigTx) bool {
-
-	return false
-}
-
-func (b *Block) addFundsTx(tx *fundsTx) error {
+func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 
 	//I think we don't have to check for nil here as well, since this was already implicitly done with addTx(...)
-	if readClosedFundsTx(hashFundsTx(tx)) != nil {
-		return errors.New("This transaction was already included in a previous block.")
+	if readClosedFundsTx(tx.Hash()) != nil {
+		return errors.New("This transaction was already included in a previous Block.")
 	}
 
 	if tx.Fee < FEE_MINIMUM {
@@ -185,65 +78,65 @@ func (b *Block) addFundsTx(tx *fundsTx) error {
 	}
 
 	//checking if the sender account is already in the local state copy
-	if _, exists := b.stateCopy[tx.fromHash]; !exists {
+	if _, exists := b.StateCopy[tx.FromHash]; !exists {
 		for _, acc := range State[tx.From] {
 			hash := serializeHashContent(acc.Address)
-			if hash == tx.fromHash {
-				newAcc := Account{}
+			if hash == tx.FromHash {
+				newAcc := protocol.Account{}
 				newAcc = *acc
-				b.stateCopy[tx.fromHash] = &newAcc
+				b.StateCopy[tx.FromHash] = &newAcc
 			}
 		}
 	}
 
 	//vice versa for receiver account
-	if _, exists := b.stateCopy[tx.toHash]; !exists {
+	if _, exists := b.StateCopy[tx.ToHash]; !exists {
 		for _, acc := range State[tx.To] {
 			hash := serializeHashContent(acc.Address)
-			if hash == tx.toHash {
-				newAcc := Account{}
+			if hash == tx.ToHash {
+				newAcc := protocol.Account{}
 				newAcc = *acc
-				b.stateCopy[tx.toHash] = &newAcc
+				b.StateCopy[tx.ToHash] = &newAcc
 			}
 		}
 	}
 
 	//rootkey doesn't need to get checked for balance
 	//however, txcnt is still increased, makes things a little easiert in the state manipulation
-	if !isRootKey(tx.fromHash) {
-		if (tx.Amount + tx.Fee) > b.stateCopy[tx.fromHash].Balance {
+	if !isRootKey(tx.FromHash) {
+		if (tx.Amount + tx.Fee) > b.StateCopy[tx.FromHash].Balance {
 			return errors.New("Not enough funds to complete the transaction!")
 		}
 	}
 
 	//check if txcnt makes sense
-	if b.stateCopy[tx.fromHash].TxCnt != tx.TxCnt {
-		err := fmt.Sprintf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)", tx.TxCnt, b.stateCopy[tx.fromHash].TxCnt)
+	if b.StateCopy[tx.FromHash].TxCnt != tx.TxCnt {
+		err := fmt.Sprintf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)", tx.TxCnt, b.StateCopy[tx.FromHash].TxCnt)
 		return errors.New(err)
 	}
 
 	//don't add tx if amount leads to overflow at receiver acc (amount == 0 has already been checked with verify())
-	if b.stateCopy[tx.toHash].Balance+tx.Amount > MAX_MONEY {
-		err := fmt.Sprintf("Transaction amount (%v) leads to overflow at receiver account balance (%v).\n", tx.Amount, b.stateCopy[tx.toHash].Balance)
+	if b.StateCopy[tx.ToHash].Balance+tx.Amount > protocol.MAX_MONEY {
+		err := fmt.Sprintf("Transaction amount (%v) leads to overflow at receiver account balance (%v).\n", tx.Amount, b.StateCopy[tx.ToHash].Balance)
 		return errors.New(err)
 	}
 
-	accSender := b.stateCopy[tx.fromHash]
+	accSender := b.StateCopy[tx.FromHash]
 	accSender.TxCnt += 1
 	accSender.Balance -= tx.Amount
 
-	accReceiver := b.stateCopy[tx.toHash]
+	accReceiver := b.StateCopy[tx.ToHash]
 	accReceiver.Balance += tx.Amount
 
-	b.FundsTxData = append(b.FundsTxData, hashFundsTx(tx))
-	writeOpenFundsTx(tx)
+	b.FundsTxData = append(b.FundsTxData, tx.Hash())
+	writeOpenTx(tx)
 	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)
 	return nil
 }
 
-func (b *Block) addAccTx(tx *accTx) error {
+func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 
-	if readClosedAccTx(hashAccTx(tx)) != nil {
+	if readClosedAccTx(tx.Hash()) != nil {
 		return errors.New("This transaction was already included in a previous block.")
 	}
 
@@ -262,15 +155,15 @@ func (b *Block) addAccTx(tx *accTx) error {
 		}
 	}
 
-	b.AccTxData = append(b.AccTxData, hashAccTx(tx))
-	writeOpenAccTx(tx)
+	b.AccTxData = append(b.AccTxData, tx.Hash())
+	writeOpenTx(tx)
 	log.Printf("Added tx to the AccTxData slice: %v", *tx)
 	return nil
 }
 
-func (b *Block) addConfigTx(tx *configTx) error {
+func addConfigTx(b *protocol.Block, tx *protocol.ConfigTx) error {
 
-	if readClosedConfigTx(hashConfigTx(tx)) != nil {
+	if readClosedConfigTx(tx.Hash()) != nil {
 		return errors.New("This transaction was already included in a previous block.")
 	}
 
@@ -279,13 +172,13 @@ func (b *Block) addConfigTx(tx *configTx) error {
 		return errors.New(err)
 	}
 
-	b.ConfigTxData = append(b.ConfigTxData, hashConfigTx(tx))
-	writeOpenConfigTx(tx)
+	b.ConfigTxData = append(b.ConfigTxData, tx.Hash())
+	writeOpenTx(tx)
 	log.Printf("Added tx to the ConfigTxData slice: %v", *tx)
 	return nil
 }
 
-func (b *Block) finalizeBlock() {
+func finalizeBlock(b *protocol.Block) {
 	//merkle tree only built from funds transactions
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData, b.AccTxData, b.ConfigTxData)
 	b.Timestamp = time.Now().Unix()
@@ -299,7 +192,7 @@ func (b *Block) finalizeBlock() {
 	//we need to write the proof at the end of the fixed-size byte array of length 9
 	//needs to be decoded by the receiver
 	for index, val := range nonce.Bytes() {
-		b.Nonce[PROOF_SIZE-len(nonce.Bytes())+index] = val
+		b.Nonce[protocol.PROOF_SIZE-len(nonce.Bytes())+index] = val
 	}
 
 	//this doesn't need to be hashed, because we already have the merkle tree taking care of consistency
@@ -311,7 +204,7 @@ func (b *Block) finalizeBlock() {
 //this function needs to be split into block syntax/PoW check and actual state change
 //because there is the case that we might need to go fetch several blocks in reverse order
 //and have to check the blocks first before changing the state in the correct order
-func validateBlock(b *Block) error {
+func validateBlock(b *protocol.Block) error {
 
 	//this is necessary, because we need to first validate all blocks (need to fetch tx data)
 	//before doing any state validation, we save all of them temporarily so we don't have to
@@ -361,7 +254,7 @@ func validateBlock(b *Block) error {
 	return nil
 }
 
-func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, configTxSlice []*configTx, err error) {
+func preValidation(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, err error) {
 	//TODO: make sure none of the transactions are already confirmed
 	//check if fundsTxs is syntactically well-formed and signature is correct
 	for _, txHash := range b.FundsTxData {
@@ -375,7 +268,7 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, conf
 			return nil, nil, nil, errors.New("FundsTx could not be read.")
 		}
 
-		if !(tx).verify() {
+		if !verifyFundsTx(tx) {
 			return nil, nil, nil, errors.New("Malformed transaction.")
 		}
 		fundsTxSlice = append(fundsTxSlice, tx)
@@ -388,7 +281,7 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, conf
 			//TODO: fetch from the network and make sure not in the confirmed map
 			return nil, nil, nil, errors.New("AccTx could not be read.")
 		}
-		if !(tx).verify() {
+		if !verifyAccTx(tx) {
 			return nil, nil, nil, errors.New("Malformed transaction.")
 		}
 		accTxSlice = append(accTxSlice, tx)
@@ -400,7 +293,7 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, conf
 			//TODO: fetch from the network and make sure not in the confirmed map
 			return nil, nil, nil, errors.New("ConfigTx could not be read.")
 		}
-		if !(tx).verify() {
+		if !verifyConfigTx(tx) {
 			return nil, nil, nil, errors.New("Malformed transaction.")
 		}
 		configTxSlice = append(configTxSlice, tx)
@@ -436,6 +329,7 @@ func preValidation(b *Block) (fundsTxSlice []*fundsTx, accTxSlice []*accTx, conf
 
 //apply to State
 func stateValidation(data blockData) error {
+
 	//we collect the fundsTx in local memory to rollback when needed
 	//also, we don't want to fetch the same data several times
 
@@ -478,22 +372,22 @@ func postValidation(data blockData) {
 
 	//put all txs from the block from open to close
 	for _, tx := range data.fundsTxSlice {
-		hash := hashFundsTx(tx)
-		writeClosedFundsTx(tx)
-		deleteOpenFundsTx(hash)
+		hash := tx.Hash()
+		writeClosedTx(tx)
+		deleteOpenTx(hash)
 	}
 
 	for _, tx := range data.accTxSlice {
-		hash := hashAccTx(tx)
-		writeClosedAccTx(tx)
-		deleteOpenAccTx(hash)
+		hash := tx.Hash()
+		writeClosedTx(tx)
+		deleteOpenTx(hash)
 	}
 
 	//block consists of system parameter changes
 	for _, tx := range data.configTxSlice {
-		hash := hashConfigTx(tx)
-		writeClosedConfigTx(tx)
-		deleteOpenConfigTx(hash)
+		hash := tx.Hash()
+		writeClosedTx(tx)
+		deleteOpenTx(hash)
 	}
 
 	//the new system parameters get active if the block was successfully validated
@@ -502,7 +396,7 @@ func postValidation(data blockData) {
 	writeBlock(data.block)
 }
 
-func hashBlock(b *Block) (hash [32]byte) {
+func hashBlock(b *protocol.Block) (hash [32]byte) {
 
 	var buf bytes.Buffer
 

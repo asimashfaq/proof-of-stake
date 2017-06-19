@@ -1,6 +1,9 @@
 package miner
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/lisgie/bazo_miner/protocol"
+)
 
 //this are "constants" that can be changed with config transactions
 var FEE_MINIMUM uint64
@@ -9,7 +12,7 @@ var DIFF_INTERVAL uint64
 var BLOCK_INTERVAL uint64
 var BLOCK_REWARD uint64
 
-var lastBlock *Block
+var lastBlock *protocol.Block
 var globalBlockCount uint64
 var localBlockCount uint64
 var blockDifficulty uint8
@@ -43,7 +46,7 @@ func (param parameters) String() string {
 	)
 }
 
-func collectStatistics(b *Block) {
+func collectStatistics(b *protocol.Block) {
 	//we need to make sure that we have the longest chain
 	//long is defined as the added difficulty from the genesis block
 
@@ -68,7 +71,7 @@ func collectStatistics(b *Block) {
 	lastBlock = b
 }
 
-func collectStatisticsRollback(b *Block) {
+func collectStatisticsRollback(b *protocol.Block) {
 
 	globalBlockCount--
 	localBlockCount--
@@ -79,7 +82,7 @@ func collectStatisticsRollback(b *Block) {
 	lastBlock = newLastBlock
 }
 
-func getBlockSequences(newBlock *Block) (blocksToRollback, blocksToValidate []*Block) {
+func getBlockSequences(newBlock *protocol.Block) (blocksToRollback, blocksToValidate []*protocol.Block) {
 
 	//newChainLen indicates how long the chain is to the common ancestor
 	ancestor, newChain := getNewChain(newBlock)
@@ -109,7 +112,7 @@ func getBlockSequences(newBlock *Block) (blocksToRollback, blocksToValidate []*B
 	}
 }
 
-func getNewChain(newBlock *Block) (ancestor *Block, newChain []*Block) {
+func getNewChain(newBlock *protocol.Block) (ancestor *protocol.Block, newChain []*protocol.Block) {
 
 	for {
 		newChain = append(newChain, newBlock)
@@ -128,7 +131,7 @@ func getNewChain(newBlock *Block) (ancestor *Block, newChain []*Block) {
 		}
 
 		//fetch the block we apparently missed
-		newBlock = blockReq(prevBlockHash)
+		//newBlock = blockReq(prevBlockHash)
 	}
 
 	return nil, nil
