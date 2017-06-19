@@ -65,7 +65,6 @@ func ConstructHeader(size int, typeID uint8) (header [HEADER_LEN]byte) {
 	copy(header[0:4], len[:])
 	header[4] = byte(typeID)
 	header[5] = VERSION_ID
-	//header [6] is reserved for future use
 	return header
 }
 

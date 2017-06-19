@@ -2,7 +2,6 @@ package miner
 
 import (
 	"errors"
-	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"golang.org/x/crypto/sha3"
 	"log"
@@ -115,38 +114,55 @@ func accStateChange(txSlice []*protocol.AccTx) error {
 	return nil
 }
 
+//we accept config slices with unknown id, but don't act on the payload
 func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 
 	if len(configTxSlice) == 0 {
 		return
 	}
-
+	var change bool
 	for _, tx := range configTxSlice {
 		switch tx.Id {
 		case protocol.FEE_MINIMUM_ID:
-			FEE_MINIMUM = tx.Payload
-		case protocol.BLOCK_SIZE_ID:
-			if tx.Payload == 0 {
-				fmt.Printf("¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬%v\n", tx)
+			if parameterBoundsChecking(protocol.FEE_MINIMUM_ID, tx.Payload) {
+				FEE_MINIMUM = tx.Payload
+				change = true
 			}
-			BLOCK_SIZE = tx.Payload
+		case protocol.BLOCK_SIZE_ID:
+			if parameterBoundsChecking(protocol.BLOCK_SIZE_ID, tx.Payload) {
+				BLOCK_SIZE = tx.Payload
+				change = true
+			}
 		case protocol.DIFF_INTERVAL_ID:
-			DIFF_INTERVAL = tx.Payload
+			if parameterBoundsChecking(protocol.DIFF_INTERVAL_ID, tx.Payload) {
+				DIFF_INTERVAL = tx.Payload
+				change = true
+			}
 		case protocol.BLOCK_INTERVAL_ID:
-			BLOCK_INTERVAL = tx.Payload
+			if parameterBoundsChecking(protocol.BLOCK_INTERVAL_ID, tx.Payload) {
+				BLOCK_INTERVAL = tx.Payload
+				change = true
+			}
 		case protocol.BLOCK_REWARD_ID:
-			BLOCK_REWARD = tx.Payload
+			if parameterBoundsChecking(protocol.BLOCK_REWARD_ID, tx.Payload) {
+				BLOCK_REWARD = tx.Payload
+				change = true
+			}
 		}
 	}
-	parameterSlice = append(parameterSlice, parameters{
-		blockHash,
-		FEE_MINIMUM,
-		BLOCK_SIZE,
-		DIFF_INTERVAL,
-		BLOCK_INTERVAL,
-		BLOCK_REWARD,
-	})
-	activeParameters = &parameterSlice[len(parameterSlice)-1]
+
+	//only add a new parameter struct if something meaningful actually changed
+	if change {
+		parameterSlice = append(parameterSlice, parameters{
+			blockHash,
+			FEE_MINIMUM,
+			BLOCK_SIZE,
+			DIFF_INTERVAL,
+			BLOCK_INTERVAL,
+			BLOCK_REWARD,
+		})
+		activeParameters = &parameterSlice[len(parameterSlice)-1]
+	}
 }
 
 func collectTxFees(fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, minerHash [32]byte) error {

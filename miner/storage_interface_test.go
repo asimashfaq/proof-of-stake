@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"testing"
 	"time"
+
 )
 
 func TestReadWriteTx(t *testing.T) {
@@ -39,8 +40,8 @@ func TestReadWriteTx(t *testing.T) {
 		//don't mess with the minimum fee
 		hashConfigSlice = append(hashConfigSlice, tx.Hash())
 		writeOpenTx(tx)
-
 	}
+
 
 	for _, hash := range hashFundsSlice {
 		if readOpenFundsTx(hash) == nil {

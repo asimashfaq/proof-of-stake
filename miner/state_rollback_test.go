@@ -149,11 +149,11 @@ func TestConfigStateChangeRollback(t *testing.T) {
 	configSlice = append(configSlice, tx5)
 
 	before := *activeParameters
-	configStateChange(configSlice, [32]byte{})
+	configStateChange(configSlice, [32]byte{'0','1','2'})
 	if reflect.DeepEqual(before, *activeParameters) {
 		t.Error("No config state change.")
 	}
-	configStateChangeRollback(configSlice)
+	configStateChangeRollback(configSlice, [32]byte{'0','1','2'})
 	if !reflect.DeepEqual(before, *activeParameters) {
 		t.Error("Config state rollback failed.")
 	}

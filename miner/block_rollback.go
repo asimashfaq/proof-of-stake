@@ -19,7 +19,7 @@ func validateBlockRollback(b *protocol.Block) error {
 	data := blockData{fundsTxSlice, accTxSlice, configTxSlice, b}
 
 	//before manipulating the state, we need to go back to pre-block system parameters
-	configStateChangeRollback(data.configTxSlice)
+	configStateChangeRollback(data.configTxSlice, b.Hash)
 	if err := stateValidationRollback(data); err != nil {
 		return err
 	}

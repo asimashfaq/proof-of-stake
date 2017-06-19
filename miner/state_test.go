@@ -182,3 +182,55 @@ func TestConfigTxStateChange(t *testing.T) {
 		t.Error("Config StateChanged didn't set the correct parameters!")
 	}
 }
+
+func TestConfigTxStateChangeUnknown(t *testing.T) {
+
+	cleanAndPrepare()
+	//issuing config txs
+	var configs []*protocol.ConfigTx
+	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 1000, rand.Uint64(), &RootPrivKey)
+	tx2, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 2000, rand.Uint64(), &RootPrivKey)
+	tx3, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 3000, rand.Uint64(), &RootPrivKey)
+
+	//save parameter state
+	tmpParameter := parameterSlice[len(parameterSlice)-1]
+
+	configs = append(configs,tx)
+	configs = append(configs,tx2)
+	configs = append(configs,tx3)
+
+	configStateChange(configs,[32]byte{'0','1'})
+
+	if !reflect.DeepEqual(tmpParameter,*activeParameters) {
+		t.Error("Parameter state changed even though it shouldn't have.")
+	}
+
+	configStateChangeRollback(configs, [32]byte{'0','1'})
+
+	if !reflect.DeepEqual(tmpParameter,*activeParameters) {
+		t.Error("Parameter state changed even though it shouldn't have.")
+	}
+
+	//adding a tx that changes state
+	tx4,_ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 3000, rand.Uint64(), &RootPrivKey)
+	configs = append(configs,tx4)
+
+	configStateChange(configs,[32]byte{'0','1'})
+
+	if reflect.DeepEqual(tmpParameter,*activeParameters) {
+		t.Error("Parameter state changed even though it shouldn't have.")
+	}
+
+	configStateChangeRollback(configs, [32]byte{'0','1'})
+
+	if !reflect.DeepEqual(tmpParameter,*activeParameters) {
+		t.Error("Parameter state changed even though it shouldn't have.")
+	}
+
+	configStateChange(configs, [32]byte{'0','1'})
+	configStateChangeRollback(configs, [32]byte{'0'})
+	//only change if block hashes match
+	if reflect.DeepEqual(tmpParameter,*activeParameters) {
+		t.Error("Parameter state changed even though it shouldn't have.")
+	}
+}

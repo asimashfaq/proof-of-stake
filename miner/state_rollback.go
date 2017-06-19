@@ -43,9 +43,15 @@ func accStateChangeRollback(txSlice []*protocol.AccTx) {
 	}
 }
 
-func configStateChangeRollback(txSlice []*protocol.ConfigTx) {
+func configStateChangeRollback(txSlice []*protocol.ConfigTx, blockHash [32]byte) {
 
 	if len(txSlice) == 0 {
+		return
+	}
+	//only rollback if the config changes lead to a parameterChange
+	//there might be the case that the client is not running the latest version, it's still confirming
+	//the transaction but does not understand the ID and thus is not changing the state
+	if parameterSlice[len(parameterSlice)-1].blockHash != blockHash {
 		return
 	}
 	//remove the latest entry in the parameters slice$
@@ -55,10 +61,10 @@ func configStateChangeRollback(txSlice []*protocol.ConfigTx) {
 
 func collectTxFeesRollback(fundsTx []*protocol.FundsTx, accTx []*protocol.AccTx, configTx []*protocol.ConfigTx, minerHash [32]byte) {
 
-	miner := getAccountFromHash(minerHash)
+	minerAcc := getAccountFromHash(minerHash)
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
 	for _, tx := range fundsTx {
-		miner.Balance -= tx.Fee
+		minerAcc.Balance -= tx.Fee
 
 		senderAcc := getAccountFromHash(tx.FromHash)
 		senderAcc.Balance += tx.Fee
@@ -67,17 +73,17 @@ func collectTxFeesRollback(fundsTx []*protocol.FundsTx, accTx []*protocol.AccTx,
 	for _, tx := range accTx {
 		//money gets created from thin air
 		//no need to subtract money from root key
-		miner.Balance -= tx.Fee
+		minerAcc.Balance -= tx.Fee
 	}
 
 	for _, tx := range configTx {
 		//no need to subtract money from root key
-		miner.Balance -= tx.Fee
+		minerAcc.Balance -= tx.Fee
 	}
 }
 
 func collectBlockRewardRollback(reward uint64, minerHash [32]byte) {
 
-	miner := getAccountFromHash(minerHash)
-	miner.Balance -= reward
+	minerAcc := getAccountFromHash(minerHash)
+	minerAcc.Balance -= reward
 }

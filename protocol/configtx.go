@@ -17,6 +17,7 @@ const (
 	FEE_MINIMUM_ID    = 3
 	BLOCK_INTERVAL_ID = 4
 	BLOCK_REWARD_ID   = 5
+	CONSENSUS_ID = 6
 
 	MIN_BLOCK_SIZE = 1000      //1KB
 	MAX_BLOCK_SIZE = 100000000 //100MB
@@ -126,6 +127,10 @@ func (*ConfigTx) Decode(encodedTx []byte) (tx *ConfigTx) {
 	copy(tx.Sig[:], encodedTx[18:82])
 
 	return tx
+}
+
+func (tx *ConfigTx) TxFee() uint64 {
+	return tx.Fee
 }
 
 func (tx ConfigTx) String() string {

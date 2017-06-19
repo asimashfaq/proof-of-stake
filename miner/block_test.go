@@ -112,11 +112,11 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 	}
 
 	//NrConfigTx is saved in a uint8
-	loopMax = int(rand.Uint32()%10) + 1
+	loopMax = int(rand.Uint32()%testSize) + 1
 	for cnt := 0; cnt < loopMax; cnt++ {
-		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
+		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%10+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
 
-		//don't mess with the minimum fee
+		//don't mess with the minimum fee just yet
 		if tx.Id == 3 {
 			continue
 		}

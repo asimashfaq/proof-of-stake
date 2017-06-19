@@ -21,10 +21,10 @@ type blockData struct {
 
 //imitating constructor
 func newBlock() *protocol.Block {
-	b := protocol.Block{}
+	b := new(protocol.Block)
 	b.Header = 0x01
 	b.StateCopy = make(map[[32]byte]*protocol.Account)
-	return &b
+	return b
 }
 
 //this method is to validate transactions, a copy of the state
@@ -33,6 +33,10 @@ func newBlock() *protocol.Block {
 func addTx(b *protocol.Block, tx protocol.Transaction) error {
 	//verifies correctness for the specific transaction
 	//i'd actually like to use !(&tx).verify to pass by pointer, but golang doesn't allow this
+	if tx.TxFee() < FEE_MINIMUM {
+		log.Printf("Transaction fee too low: %v (minimum is: %v)\n", tx.TxFee(), FEE_MINIMUM)
+		return errors.New("Transaction rejected because fee is below minimal fee threshold.")
+	}
 
 	if !verify(tx) {
 		log.Printf("Transaction could not be verified: %v\n", tx)

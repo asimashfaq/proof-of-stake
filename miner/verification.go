@@ -114,7 +114,8 @@ func verifyConfigTx(tx *protocol.ConfigTx) bool {
 		pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
 		txHash := tx.Hash()
 		if ecdsa.Verify(&pubKey, txHash[:], r, s) == true {
-			return configBoundsChecking(tx.Id, tx.Payload)
+			//return configBoundsChecking(tx.Id, tx.Payload)
+			return true
 		}
 	}
 
@@ -122,7 +123,7 @@ func verifyConfigTx(tx *protocol.ConfigTx) bool {
 }
 
 //returns if id is in the list of possible ids and rational value for payload parameter
-func configBoundsChecking(id uint8, payload uint64) bool {
+func parameterBoundsChecking(id uint8, payload uint64) bool {
 
 	switch id {
 	case protocol.BLOCK_SIZE_ID:

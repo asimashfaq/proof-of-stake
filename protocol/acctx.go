@@ -112,6 +112,10 @@ func (*AccTx) Decode(encodedTx []byte) (tx *AccTx) {
 	return tx
 }
 
+func (tx *AccTx) TxFee() uint64 {
+	return tx.Fee
+}
+
 func (tx AccTx) String() string {
 	return fmt.Sprintf(
 		"\n"+
