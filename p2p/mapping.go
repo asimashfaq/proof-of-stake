@@ -12,5 +12,3 @@ const (
 	ACC_REQ = 40
 	ACC_RES = 41
 )
-
-

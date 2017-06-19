@@ -8,7 +8,6 @@ import (
 )
 
 func isRootKey(hash [32]byte) bool {
-
 	_, exists := RootKeys[hash]
 	return exists
 }
@@ -92,14 +91,24 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 	return nil
 }
 
-//possibility of state change
-//1) exchange funds from tx
-//2) revert funds from previous tx
-//3) this doesn't need a rollback, because digitally signed
-//https://golang.org/doc/faq#stack_or_heap
+//for normal accounts, it
 func accStateChange(txSlice []*protocol.AccTx) error {
 
 	for _, tx := range txSlice {
+
+		switch tx.Header {
+		case 1:
+			//first bit set, given account will be a new root account
+			newAcc := protocol.Account{Address: tx.PubKey}
+			RootKeys[sha3.Sum256(tx.PubKey[:])] = &newAcc
+			continue
+		case 2:
+			//second bit set, delete account from root account
+			delete(RootKeys, sha3.Sum256(tx.PubKey[:]))
+			continue
+		}
+
+		//create a regular account
 		var fixedHash [8]byte
 		addressHash := sha3.Sum256(tx.PubKey[:])
 		acc := getAccountFromHash(addressHash)

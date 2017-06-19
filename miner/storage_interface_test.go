@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"testing"
 	"time"
-
 )
 
 func TestReadWriteTx(t *testing.T) {
@@ -28,7 +27,7 @@ func TestReadWriteTx(t *testing.T) {
 
 	loopMax = int(rand.Uint32() % 100)
 	for i := 0; i < loopMax; i++ {
-		tx, _ := protocol.ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
+		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
 		tx.Hash()
 		writeOpenTx(tx)
 		hashAccSlice = append(hashAccSlice, tx.Hash())
@@ -41,7 +40,6 @@ func TestReadWriteTx(t *testing.T) {
 		hashConfigSlice = append(hashConfigSlice, tx.Hash())
 		writeOpenTx(tx)
 	}
-
 
 	for _, hash := range hashFundsSlice {
 		if readOpenFundsTx(hash) == nil {

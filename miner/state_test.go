@@ -108,7 +108,7 @@ func TestAccTxStateChange(t *testing.T) {
 
 	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
-		tx, _ := protocol.ConstrAccTx(rand.Uint64()%1000, &RootPrivKey)
+		tx, _ := protocol.ConstrAccTx(0,rand.Uint64()%1000, &RootPrivKey)
 		accs = append(accs, tx)
 	}
 
@@ -130,6 +130,27 @@ func TestAccTxStateChange(t *testing.T) {
 		if !found {
 			t.Errorf("Account State failed to update for the following account: %v\n", acc)
 		}
+	}
+
+	//create a new root account
+	var singleSlice []*protocol.AccTx
+	tx, _ := protocol.ConstrAccTx(1, rand.Uint64()%1000, &RootPrivKey)
+	singleSlice = append(singleSlice,tx)
+	var pubKeyTmp [64]byte
+	copy(pubKeyTmp[:],tx.PubKey[:])
+
+	accStateChange(singleSlice)
+
+	if !isRootKey(serializeHashContent(pubKeyTmp)) {
+		t.Errorf("AccTx Header bit 1 not working.")
+	}
+	newTx := *tx
+	newTx.Header = 2
+	singleSlice[0] = &newTx
+	accStateChange(singleSlice)
+
+	if isRootKey(serializeHashContent(pubKeyTmp)) {
+		t.Errorf("AccTx Header bit 2 not working.")
 	}
 }
 

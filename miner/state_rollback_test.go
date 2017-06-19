@@ -89,7 +89,7 @@ func TestAccStateChangeRollback(t *testing.T) {
 
 	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
-		tx, _ := protocol.ConstrAccTx(rand.Uint64()%1000, &RootPrivKey)
+		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%1000, &RootPrivKey)
 		accs = append(accs, tx)
 	}
 
@@ -149,11 +149,11 @@ func TestConfigStateChangeRollback(t *testing.T) {
 	configSlice = append(configSlice, tx5)
 
 	before := *activeParameters
-	configStateChange(configSlice, [32]byte{'0','1','2'})
+	configStateChange(configSlice, [32]byte{'0', '1', '2'})
 	if reflect.DeepEqual(before, *activeParameters) {
 		t.Error("No config state change.")
 	}
-	configStateChangeRollback(configSlice, [32]byte{'0','1','2'})
+	configStateChangeRollback(configSlice, [32]byte{'0', '1', '2'})
 	if !reflect.DeepEqual(before, *activeParameters) {
 		t.Error("Config state rollback failed.")
 	}

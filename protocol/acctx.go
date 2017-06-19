@@ -22,9 +22,10 @@ type AccTx struct {
 	Sig    [64]byte
 }
 
-func ConstrAccTx(fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *AccTx, err error) {
+func ConstrAccTx(header byte, fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *AccTx, err error) {
 
 	tx = new(AccTx)
+	tx.Header = header
 	tx.Fee = fee
 
 	newAccAddress, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

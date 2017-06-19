@@ -26,7 +26,7 @@ func TestAccTx(t *testing.T) {
 	//creating some root-signed new accounts
 	loopMax := int(rand.Uint64() % 1000)
 	for i := 0; i <= loopMax; i++ {
-		tx, _ := protocol.ConstrAccTx(rand.Uint64()%100+1, &RootPrivKey)
+		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
 		if verifyAccTx(tx) == false {
 			t.Errorf("AccTx could not be verified: %v\n", tx)
 		}
