@@ -20,18 +20,6 @@ type Header struct {
 	Reserved uint8
 }
 
-func Init() {
-	//for now mock data
-	//will be later exchanged with listening on a socket
-
-	ln, _ := net.Listen("tcp", ":8081")
-
-	for {
-		conn, _ := ln.Accept()
-		//creating new goroutine for every incoming request, not sure if smartest way to do it
-		go handleConn(conn)
-	}
-}
 
 func handleConn(conn net.Conn) {
 
@@ -101,11 +89,11 @@ func parseInput(conn net.Conn, header *Header, data []byte) {
 	//parse input (what kind of tx, block etc.)
 	switch header.TypeID {
 	case ACCTX:
-		InAccTx(data)
+//		InAccTx(data)
 	case FUNDSTX:
-		InFundsTx(data)
+//		InFundsTx(data)
 	case BLOCK:
-		InBlock(data)
+		//InBlock(data)
 	case TIME_REQ:
 		timeRes(conn)
 	case ACC_REQ:

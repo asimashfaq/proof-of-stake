@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"net"
 	"time"
+	"github.com/lisgie/bazo_miner/protocol"
 )
 
 func prepareRequest(typeID uint8) (responseData []byte) {
@@ -13,7 +14,7 @@ func prepareRequest(typeID uint8) (responseData []byte) {
 	return responseData
 }
 
-func blockReq(hash [32]byte) (b *Block) {
+func blockReq(hash [32]byte) (b *protocol.Block) {
 
 	return b
 }
@@ -32,7 +33,7 @@ func timeRes(conn net.Conn) {
 
 func accRes(conn net.Conn, data []byte) {
 
-	var hash [32]byte
+	/*var hash [32]byte
 	copy(hash[:], data[0:32])
 	acc := getAccountFromHash(hash)
 	encodedAcc := EncodeAcc(acc)
@@ -40,5 +41,15 @@ func accRes(conn net.Conn, data []byte) {
 	toSend := make([]byte, len(header)+len(encodedAcc))
 	copy(toSend[:HEADER_LEN], header[:])
 	copy(toSend[HEADER_LEN:], encodedAcc)
-	conn.Write(toSend)
+	conn.Write(toSend)*/
+}
+
+func neighborReq() ([]string,error) {
+
+	return []string{
+		"127.0.0.1:8005",
+		"127.0.0.1:8006",
+		"127.0.0.1:8007",
+		"127.0.0.1:8008",
+	},nil
 }

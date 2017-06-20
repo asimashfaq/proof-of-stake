@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	ACC_SIZE = 108 //todo
+	ACC_SIZE = 76
 )
 
 type Account struct {
