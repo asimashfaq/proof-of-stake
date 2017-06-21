@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
 	"golang.org/x/crypto/sha3"
 	"log"
 	"time"
@@ -83,7 +84,7 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 
 	//checking if the sender account is already in the local state copy
 	if _, exists := b.StateCopy[tx.FromHash]; !exists {
-		for _, acc := range State[tx.From] {
+		for _, acc := range storage.State[tx.From] {
 			hash := serializeHashContent(acc.Address)
 			if hash == tx.FromHash {
 				newAcc := protocol.Account{}
@@ -95,7 +96,7 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 
 	//vice versa for receiver account
 	if _, exists := b.StateCopy[tx.ToHash]; !exists {
-		for _, acc := range State[tx.To] {
+		for _, acc := range storage.State[tx.To] {
 			hash := serializeHashContent(acc.Address)
 			if hash == tx.ToHash {
 				newAcc := protocol.Account{}
@@ -153,7 +154,7 @@ func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 	var mapId [8]byte
 	accHash := sha3.Sum256(tx.PubKey[:])
 	copy(mapId[:], accHash[0:8])
-	for _, j := range State[mapId] {
+	for _, j := range storage.State[mapId] {
 		if bytes.Compare(tx.PubKey[:], j.Address[:]) == 0 {
 			return errors.New("Account already exists.")
 		}

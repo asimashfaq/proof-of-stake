@@ -1,13 +1,16 @@
 package miner
 
-import "github.com/lisgie/bazo_miner/protocol"
+import (
+	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
+)
 
 func fundsStateChangeRollback(txSlice []*protocol.FundsTx) {
 
 	for cnt := len(txSlice) - 1; cnt >= 0; cnt-- {
 		tx := txSlice[cnt]
 
-		accSender, accReceiver := getAccountFromHash(tx.FromHash), getAccountFromHash(tx.ToHash)
+		accSender, accReceiver := storage.GetAccountFromHash(tx.FromHash), storage.GetAccountFromHash(tx.ToHash)
 
 		accSender.TxCnt -= 1
 		accSender.Balance += tx.Amount
@@ -25,7 +28,7 @@ func accStateChangeRollback(txSlice []*protocol.AccTx) {
 		var fixedHash [8]byte
 		copy(fixedHash[:], accHash[0:8])
 
-		accSlice := State[fixedHash]
+		accSlice := storage.State[fixedHash]
 		for i := range accSlice {
 			accSliceHash := serializeHashContent(accSlice[i].Address)
 			if accSliceHash == accHash {
@@ -38,7 +41,7 @@ func accStateChangeRollback(txSlice []*protocol.AccTx) {
 		}
 		//preventing memory leaks, this is important
 		if len(accSlice) == 0 {
-			delete(State, fixedHash)
+			delete(storage.State, fixedHash)
 		}
 	}
 }
@@ -61,12 +64,12 @@ func configStateChangeRollback(txSlice []*protocol.ConfigTx, blockHash [32]byte)
 
 func collectTxFeesRollback(fundsTx []*protocol.FundsTx, accTx []*protocol.AccTx, configTx []*protocol.ConfigTx, minerHash [32]byte) {
 
-	minerAcc := getAccountFromHash(minerHash)
+	minerAcc := storage.GetAccountFromHash(minerHash)
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
 	for _, tx := range fundsTx {
 		minerAcc.Balance -= tx.Fee
 
-		senderAcc := getAccountFromHash(tx.FromHash)
+		senderAcc := storage.GetAccountFromHash(tx.FromHash)
 		senderAcc.Balance += tx.Fee
 	}
 
@@ -84,6 +87,6 @@ func collectTxFeesRollback(fundsTx []*protocol.FundsTx, accTx []*protocol.AccTx,
 
 func collectBlockRewardRollback(reward uint64, minerHash [32]byte) {
 
-	minerAcc := getAccountFromHash(minerHash)
+	minerAcc := storage.GetAccountFromHash(minerHash)
 	minerAcc.Balance -= reward
 }

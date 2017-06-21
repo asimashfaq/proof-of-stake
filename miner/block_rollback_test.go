@@ -2,6 +2,7 @@ package miner
 
 import (
 	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
 	"reflect"
 	"testing"
 )
@@ -15,7 +16,7 @@ func TestValidateBlockRollback(t *testing.T) {
 	accsBefore2 := make(map[[64]byte]protocol.Account)
 	accsAfter := make(map[[64]byte]protocol.Account)
 
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			accsBefore[acc.Address] = *acc
 		}
@@ -25,7 +26,7 @@ func TestValidateBlockRollback(t *testing.T) {
 	finalizeBlock(b)
 	validateBlock(b)
 
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			accsAfter[acc.Address] = *acc
 		}
@@ -37,7 +38,7 @@ func TestValidateBlockRollback(t *testing.T) {
 
 	validateBlockRollback(b)
 
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			accsBefore2[acc.Address] = *acc
 		}
@@ -65,7 +66,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	var paramb3 []parameters
 
 	//no deep copy, becasue we use []*Account
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			stategenesis[acc.Address] = *acc
 		}
@@ -80,7 +81,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		t.Errorf("Block validation for (%v) failed: %v\n", b, err)
 	}
 
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			stateb[acc.Address] = *acc
 		}
@@ -96,7 +97,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		t.Errorf("Block failed: %v\n", b2)
 	}
 
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			stateb2[acc.Address] = *acc
 		}
@@ -112,7 +113,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		t.Errorf("Block failed: %v\n", b3)
 	}
 
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			stateb3[acc.Address] = *acc
 		}
@@ -132,7 +133,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	if err := validateBlockRollback(b4); err != nil {
 		t.Errorf("%v\n", err)
 	}
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			tmpState[acc.Address] = *acc
 		}
@@ -149,7 +150,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	if err := validateBlockRollback(b3); err != nil {
 		t.Errorf("%v\n", err)
 	}
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			tmpState[acc.Address] = *acc
 		}
@@ -164,7 +165,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	if err := validateBlockRollback(b2); err != nil {
 		t.Errorf("%v\n", err)
 	}
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			tmpState[acc.Address] = *acc
 		}
@@ -179,7 +180,7 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	if err := validateBlockRollback(b); err != nil {
 		t.Errorf("%v\n", err)
 	}
-	for _, accSlice := range State {
+	for _, accSlice := range storage.State {
 		for _, acc := range accSlice {
 			tmpState[acc.Address] = *acc
 		}

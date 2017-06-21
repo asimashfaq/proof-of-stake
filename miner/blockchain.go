@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
 	"log"
 	"math/big"
 	"os"
@@ -29,8 +30,7 @@ const (
 	RootPriv = "277ed539f56122c25a6fc115d07d632b47e71416c9aebf1beb54ee704f11842c"
 )
 
-var State map[[8]byte][]*protocol.Account
-var RootKeys map[[32]byte]*protocol.Account
+
 var LogFile *os.File
 var currentBlock, nextBlock *protocol.Block
 
@@ -53,9 +53,6 @@ func InitSystem() {
 
 	txQueue = NewQueue()
 	blockQueue = NewQueue()
-
-	State = make(map[[8]byte][]*protocol.Account)
-	RootKeys = make(map[[32]byte]*protocol.Account)
 
 	testing_setup()
 
@@ -145,7 +142,7 @@ func testing_setup() {
 	MinerHash = serializeHashContent(pubKey)
 	copy(shortMiner[:], MinerHash[0:8])
 	minerAcc := protocol.Account{Address: pubKey}
-	State[shortMiner] = append(State[shortMiner], &minerAcc)
+	storage.State[shortMiner] = append(storage.State[shortMiner], &minerAcc)
 
 	pub1, _ := new(big.Int).SetString(RootPub1, 16)
 	pub2, _ := new(big.Int).SetString(RootPub2, 16)
@@ -158,8 +155,8 @@ func testing_setup() {
 	var shortRootHash [8]byte
 	copy(shortRootHash[:], rootHash[0:8])
 	rootAcc := protocol.Account{Address: pubKey}
-	State[shortRootHash] = append(State[shortRootHash], &rootAcc)
-	RootKeys[rootHash] = &rootAcc
+	storage.State[shortRootHash] = append(storage.State[shortRootHash], &rootAcc)
+	storage.RootKeys[rootHash] = &rootAcc
 	var accA, accB protocol.Account
 
 	puba1, _ := new(big.Int).SetString(pubA1, 16)
@@ -205,6 +202,6 @@ func testing_setup() {
 	copy(shortHashA[:], hashA[0:8])
 	copy(shortHashB[:], hashB[0:8])
 
-	State[shortHashA] = append(State[shortHashA], &accA)
-	State[shortHashB] = append(State[shortHashB], &accB)
+	storage.State[shortHashA] = append(storage.State[shortHashA], &accA)
+	storage.State[shortHashB] = append(storage.State[shortHashB], &accB)
 }

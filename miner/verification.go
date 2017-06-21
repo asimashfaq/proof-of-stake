@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
 	"log"
 	"math/big"
 	"reflect"
@@ -43,9 +44,9 @@ func verifyFundsTx(tx *protocol.FundsTx) bool {
 	}
 
 	//check if accounts are present in the actual state
-	for _, accFrom := range State[tx.From] {
+	for _, accFrom := range storage.State[tx.From] {
 		accFromHash := serializeHashContent(accFrom.Address)
-		for _, accTo := range State[tx.To] {
+		for _, accTo := range storage.State[tx.To] {
 			accToHash := serializeHashContent(accTo.Address)
 			sig = [24]byte{}
 			for cnt := 0; cnt < 24; cnt++ {
@@ -84,7 +85,7 @@ func verifyAccTx(tx *protocol.AccTx) bool {
 	r.SetBytes(tx.Sig[:32])
 	s.SetBytes(tx.Sig[32:])
 
-	for _, rootAcc := range RootKeys {
+	for _, rootAcc := range storage.RootKeys {
 		pub1.SetBytes(rootAcc.Address[:32])
 		pub2.SetBytes(rootAcc.Address[32:])
 
@@ -107,7 +108,7 @@ func verifyConfigTx(tx *protocol.ConfigTx) bool {
 	r.SetBytes(tx.Sig[:32])
 	s.SetBytes(tx.Sig[32:])
 
-	for _, rootAcc := range RootKeys {
+	for _, rootAcc := range storage.RootKeys {
 		pub1.SetBytes(rootAcc.Address[:32])
 		pub2.SetBytes(rootAcc.Address[32:])
 

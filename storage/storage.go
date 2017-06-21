@@ -4,11 +4,17 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"log"
+	"github.com/lisgie/bazo_miner/protocol"
 )
 
 var db *bolt.DB
+var State map[[8]byte][]*protocol.Account
+var RootKeys map[[32]byte]*protocol.Account
 
 func Init() {
+
+	State = make(map[[8]byte][]*protocol.Account)
+	RootKeys = make(map[[32]byte]*protocol.Account)
 
 	var err error
 	db, err = bolt.Open("miner.db", 0600, nil)

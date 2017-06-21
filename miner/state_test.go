@@ -2,6 +2,7 @@ package miner
 
 import (
 	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -119,7 +120,7 @@ func TestAccTxStateChange(t *testing.T) {
 		found := false
 		accHash := serializeHashContent(acc.PubKey)
 		copy(shortHash[:], accHash[0:8])
-		accSlice := State[shortHash]
+		accSlice := storage.State[shortHash]
 		//make sure the previously created acc is in the state
 		for _, singleAcc := range accSlice {
 			singleAccHash := serializeHashContent(singleAcc.Address)
