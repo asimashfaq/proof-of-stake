@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"log"
 	"time"
+	"fmt"
 )
 
 const(
@@ -13,9 +14,14 @@ const(
 	PORT = "8000"
 )
 
+type network_iface interface {
+	NeighborReq() ([]string, error)
+}
+
 var (
 	activePeers map[string]*peer
 	potentialPeers []string
+	network network_iface
 )
 
 type peer struct {
@@ -23,7 +29,13 @@ type peer struct {
 	readwriter bufio.ReadWriter
 }
 
+func setDebug(iface network_iface) {
+	network = iface
+}
+
 func Init() {
+
+	network = production{}
 
 	/*ln, _ := net.Listen("tcp", ":"+PORT)
 
@@ -32,6 +44,8 @@ func Init() {
 		//creating new goroutine for every incoming request, not sure if smartest way to do it
 		go handleConn(conn)
 	}*/
+
+
 
 	activePeers = make(map[string]*peer)
 	//testing peer
@@ -70,6 +84,11 @@ func disconnectPeer(p *peer) {
 	}
 }
 
+func simpleFunc() {
+	a,b := network.NeighborReq()
+	fmt.Printf("%v, %v\n", a,b)
+}
+
 func getNewAddress() (string) {
 
 	var addrList []string
@@ -77,7 +96,7 @@ func getNewAddress() (string) {
 
 	for {
 		if len(potentialPeers) == 0 {
-			addrList,err = neighborReq()
+			addrList,err = network.NeighborReq()
 			if err != nil {
 				log.Printf("%v\n", err)
 				continue

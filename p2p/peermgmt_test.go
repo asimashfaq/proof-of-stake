@@ -2,7 +2,8 @@ package p2p
 
 import (
 	"testing"
-	"fmt"
+	"github.com/golang/mock/gomock"
+	"github.com/lisgie/bazo_miner/p2p/mock_p2p"
 )
 
 func TestCheckDuplicates(t *testing.T) {
@@ -35,5 +36,18 @@ func TestCheckDuplicates(t *testing.T) {
 func TestGetNewAddress(t *testing.T) {
 
 	//dependent on neighorReq, will be implemented later
+	Init()
+
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockObj := mock_p2p.NewMocknetwork_iface(mockCtrl)
+	mockObj.EXPECT().NeighborReq().Return([]string{"123"},nil)
+	setDebug(mockObj)
+
+	simpleFunc()
+
+	//fmt.Printf("%v\n", getNewAddress())
 
 }

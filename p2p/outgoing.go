@@ -7,6 +7,8 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 )
 
+type production struct {}
+
 func prepareRequest(typeID uint8) (responseData []byte) {
 
 	//conn := getPeer()
@@ -44,7 +46,7 @@ func accRes(conn net.Conn, data []byte) {
 	conn.Write(toSend)*/
 }
 
-func neighborReq() ([]string,error) {
+func (production) NeighborReq() ([]string,error) {
 
 	return []string{
 		"127.0.0.1:8005",
