@@ -2,12 +2,107 @@ package p2p
 
 import (
 	"net"
-	"bufio"
-	"log"
-	"time"
-	"fmt"
 )
 
+var (
+	peers map[peer]bool
+	brdcstMsg chan []byte
+	register chan peer
+	disconnect chan peer
+)
+
+type peer chan<- []byte
+
+func Init() {
+
+	//after this call, there are some peers connected
+
+	//to avoid that all new peers connect to all bootstrap peers, we just connect to one or two
+	//and request neighboring ip addresses
+	//neighboring ip addresses are incoming and outgoing addresses
+
+	go handleEvents()
+	go checkHealth()
+	listenIncoming()
+}
+
+func isMiner(conn net.Conn) bool {
+
+	//send ping request, abort conn if no pong comes back
+	conn.Close()
+	return false
+}
+
+func listenIncoming() {
+
+	//listen and spawn handleConn
+
+}
+
+
+func Broadcast(payload []byte) {
+
+	//did we already broadcast it before?
+
+	brdcstMsg<-payload
+}
+
+//this is not accessed concurrently, one single goroutine
+func handleEvents() {
+
+	for {
+		select {
+		//broadcasting all messages
+		case msg := <-brdcstMsg:
+			for p := range peers {
+				p<-msg
+			}
+		case p := <-register:
+			peers[p] = true
+		case p := <-disconnect:
+			delete(peers,p)
+			close(p)
+		}
+	}
+}
+
+//single goroutine that makes sure that system is well connected
+func checkHealth() {
+
+	for {
+		break
+		//initiate new connection if not enough
+		//and call go outgoingConn(conn)
+	}
+}
+
+func outgoingConn(conn net.Conn) {
+
+	ch := make(chan []byte)
+	go clientWriter(conn,ch)
+
+	register<-ch
+
+	var buf []byte
+	for {
+		_,err := conn.Read(buf)
+		if err != nil {
+			//remote end has disconnected
+			disconnect<-ch
+			break
+		}
+	}
+	conn.Close()
+}
+
+func clientWriter(conn net.Conn, ch <-chan []byte) {
+	for msg := range ch {
+		conn.Write(msg)
+	}
+}
+
+
+/*
 const(
 	//each peer is connected to this many peers to send broadcasts and unicasts to
 	OUT_CONN_LIMIT = 8
@@ -37,14 +132,6 @@ func Init() {
 
 	network = production{}
 
-	/*ln, _ := net.Listen("tcp", ":"+PORT)
-
-	for {
-		conn, _ := ln.Accept()
-		//creating new goroutine for every incoming request, not sure if smartest way to do it
-		go handleConn(conn)
-	}*/
-
 
 
 	activePeers = make(map[string]*peer)
@@ -56,7 +143,7 @@ func disconnectPeer(p *peer) {
 	//clean up
 	//I think garbage collector realises that it can remove p after removing it from the map?
 
-	//delete(activePeers,p.conn.RemoteAddr().String())
+	delete(activePeers,p.conn.RemoteAddr().String())
 
 	for ;; {
 
@@ -82,11 +169,6 @@ func disconnectPeer(p *peer) {
 			activePeers[newConn.RemoteAddr().String()] = p
 		}
 	}
-}
-
-func simpleFunc() {
-	a,b := network.NeighborReq()
-	fmt.Printf("%v, %v\n", a,b)
 }
 
 func getNewAddress() (string) {
@@ -134,4 +216,4 @@ func checkDuplicates(addrList []string) {
 			potentialPeers = append(potentialPeers,newAddr)
 		}
 	}
-}
+}*/

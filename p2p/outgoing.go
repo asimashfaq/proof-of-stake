@@ -46,7 +46,8 @@ func accRes(conn net.Conn, data []byte) {
 	conn.Write(toSend)*/
 }
 
-func (production) NeighborReq() ([]string,error) {
+
+func (p2p) NeighborReq() ([]string,error) {
 
 	return []string{
 		"127.0.0.1:8005",
