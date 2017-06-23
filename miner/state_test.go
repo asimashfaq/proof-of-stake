@@ -109,7 +109,7 @@ func TestAccTxStateChange(t *testing.T) {
 
 	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
-		tx, _ := protocol.ConstrAccTx(0,rand.Uint64()%1000, &RootPrivKey)
+		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%1000, &RootPrivKey)
 		accs = append(accs, tx)
 	}
 
@@ -136,9 +136,9 @@ func TestAccTxStateChange(t *testing.T) {
 	//create a new root account
 	var singleSlice []*protocol.AccTx
 	tx, _ := protocol.ConstrAccTx(1, rand.Uint64()%1000, &RootPrivKey)
-	singleSlice = append(singleSlice,tx)
+	singleSlice = append(singleSlice, tx)
 	var pubKeyTmp [64]byte
-	copy(pubKeyTmp[:],tx.PubKey[:])
+	copy(pubKeyTmp[:], tx.PubKey[:])
 
 	accStateChange(singleSlice)
 
@@ -217,42 +217,42 @@ func TestConfigTxStateChangeUnknown(t *testing.T) {
 	//save parameter state
 	tmpParameter := parameterSlice[len(parameterSlice)-1]
 
-	configs = append(configs,tx)
-	configs = append(configs,tx2)
-	configs = append(configs,tx3)
+	configs = append(configs, tx)
+	configs = append(configs, tx2)
+	configs = append(configs, tx3)
 
-	configStateChange(configs,[32]byte{'0','1'})
+	configStateChange(configs, [32]byte{'0', '1'})
 
-	if !reflect.DeepEqual(tmpParameter,*activeParameters) {
+	if !reflect.DeepEqual(tmpParameter, *activeParameters) {
 		t.Error("Parameter state changed even though it shouldn't have.")
 	}
 
-	configStateChangeRollback(configs, [32]byte{'0','1'})
+	configStateChangeRollback(configs, [32]byte{'0', '1'})
 
-	if !reflect.DeepEqual(tmpParameter,*activeParameters) {
+	if !reflect.DeepEqual(tmpParameter, *activeParameters) {
 		t.Error("Parameter state changed even though it shouldn't have.")
 	}
 
 	//adding a tx that changes state
-	tx4,_ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 3000, rand.Uint64(), &RootPrivKey)
-	configs = append(configs,tx4)
+	tx4, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 3000, rand.Uint64(), &RootPrivKey)
+	configs = append(configs, tx4)
 
-	configStateChange(configs,[32]byte{'0','1'})
+	configStateChange(configs, [32]byte{'0', '1'})
 
-	if reflect.DeepEqual(tmpParameter,*activeParameters) {
+	if reflect.DeepEqual(tmpParameter, *activeParameters) {
 		t.Error("Parameter state changed even though it shouldn't have.")
 	}
 
-	configStateChangeRollback(configs, [32]byte{'0','1'})
+	configStateChangeRollback(configs, [32]byte{'0', '1'})
 
-	if !reflect.DeepEqual(tmpParameter,*activeParameters) {
+	if !reflect.DeepEqual(tmpParameter, *activeParameters) {
 		t.Error("Parameter state changed even though it shouldn't have.")
 	}
 
-	configStateChange(configs, [32]byte{'0','1'})
+	configStateChange(configs, [32]byte{'0', '1'})
 	configStateChangeRollback(configs, [32]byte{'0'})
 	//only change if block hashes match
-	if reflect.DeepEqual(tmpParameter,*activeParameters) {
+	if reflect.DeepEqual(tmpParameter, *activeParameters) {
 		t.Error("Parameter state changed even though it shouldn't have.")
 	}
 }

@@ -1,9 +1,9 @@
 package storage
 
 import (
-	"github.com/lisgie/bazo_miner/protocol"
 	"bytes"
 	"encoding/binary"
+	"github.com/lisgie/bazo_miner/protocol"
 	"golang.org/x/crypto/sha3"
 )
 

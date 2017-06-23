@@ -3,8 +3,8 @@ package storage
 import (
 	"fmt"
 	"github.com/boltdb/bolt"
-	"log"
 	"github.com/lisgie/bazo_miner/protocol"
+	"log"
 )
 
 var db *bolt.DB

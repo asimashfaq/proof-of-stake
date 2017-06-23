@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/binary"
 	"log"
-	"net"
 )
 
 const (
@@ -13,6 +12,7 @@ const (
 	VERSION_ID   = 1
 )
 
+//Java can't handle uints, should we only allow lengths of up to 2^31?
 type Header struct {
 	Len      uint32
 	TypeID   uint8
@@ -20,41 +20,15 @@ type Header struct {
 	Reserved uint8
 }
 
+func BuildPacket(typeID uint8, payload []byte) (packet []byte) {
 
-
-func handleConn(conn net.Conn) {
-
-	reader := bufio.NewReader(conn)
-	header := ExtractHeader(reader)
-
-	if header.Len > MAX_BUF_SIZE {
-		log.Printf("Input Size too large (%v), max. is %v\n", header.Len, MAX_BUF_SIZE)
-	}
-	inputBuf := make([]byte, header.Len)
-	for i := 0; i < int(header.Len); i++ {
-
-		in, err := reader.ReadByte()
-		if err != nil {
-			log.Printf("Error while reading the payload (%v)\n", err)
-			break
-		}
-		inputBuf[i] = in
-	}
-	//not sure if reset has any benefits
-	reader.Reset(conn)
-
-	//certain inputs need to generate an appropriate output
-	parseInput(conn, header, inputBuf)
-}
-
-func ConstructHeader(size int, typeID uint8) (header [HEADER_LEN]byte) {
-
-	var len [4]byte
-	binary.BigEndian.PutUint32(len[:], uint32(size))
-	copy(header[0:4], len[:])
-	header[4] = byte(typeID)
-	header[5] = VERSION_ID
-	return header
+	var payloadLen [4]byte
+	packet = make([]byte, HEADER_LEN+len(payload))
+	binary.BigEndian.PutUint32(payloadLen[:], uint32(len(payload)))
+	copy(packet[0:4], payloadLen[:])
+	packet[4] = byte(typeID)
+	copy(packet[5:], payload)
+	return packet
 }
 
 func ExtractHeader(reader *bufio.Reader) *Header {
@@ -82,23 +56,4 @@ func ExtractHeader(reader *bufio.Reader) *Header {
 	header.Version = uint8(headerArr[5])
 	header.Reserved = uint8(headerArr[6])
 	return header
-}
-
-func parseInput(conn net.Conn, header *Header, data []byte) {
-
-	//inspect header
-	//parse input (what kind of tx, block etc.)
-	switch header.TypeID {
-	case ACCTX:
-//		InAccTx(data)
-	case FUNDSTX:
-//		InFundsTx(data)
-	case BLOCK:
-		//InBlock(data)
-	case TIME_REQ:
-		timeRes(conn)
-	case ACC_REQ:
-		accRes(conn, data)
-	}
-	conn.Close()
 }

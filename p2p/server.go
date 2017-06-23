@@ -1,66 +1,204 @@
 package p2p
 
 import (
+	"bufio"
+	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
+	"log"
 	"net"
+	"os"
+	"strconv"
+	"time"
+)
+
+const (
+	PORT       = 8000
+	CONN_LIMIT = 8
 )
 
 var (
-	peers map[peer]bool
-	brdcstMsg chan []byte
-	register chan peer
+	LogFile    *os.File
+	peers      map[peer]bool
+	brdcstMsg  chan msgPeer
+	register   chan peer
 	disconnect chan peer
 )
 
-type peer chan<- []byte
+//we need that in order to not send back the broadcast to the peer we received it from
+type msgPeer struct {
+	payload []byte
+	conn    net.Conn
+}
+
+type peer chan<- msgPeer
 
 func Init() {
 
+	LogFile, _ = os.OpenFile("logp2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	log.SetOutput(LogFile)
 	//after this call, there are some peers connected
 
 	//to avoid that all new peers connect to all bootstrap peers, we just connect to one or two
 	//and request neighboring ip addresses
 	//neighboring ip addresses are incoming and outgoing addresses
 
-	go handleEvents()
-	go checkHealth()
-	listenIncoming()
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(PORT))
+	if err != nil {
+		log.Printf("%v\n", err)
+		return
+	}
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("%v\n", err)
+			continue
+		}
+		go handleNewConn(conn)
+	}
+
+	go broadcastService()
+	//go checkHealth()
 }
 
-func isMiner(conn net.Conn) bool {
+func handleNewConn(conn net.Conn) {
 
-	//send ping request, abort conn if no pong comes back
-	conn.Close()
-	return false
+	log.Printf("New incoming connection: %v\n", conn.RemoteAddr().String())
+	reader := bufio.NewReader(conn)
+	header := ExtractHeader(reader)
+	payload := make([]byte, header.Len-HEADER_LEN)
+	var err error
+
+	for cnt := 0; cnt < int(header.Len); cnt++ {
+		payload[cnt], err = reader.ReadByte()
+		if err != nil {
+			log.Printf("%v\n", err)
+			conn.Close()
+			return
+		}
+	}
+
+	if header.TypeID == MINER_PING {
+		go minerConn(conn)
+	} else {
+		defer conn.Close()
+	}
+
+	processRequest(conn, header, payload)
 }
 
-func listenIncoming() {
+func processRequest(conn net.Conn, header *Header, payload []byte) {
 
-	//listen and spawn handleConn
+	switch header.TypeID {
+	case FUNDSTX_BRDCST:
+		initiateTxBroadcast(conn, payload, FUNDSTX_BRDCST)
+	case FUNDSTX_REQ:
+		txRes(conn, payload, FUNDSTX_REQ)
+	case ACCTX_REQ:
+		txRes(conn, payload, ACCTX_REQ)
+	case CONFIGTX_REQ:
+		txRes(conn, payload, CONFIGTX_REQ)
+	case BLOCK_REQ:
+		blockRes(conn, payload)
+	case ACC_REQ:
+		accRes(conn, payload)
+	case MINER_PING:
+		pongRes(conn, payload)
+
+	}
+}
+
+//miner created a new block that needs to be broadcast
+func MinerBroadcastBlock(payload []byte) { brdcstMsg <- msgPeer{payload, nil} }
+
+func initiateBlockBroadcast(conn net.Conn, payload []byte) {
+
+	var block *protocol.Block
+	block = block.Decode(payload)
+	if block == nil {
+		return
+	}
+	if dec := storage.ReadBlock(block.Hash); dec != nil {
+		return
+	}
+	toBrdcst := BuildPacket(BLOCK_BRDCST, payload)
+	copy(toBrdcst[HEADER_LEN:], payload)
+	brdcstMsg <- msgPeer{toBrdcst, conn}
+}
+
+func initiateTxBroadcast(conn net.Conn, payload []byte, brdcstType uint8) {
+
+	//check if we already did a broadcast by checking whether it's already been written to memory
+	//we save memory by not transmitting the hash, this has to be calculated, worth the tradeoff I guess
+	switch brdcstType {
+	case FUNDSTX_BRDCST:
+		var fTx *protocol.FundsTx
+		fTx = fTx.Decode(payload)
+		if fTx == nil {
+			return
+		}
+		if dec := storage.ReadOpenTx(fTx.Hash()); dec != nil {
+			return
+		}
+		if dec := storage.ReadClosedTx(fTx.Hash()); dec != nil {
+			return
+		}
+	case ACCTX_BRDCST:
+		var aTx *protocol.AccTx
+		aTx = aTx.Decode(payload)
+		if aTx == nil {
+			return
+		}
+		if dec := storage.ReadOpenTx(aTx.Hash()); dec != nil {
+			return
+		}
+		if dec := storage.ReadClosedTx(aTx.Hash()); dec != nil {
+			return
+		}
+	case CONFIGTX_BRDCST:
+		var cTx *protocol.ConfigTx
+		cTx = cTx.Decode(payload)
+		if cTx == nil {
+			return
+		}
+		if dec := storage.ReadOpenTx(cTx.Hash()); dec != nil {
+			return
+		}
+		if dec := storage.ReadClosedTx(cTx.Hash()); dec != nil {
+			return
+		}
+	}
+
+	//build new broadcast packet
+	/*	toBrdcst := PreparePacket() := ConstructHeader(len(payload),brdcstType)
+		toBrdcst := make([]byte,HEADER_LEN+len(payload))
+		copy(toBrdcst[:HEADER_LEN],header[:])
+		copy(toBrdcst[HEADER_LEN:],payload)*
+
+		brdcstMsg<-msgPeer{toBrdcst,conn}*/
+}
+
+func txBroadcast(conn net.Conn, payload []byte) {
 
 }
 
+func blockBroadcast(conn net.Conn, payload []byte) {
 
-func Broadcast(payload []byte) {
-
-	//did we already broadcast it before?
-
-	brdcstMsg<-payload
 }
 
 //this is not accessed concurrently, one single goroutine
-func handleEvents() {
-
+func broadcastService() {
 	for {
 		select {
 		//broadcasting all messages
 		case msg := <-brdcstMsg:
 			for p := range peers {
-				p<-msg
+				p <- msg
 			}
 		case p := <-register:
 			peers[p] = true
 		case p := <-disconnect:
-			delete(peers,p)
+			delete(peers, p)
 			close(p)
 		}
 	}
@@ -76,144 +214,40 @@ func checkHealth() {
 	}
 }
 
-func outgoingConn(conn net.Conn) {
+func minerConn(conn net.Conn) {
 
-	ch := make(chan []byte)
-	go clientWriter(conn,ch)
+	ch := make(chan msgPeer)
+	go peerWriter(conn, ch)
 
-	register<-ch
-
-	var buf []byte
+	register <- ch
+	connReader := bufio.NewReader(conn)
 	for {
-		_,err := conn.Read(buf)
-		if err != nil {
-			//remote end has disconnected
-			disconnect<-ch
+		header := ExtractHeader(connReader)
+		if header != nil {
+			disconnect <- ch
 			break
 		}
+
+		var err error
+		payload := make([]byte, header.Len)
+		for cnt := 0; cnt < int(header.Len); cnt++ {
+			payload[cnt], err = connReader.ReadByte()
+			if err != nil {
+				log.Printf("Peer (%v) disconnected: %v\n", conn.RemoteAddr().String(), err)
+				disconnect <- ch
+				break
+			}
+		}
+		processRequest(conn, header, payload)
 	}
 	conn.Close()
 }
 
-func clientWriter(conn net.Conn, ch <-chan []byte) {
+//will be our broadcast mechanism
+func peerWriter(conn net.Conn, ch <-chan msgPeer) {
 	for msg := range ch {
-		conn.Write(msg)
-	}
-}
-
-
-/*
-const(
-	//each peer is connected to this many peers to send broadcasts and unicasts to
-	OUT_CONN_LIMIT = 8
-	PORT = "8000"
-)
-
-type network_iface interface {
-	NeighborReq() ([]string, error)
-}
-
-var (
-	activePeers map[string]*peer
-	potentialPeers []string
-	network network_iface
-)
-
-type peer struct {
-	conn net.Conn
-	readwriter bufio.ReadWriter
-}
-
-func setDebug(iface network_iface) {
-	network = iface
-}
-
-func Init() {
-
-	network = production{}
-
-
-
-	activePeers = make(map[string]*peer)
-	//testing peer
-
-}
-
-func disconnectPeer(p *peer) {
-	//clean up
-	//I think garbage collector realises that it can remove p after removing it from the map?
-
-	delete(activePeers,p.conn.RemoteAddr().String())
-
-	for ;; {
-
-		if len(activePeers) >= OUT_CONN_LIMIT {
-			break
-		}
-
-		addr := getNewAddress()
-
-		//initiate connection with received message
-		newConn,err := net.Dial("tcp",addr)
-		if err != nil {
-			log.Printf("Couldn't initiate connection to IP Address: %v\n", addr)
-			continue
-		} else {
-			var newReaderWriter bufio.ReadWriter
-			newReaderWriter.Reader.Reset(newConn)
-			newReaderWriter.Writer.Reset(newConn)
-			p := &peer{
-				conn: newConn,
-				readwriter: newReaderWriter,
-			}
-			activePeers[newConn.RemoteAddr().String()] = p
+		if conn != msg.conn {
+			conn.Write(msg.payload)
 		}
 	}
 }
-
-func getNewAddress() (string) {
-
-	var addrList []string
-	var err error
-
-	for {
-		if len(potentialPeers) == 0 {
-			addrList,err = network.NeighborReq()
-			if err != nil {
-				log.Printf("%v\n", err)
-				continue
-			}
-			//remove duplicates and already active peers
-			checkDuplicates(addrList)
-		}
-
-		if len(potentialPeers) > 0 {
-			break
-		}
-		time.Sleep(200*time.Millisecond)
-	}
-
-	addr := potentialPeers[len(potentialPeers)-1]
-	potentialPeers = potentialPeers[:len(potentialPeers)-1]
-	return addr
-}
-
-func checkDuplicates(addrList []string) {
-
-	for _,newAddr := range addrList {
-		if _,exists := activePeers[newAddr]; exists {
-			continue
-		}
-
-		var duplicate bool
-		for _,existingAddr := range potentialPeers {
-			if newAddr == existingAddr {
-				duplicate = true
-				break
-			}
-		}
-		if !duplicate {
-			potentialPeers = append(potentialPeers,newAddr)
-		}
-	}
-}*/

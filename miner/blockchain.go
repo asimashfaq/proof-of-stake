@@ -30,7 +30,6 @@ const (
 	RootPriv = "277ed539f56122c25a6fc115d07d632b47e71416c9aebf1beb54ee704f11842c"
 )
 
-
 var LogFile *os.File
 var currentBlock, nextBlock *protocol.Block
 
@@ -56,7 +55,7 @@ func InitSystem() {
 
 	testing_setup()
 
-	LogFile, _ = os.OpenFile("log "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	LogFile, _ = os.OpenFile("logminer "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
 
 	log.Println("Starting system, initializing state map")
