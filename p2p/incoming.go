@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"encoding/binary"
 	"log"
+	"fmt"
 )
 
 const (
 	MAX_BUF_SIZE = 10000000 //10MB
-	HEADER_LEN   = 7
+	HEADER_LEN   = 5
 	VERSION_ID   = 1
 )
 
@@ -16,8 +17,6 @@ const (
 type Header struct {
 	Len      uint32
 	TypeID   uint8
-	Version  uint8
-	Reserved uint8
 }
 
 func BuildPacket(typeID uint8, payload []byte) (packet []byte) {
@@ -35,7 +34,6 @@ func ExtractHeader(reader *bufio.Reader) *Header {
 	//the first four bytes of any incoming messages is the length of the payload
 	//error catching after every read is necessary to avoid panicking
 	var headerArr [HEADER_LEN]byte
-
 	//reading byte by byte is surprisingly fast and works a lot better for concurrent connections
 	for i := range headerArr {
 		extr, err := reader.ReadByte()
@@ -53,7 +51,14 @@ func ExtractHeader(reader *bufio.Reader) *Header {
 	header := new(Header)
 	header.Len = packetLen
 	header.TypeID = uint8(headerArr[4])
-	header.Version = uint8(headerArr[5])
-	header.Reserved = uint8(headerArr[6])
 	return header
+}
+
+func (header Header) String() string {
+	return fmt.Sprintf(
+			"Length: %v\n"+
+			"TypeID: %v\n\n",
+		header.Len,
+		header.TypeID,
+	)
 }

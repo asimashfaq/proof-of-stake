@@ -13,7 +13,8 @@ import (
 
 const (
 	PORT       = 8000
-	CONN_LIMIT = 8
+	MIN_MINERS = 10
+	MAX_MINERS = 20
 )
 
 var (
@@ -33,6 +34,15 @@ type msgPeer struct {
 type peer chan<- msgPeer
 
 func Init() {
+
+	peers = make(map[peer]bool)
+	brdcstMsg = make(chan msgPeer)
+	register = make(chan peer)
+	disconnect = make(chan peer)
+
+	go broadcastService()
+	//go checkHealth()
+
 
 	LogFile, _ = os.OpenFile("logp2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
@@ -57,8 +67,6 @@ func Init() {
 		go handleNewConn(conn)
 	}
 
-	go broadcastService()
-	//go checkHealth()
 }
 
 func handleNewConn(conn net.Conn) {
@@ -78,17 +86,18 @@ func handleNewConn(conn net.Conn) {
 		}
 	}
 
+	processRequest(conn, header, payload)
+
 	if header.TypeID == MINER_PING {
 		go minerConn(conn)
 	} else {
-		defer conn.Close()
+		conn.Close()
 	}
-
-	processRequest(conn, header, payload)
 }
 
 func processRequest(conn net.Conn, header *Header, payload []byte) {
 
+	log.Printf("%v: Received request with following header:\n%v", conn.RemoteAddr().String(),header)
 	switch header.TypeID {
 	case FUNDSTX_BRDCST:
 		initiateTxBroadcast(conn, payload, FUNDSTX_BRDCST)
@@ -122,7 +131,6 @@ func initiateBlockBroadcast(conn net.Conn, payload []byte) {
 		return
 	}
 	toBrdcst := BuildPacket(BLOCK_BRDCST, payload)
-	copy(toBrdcst[HEADER_LEN:], payload)
 	brdcstMsg <- msgPeer{toBrdcst, conn}
 }
 
@@ -134,6 +142,7 @@ func initiateTxBroadcast(conn net.Conn, payload []byte, brdcstType uint8) {
 	case FUNDSTX_BRDCST:
 		var fTx *protocol.FundsTx
 		fTx = fTx.Decode(payload)
+
 		if fTx == nil {
 			return
 		}
@@ -170,20 +179,8 @@ func initiateTxBroadcast(conn net.Conn, payload []byte, brdcstType uint8) {
 	}
 
 	//build new broadcast packet
-	/*	toBrdcst := PreparePacket() := ConstructHeader(len(payload),brdcstType)
-		toBrdcst := make([]byte,HEADER_LEN+len(payload))
-		copy(toBrdcst[:HEADER_LEN],header[:])
-		copy(toBrdcst[HEADER_LEN:],payload)*
-
-		brdcstMsg<-msgPeer{toBrdcst,conn}*/
-}
-
-func txBroadcast(conn net.Conn, payload []byte) {
-
-}
-
-func blockBroadcast(conn net.Conn, payload []byte) {
-
+	toBrdcst := BuildPacket(brdcstType,payload)
+	brdcstMsg<-msgPeer{toBrdcst,conn}
 }
 
 //this is not accessed concurrently, one single goroutine
@@ -208,7 +205,12 @@ func broadcastService() {
 func checkHealth() {
 
 	for {
-		break
+		if len(peers) >= MIN_MINERS {
+			time.Sleep(10*time.Second)
+			continue
+		}
+
+
 		//initiate new connection if not enough
 		//and call go outgoingConn(conn)
 	}
@@ -219,11 +221,15 @@ func minerConn(conn net.Conn) {
 	ch := make(chan msgPeer)
 	go peerWriter(conn, ch)
 
+	log.Printf("%v: Adding a new miner\n", conn.RemoteAddr().String())
+
 	register <- ch
 	connReader := bufio.NewReader(conn)
+
 	for {
 		header := ExtractHeader(connReader)
-		if header != nil {
+		if header == nil {
+			log.Printf("%v: Received corrupted header, closing connection.\n", conn.RemoteAddr().String())
 			disconnect <- ch
 			break
 		}
@@ -233,11 +239,12 @@ func minerConn(conn net.Conn) {
 		for cnt := 0; cnt < int(header.Len); cnt++ {
 			payload[cnt], err = connReader.ReadByte()
 			if err != nil {
-				log.Printf("Peer (%v) disconnected: %v\n", conn.RemoteAddr().String(), err)
+				log.Printf("%v: Peer disconnected (%v)\n", conn.RemoteAddr().String(), err)
 				disconnect <- ch
 				break
 			}
 		}
+
 		processRequest(conn, header, payload)
 	}
 	conn.Close()

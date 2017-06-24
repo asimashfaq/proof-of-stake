@@ -24,18 +24,13 @@ func txRes(conn net.Conn, payload []byte, txKind uint8) {
 	}
 
 	if tx == nil {
-		header := ConstructHeader(0, NOT_FOUND)
-		toSend := make([]byte, HEADER_LEN)
-		copy(toSend[:], header[:])
-		conn.Write(toSend)
+		packet := BuildPacket(NOT_FOUND,nil)
+		conn.Write(packet)
 		return
 	}
 
-	header := ConstructHeader(len(tx), txKind)
-	toSend := make([]byte, HEADER_LEN+len(tx))
-	copy(toSend[:HEADER_LEN], header[:])
-	copy(toSend[HEADER_LEN:], tx)
-	conn.Write(toSend)
+	packet := BuildPacket(txKind, payload)
+	conn.Write(packet)
 }
 
 func blockRes(conn net.Conn, payload []byte) {
@@ -46,18 +41,13 @@ func blockRes(conn net.Conn, payload []byte) {
 	block := storage.ReadBlock(blockHash)
 
 	if block == nil {
-		header := ConstructHeader(0, NOT_FOUND)
-		toSend := make([]byte, HEADER_LEN)
-		copy(toSend[:], header[:])
-		conn.Write(toSend)
+		packet := BuildPacket(NOT_FOUND, nil)
+		conn.Write(packet)
 		return
 	}
 
-	header := ConstructHeader(len(block), BLOCK_RES)
-	toSend := make([]byte, HEADER_LEN+len(block))
-	copy(toSend[:HEADER_LEN], header[:])
-	copy(toSend[HEADER_LEN:], block)
-	conn.Write(toSend)
+	packet := BuildPacket(BLOCK_RES, block)
+	conn.Write(packet)
 }
 
 func accRes(conn net.Conn, payload []byte) {
@@ -68,18 +58,12 @@ func accRes(conn net.Conn, payload []byte) {
 	encodedAcc := acc.Encode()
 
 	if encodedAcc == nil {
-		header := ConstructHeader(0, NOT_FOUND)
-		toSend := make([]byte, HEADER_LEN)
-		copy(toSend[:], header[:])
-		conn.Write(toSend)
+		packet := BuildPacket(NOT_FOUND,nil)
+		conn.Write(packet)
 		return
 	}
-
-	header := ConstructHeader(len(encodedAcc), ACC_RES)
-	toSend := make([]byte, len(header)+len(encodedAcc))
-	copy(toSend[:HEADER_LEN], header[:])
-	copy(toSend[HEADER_LEN:], encodedAcc)
-	conn.Write(toSend)
+	packet := BuildPacket(ACC_RES, encodedAcc)
+	conn.Write(packet)
 }
 
 func timeRes(conn net.Conn) {
@@ -87,17 +71,12 @@ func timeRes(conn net.Conn) {
 	var buf [8]byte
 	time := time.Now().Unix()
 	binary.BigEndian.PutUint64(buf[:], uint64(time))
-	toSend := make([]byte, len(buf)+HEADER_LEN)
-	header := ConstructHeader(len(buf), TIME_RES)
-	copy(toSend[0:HEADER_LEN], header[:])
-	copy(toSend[HEADER_LEN:], buf[:])
-	conn.Write(toSend)
+	packet := BuildPacket(TIME_RES, buf[:])
+	conn.Write(packet)
 }
 
 func pongRes(conn net.Conn, payload []byte) {
 
-	header := ConstructHeader(0, MINER_PONG)
-	toSend := make([]byte, len(header))
-	copy(toSend[:HEADER_LEN], header[:])
-	conn.Write(toSend)
+	packet := BuildPacket(MINER_PONG, nil)
+	conn.Write(packet)
 }

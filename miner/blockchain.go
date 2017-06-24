@@ -14,22 +14,6 @@ import (
 	"time"
 )
 
-const (
-	pubA1 = "c2be9abbeaec39a066c2a09cee23bb9ab2a0b88f2880b1e785b4d317adf0dc7c"
-	pubA2 = "8ce020fde838d9c443f6c93345dafe7fd74f091c4d2f30b37e2453679a257ed5"
-	privA = "ba127fa8f802b008b9cdb58f4e44809d48f1b000cff750dda9cd6b312395c1c5"
-	pubB1 = "5d7eefd58e3d2f309471928ab4bbd104e52973372c159fa652b8ca6b57ff68b8"
-	pubB2 = "ab301a6a77b201c416ddc13a2d33fdf200a5302f6f687e0ea09085debaf8a1d9"
-	privB = "7a0a9babcc97ea7991ed67ed7f800f70c5e04e99718960ad8efab2ca052f00c7"
-)
-
-const (
-	//P-256
-	RootPub1 = "6323cc034597195ae69bcfb628ecdffa5989c7503154c566bab4a87f3e9910ac"
-	RootPub2 = "f6115b77a15852764c609c6a5c1739e698ebc6e49bf14617c561b9110039cec7"
-	RootPriv = "277ed539f56122c25a6fc115d07d632b47e71416c9aebf1beb54ee704f11842c"
-)
-
 var LogFile *os.File
 var currentBlock, nextBlock *protocol.Block
 
@@ -75,17 +59,7 @@ func consumeBlock() {
 
 }
 
-func consumeTx() {
 
-	for {
-		if txQueue.Size() != 0 {
-			nextBlockAccess.Lock()
-			addTx(nextBlock, txQueue.Dequeue().(protocol.Transaction))
-			nextBlockAccess.Unlock()
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-}
 
 func publishBlock() {
 
