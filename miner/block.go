@@ -73,7 +73,7 @@ func addTx(b *protocol.Block, tx protocol.Transaction) error {
 func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 
 	//I think we don't have to check for nil here as well, since this was already implicitly done with addTx(...)
-	if readClosedFundsTx(tx.Hash()) != nil {
+	if storage.ReadClosedTx(tx.Hash()) != nil {
 		return errors.New("This transaction was already included in a previous Block.")
 	}
 
@@ -134,14 +134,14 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 	accReceiver.Balance += tx.Amount
 
 	b.FundsTxData = append(b.FundsTxData, tx.Hash())
-	writeOpenTx(tx)
+	storage.WriteOpenTx(tx)
 	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)
 	return nil
 }
 
 func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 
-	if readClosedAccTx(tx.Hash()) != nil {
+	if storage.ReadClosedTx(tx.Hash()) != nil {
 		return errors.New("This transaction was already included in a previous block.")
 	}
 
@@ -161,14 +161,14 @@ func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 	}
 
 	b.AccTxData = append(b.AccTxData, tx.Hash())
-	writeOpenTx(tx)
+	storage.WriteOpenTx(tx)
 	log.Printf("Added tx to the AccTxData slice: %v", *tx)
 	return nil
 }
 
 func addConfigTx(b *protocol.Block, tx *protocol.ConfigTx) error {
 
-	if readClosedConfigTx(tx.Hash()) != nil {
+	if storage.ReadClosedTx(tx.Hash()) != nil {
 		return errors.New("This transaction was already included in a previous block.")
 	}
 
@@ -178,7 +178,7 @@ func addConfigTx(b *protocol.Block, tx *protocol.ConfigTx) error {
 	}
 
 	b.ConfigTxData = append(b.ConfigTxData, tx.Hash())
-	writeOpenTx(tx)
+	storage.WriteOpenTx(tx)
 	log.Printf("Added tx to the ConfigTxData slice: %v", *tx)
 	return nil
 }
@@ -263,45 +263,45 @@ func validateBlock(b *protocol.Block) error {
 func preValidation(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, err error) {
 	//check if fundsTxs is syntactically well-formed and signature is correct
 	for _, txHash := range b.FundsTxData {
-		closeTx := readClosedFundsTx(txHash)
+		closeTx := storage.ReadClosedTx(txHash)
 		if closeTx != nil {
 			return nil, nil, nil, errors.New("Block validation had fundsTx that was already in a previous block")
 		}
-		tx := readOpenFundsTx(txHash)
+		tx := storage.ReadOpenTx(txHash)
 		if tx == nil {
 			//TODO: fetch from the network and make sure not in the confirmed map
 			return nil, nil, nil, errors.New("FundsTx could not be read.")
 		}
 
-		if !verifyFundsTx(tx) {
+		if !verifyFundsTx(tx.(*protocol.FundsTx)) {
 			return nil, nil, nil, errors.New("Malformed transaction.")
 		}
-		fundsTxSlice = append(fundsTxSlice, tx)
+		fundsTxSlice = append(fundsTxSlice, tx.(*protocol.FundsTx))
 	}
 
 	//check if accTxs are syntactically well-formed and signature is correct
 	for _, txHash := range b.AccTxData {
-		tx := readOpenAccTx(txHash)
+		tx := storage.ReadOpenTx(txHash)
 		if tx == nil {
 			//TODO: fetch from the network and make sure not in the confirmed map
 			return nil, nil, nil, errors.New("AccTx could not be read.")
 		}
-		if !verifyAccTx(tx) {
+		if !verifyAccTx(tx.(*protocol.AccTx)) {
 			return nil, nil, nil, errors.New("Malformed transaction.")
 		}
-		accTxSlice = append(accTxSlice, tx)
+		accTxSlice = append(accTxSlice, tx.(*protocol.AccTx))
 	}
 
 	for _, txHash := range b.ConfigTxData {
-		tx := readOpenConfigTx(txHash)
+		tx := storage.ReadOpenTx(txHash)
 		if tx == nil {
 			//TODO: fetch from the network and make sure not in the confirmed map
 			return nil, nil, nil, errors.New("ConfigTx could not be read.")
 		}
-		if !verifyConfigTx(tx) {
+		if !verifyConfigTx(tx.(*protocol.ConfigTx)) {
 			return nil, nil, nil, errors.New("Malformed transaction.")
 		}
-		configTxSlice = append(configTxSlice, tx)
+		configTxSlice = append(configTxSlice, tx.(*protocol.ConfigTx))
 	}
 
 	startIndex := 0
@@ -377,28 +377,25 @@ func postValidation(data blockData) {
 
 	//put all txs from the block from open to close
 	for _, tx := range data.fundsTxSlice {
-		hash := tx.Hash()
-		writeClosedTx(tx)
-		deleteOpenTx(hash)
+		storage.WriteClosedTx(tx)
+		storage.DeleteOpenTx(tx)
 	}
 
 	for _, tx := range data.accTxSlice {
-		hash := tx.Hash()
-		writeClosedTx(tx)
-		deleteOpenTx(hash)
+		storage.WriteClosedTx(tx)
+		storage.DeleteOpenTx(tx)
 	}
 
 	//block consists of system parameter changes
 	for _, tx := range data.configTxSlice {
-		hash := tx.Hash()
-		writeClosedTx(tx)
-		deleteOpenTx(hash)
+		storage.WriteClosedTx(tx)
+		storage.DeleteOpenTx(tx)
 	}
 
 	//the new system parameters get active if the block was successfully validated
 	configStateChange(data.configTxSlice, data.block.Hash)
 	collectStatistics(data.block)
-	writeBlock(data.block)
+	storage.WriteBlock(data.block)
 }
 
 func hashBlock(b *protocol.Block) (hash [32]byte) {

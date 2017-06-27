@@ -2,9 +2,10 @@ package p2p
 
 import (
 	"encoding/binary"
-	"github.com/lisgie/bazo_miner/storage"
 	"net"
 	"time"
+	"github.com/lisgie/bazo_miner/storage"
+	"github.com/lisgie/bazo_miner/protocol"
 )
 
 func txRes(conn net.Conn, payload []byte, txKind uint8) {
@@ -12,7 +13,7 @@ func txRes(conn net.Conn, payload []byte, txKind uint8) {
 	var txHash [32]byte
 	copy(txHash[:], payload[0:32])
 
-	var tx []byte
+	var tx protocol.Transaction
 	//we need to look in the mempool as well as the validated txs
 	openTx := storage.ReadOpenTx(txHash)
 	closedTx := storage.ReadClosedTx(txHash)
@@ -46,7 +47,7 @@ func blockRes(conn net.Conn, payload []byte) {
 		return
 	}
 
-	packet := BuildPacket(BLOCK_RES, block)
+	packet := BuildPacket(BLOCK_RES, block.Encode())
 	conn.Write(packet)
 }
 

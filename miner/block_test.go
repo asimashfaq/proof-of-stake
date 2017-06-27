@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
+	"github.com/lisgie/bazo_miner/storage"
 )
 
 //Tests block adding, verification, serialization and deserialization
@@ -98,7 +99,7 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 		tx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accAHash, accBHash, &PrivKeyA)
 		if err := addTx(b, tx); err == nil {
 			hashFundsSlice = append(hashFundsSlice, tx.Hash())
-			writeOpenTx(tx)
+			storage.WriteOpenTx(tx)
 		}
 	}
 
@@ -107,7 +108,7 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
 		if err := addTx(b, tx); err == nil {
 			hashAccSlice = append(hashAccSlice, tx.Hash())
-			writeOpenTx(tx)
+			storage.WriteOpenTx(tx)
 		}
 	}
 
@@ -122,7 +123,7 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 		}
 		if err := addTx(b, tx); err == nil {
 			hashConfigSlice = append(hashConfigSlice, tx.Hash())
-			writeOpenTx(tx)
+			storage.WriteOpenTx(tx)
 		}
 	}
 

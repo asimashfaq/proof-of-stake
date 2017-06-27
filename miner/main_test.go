@@ -22,9 +22,9 @@ func addTestingAccounts() {
 
 	accA, accB, minerAcc = new(protocol.Account), new(protocol.Account), new(protocol.Account)
 
-	puba1, _ := new(big.Int).SetString(pubA1, 16)
-	puba2, _ := new(big.Int).SetString(pubA2, 16)
-	priva, _ := new(big.Int).SetString(privA, 16)
+	puba1, _ := new(big.Int).SetString(protocol.PubA1, 16)
+	puba2, _ := new(big.Int).SetString(protocol.PubA2, 16)
+	priva, _ := new(big.Int).SetString(protocol.PrivA, 16)
 	PubKeyA = ecdsa.PublicKey{
 		elliptic.P256(),
 		puba1,
@@ -35,9 +35,9 @@ func addTestingAccounts() {
 		priva,
 	}
 
-	pubb1, _ := new(big.Int).SetString(pubB1, 16)
-	pubb2, _ := new(big.Int).SetString(pubB2, 16)
-	privb, _ := new(big.Int).SetString(privB, 16)
+	pubb1, _ := new(big.Int).SetString(protocol.PubB1, 16)
+	pubb2, _ := new(big.Int).SetString(protocol.PubB2, 16)
+	privb, _ := new(big.Int).SetString(protocol.PrivB, 16)
 	PubKeyB = ecdsa.PublicKey{
 		elliptic.P256(),
 		pubb1,
@@ -82,9 +82,9 @@ func addRootAccounts() {
 
 	var pubKey [64]byte
 
-	pub1, _ := new(big.Int).SetString(RootPub1, 16)
-	pub2, _ := new(big.Int).SetString(RootPub2, 16)
-	priv, _ := new(big.Int).SetString(RootPriv, 16)
+	pub1, _ := new(big.Int).SetString(protocol.RootPub1, 16)
+	pub2, _ := new(big.Int).SetString(protocol.RootPub2, 16)
+	priv, _ := new(big.Int).SetString(protocol.RootPriv, 16)
 	PubKeyA = ecdsa.PublicKey{
 		elliptic.P256(),
 		pub1,
@@ -109,7 +109,7 @@ func addRootAccounts() {
 
 func cleanAndPrepare() {
 
-	deleteAll()
+	storage.DeleteAll()
 	tmpState := make(map[[8]byte][]*protocol.Account)
 	tmpRootKeys := make(map[[32]byte]*protocol.Account)
 
@@ -120,7 +120,7 @@ func cleanAndPrepare() {
 	globalBlockCount = 0
 	genesis := newBlock()
 	collectStatistics(genesis)
-	writeBlock(genesis)
+	storage.WriteBlock(genesis)
 
 	var tmpSlice []parameters
 	var tmpTimestamp []int64

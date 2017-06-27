@@ -5,13 +5,14 @@ import (
 	"encoding/binary"
 	"golang.org/x/crypto/sha3"
 	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
 )
 
 func getAccountFromHash(hash [32]byte) *protocol.Account {
 
 	var fixedHash [8]byte
 	copy(fixedHash[:], hash[0:8])
-	for _, acc := range State[fixedHash] {
+	for _, acc := range storage.State[fixedHash] {
 		accHash := serializeHashContent(acc.Address)
 		if accHash == hash {
 			return acc

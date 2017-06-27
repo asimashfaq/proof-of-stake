@@ -40,7 +40,7 @@ func Init() {
 	log.Println("Starting system, initializing state map")
 	genesisBlock := newBlock()
 	collectStatistics(genesisBlock)
-	writeBlock(genesisBlock)
+	storage.WriteBlock(genesisBlock)
 
 	currentBlock = newBlock()
 	nextBlock = newBlock()
@@ -69,12 +69,6 @@ func mining() {
 func prepareBlock(block *protocol.Block) {
 
 	//empty mempool (opentxs)
-	var openTxs []storage.Kvtuple
-	openTxs = readAllOpenTxs()
-	if openTxs == nil {
-		//no new transactions, mine empty block
-		return
-	}
 
 
 }

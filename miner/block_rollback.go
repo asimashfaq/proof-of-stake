@@ -2,9 +2,9 @@ package miner
 
 import (
 	"errors"
-	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"log"
+	"github.com/lisgie/bazo_miner/storage"
 )
 
 //for blocks that already have been validated but were overwritten by a longer chain
@@ -32,7 +32,10 @@ func preValidationRollback(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx,
 
 	//fetch all transactions
 	for _, hash := range b.FundsTxData {
-		tx := readClosedFundsTx(hash)
+		tx := storage.ReadClosedTx(hash).(*protocol.FundsTx)
+		//this is ugly, but necessary because the encoding of the transaction throws away the full hash
+		//verify acts as "enricher", e.g. writing the necessary hashes in the structure
+		verify(tx)
 		if tx == nil {
 			log.Printf("CRITICAL: Validated fundsTx was not in the confirmed tx storage: %v\n", hash)
 			return nil, nil, nil, errors.New("CRITICAL: Validated fundsTx was not in the confirmed tx storage")
@@ -41,7 +44,7 @@ func preValidationRollback(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx,
 	}
 
 	for _, hash := range b.AccTxData {
-		tx := readClosedAccTx(hash)
+		tx := storage.ReadClosedTx(hash).(*protocol.AccTx)
 		if tx == nil {
 			log.Printf("CRITICAL: Validated accTx was not in the confirmed tx storage: %v\n", hash)
 			return nil, nil, nil, errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
@@ -50,9 +53,8 @@ func preValidationRollback(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx,
 	}
 
 	for _, hash := range b.ConfigTxData {
-		tx := readClosedConfigTx(hash)
+		tx := storage.ReadClosedTx(hash).(*protocol.ConfigTx)
 		if tx == nil {
-			fmt.Printf("###%x\n", hash)
 			log.Printf("CRITICAL: Validated configTx was not in the confirmed tx storage: %v\n", hash)
 			return nil, nil, nil, errors.New("CRITICAL: Validated configTx was not in the confirmed tx storage")
 		}
@@ -80,23 +82,20 @@ func postValidationRollback(data blockData) {
 
 	//put all txs from the block from open to close
 	for _, tx := range data.fundsTxSlice {
-		hash := tx.Hash()
-		writeOpenTx(tx)
-		deleteClosedTx(hash)
+		storage.WriteOpenTx(tx)
+		storage.DeleteClosedTx(tx)
 	}
 
 	for _, tx := range data.accTxSlice {
-		hash := tx.Hash()
-		writeOpenTx(tx)
-		deleteClosedTx(hash)
+		storage.WriteOpenTx(tx)
+		storage.DeleteClosedTx(tx)
 	}
 
 	for _, tx := range data.configTxSlice {
-		hash := tx.Hash()
-		writeOpenTx(tx)
-		deleteClosedTx(hash)
+		storage.WriteOpenTx(tx)
+		storage.DeleteClosedTx(tx)
 	}
 
 	collectStatisticsRollback(data.block)
-	deleteBlock(data.block.Hash)
+	storage.DeleteBlock(data.block.Hash)
 }

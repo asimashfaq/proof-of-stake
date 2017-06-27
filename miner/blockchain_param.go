@@ -3,6 +3,7 @@ package miner
 import (
 	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
 )
 
 //this are "constants" that can be changed with config transactions
@@ -78,7 +79,7 @@ func collectStatisticsRollback(b *protocol.Block) {
 
 	timestamp[int(localBlockCount)] = 0
 
-	newLastBlock := readBlock(b.PrevHash)
+	newLastBlock := storage.ReadBlock(b.PrevHash)
 	lastBlock = newLastBlock
 }
 
@@ -99,7 +100,7 @@ func getBlockSequences(newBlock *protocol.Block) (blocksToRollback, blocksToVali
 			break
 		}
 		blocksToRollback = append(blocksToRollback, tmpBlock)
-		tmpBlock = readBlock(tmpBlock.PrevHash)
+		tmpBlock = storage.ReadBlock(tmpBlock.PrevHash)
 	}
 
 	//compare current length with new chain length
@@ -118,7 +119,7 @@ func getNewChain(newBlock *protocol.Block) (ancestor *protocol.Block, newChain [
 		newChain = append(newChain, newBlock)
 
 		prevBlockHash := newBlock.PrevHash
-		potentialAncestor := readBlock(prevBlockHash)
+		potentialAncestor := storage.ReadBlock(prevBlockHash)
 
 		if potentialAncestor != nil {
 			//found ancestor

@@ -3,6 +3,7 @@ package miner
 import (
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/p2p"
+	"github.com/lisgie/bazo_miner/storage"
 )
 
 func incomingData() {
@@ -27,23 +28,11 @@ func processTx(incomingTx p2p.TxInfo) {
 		if fTx == nil {
 			return
 		}
-		if readOpenFundsTx(fTx.Hash()) != nil {
-			return
-		}
-		if readClosedFundsTx(fTx.Hash()) != nil {
-			return
-		}
 		tx = fTx
 	case p2p.ACCTX_BRDCST:
 		var aTx *protocol.AccTx
 		aTx = aTx.Decode(incomingTx.Payload)
 		if aTx == nil {
-			return
-		}
-		if readOpenAccTx(aTx.Hash()) != nil {
-			return
-		}
-		if readClosedAccTx(aTx.Hash()) != nil {
 			return
 		}
 		tx = aTx
@@ -53,17 +42,13 @@ func processTx(incomingTx p2p.TxInfo) {
 		if cTx == nil {
 			return
 		}
-		if readOpenConfigTx(cTx.Hash()) != nil {
-			return
-		}
-		if readClosedConfigTx(cTx.Hash()) != nil {
-			return
-		}
 		tx = cTx
 	}
+	if storage.ReadOpenTx(tx.Hash()) != nil { return }
+	if storage.ReadClosedTx(tx.Hash()) != nil { return }
 
 	//write to mempool
-	writeOpenTx(tx)
+	storage.WriteOpenTx(tx)
 }
 
 func processBlock(payload []byte) {
@@ -72,7 +57,7 @@ func processBlock(payload []byte) {
 	block = block.Decode(payload)
 
 	//block already confirmed and validated
-	if readBlock(block.Hash) != nil {
+	if storage.ReadBlock(block.Hash) != nil {
 		return
 	}
 }
