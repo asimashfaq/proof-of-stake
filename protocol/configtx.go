@@ -129,9 +129,8 @@ func (*ConfigTx) Decode(encodedTx []byte) (tx *ConfigTx) {
 	return tx
 }
 
-func (tx *ConfigTx) TxFee() uint64 {
-	return tx.Fee
-}
+func (tx *ConfigTx) TxFee() uint64 { return tx.Fee }
+func (tx *ConfigTx) Size() uint8 { return CONFIGTX_SIZE }
 
 func (tx ConfigTx) String() string {
 	return fmt.Sprintf(

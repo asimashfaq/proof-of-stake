@@ -183,7 +183,7 @@ func addConfigTx(b *protocol.Block, tx *protocol.ConfigTx) error {
 	return nil
 }
 
-func finalizeBlock(b *protocol.Block) {
+func finalizeBlock(b *protocol.Block) error {
 	//merkle tree only built from funds transactions
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData, b.AccTxData, b.ConfigTxData)
 	b.Timestamp = time.Now().Unix()
@@ -191,7 +191,10 @@ func finalizeBlock(b *protocol.Block) {
 
 	//anonymous struct
 	partialHash := hashBlock(b)
-	nonce := proofOfWork(getDifficulty(), partialHash)
+	nonce,err := proofOfWork(getDifficulty(), partialHash)
+	if err != nil {
+		return err
+	}
 	b.Hash = sha3.Sum256(append(nonce.Bytes(), partialHash[:]...))
 
 	//we need to write the proof at the end of the fixed-size byte array of length 9
@@ -210,6 +213,9 @@ func finalizeBlock(b *protocol.Block) {
 //because there is the case that we might need to go fetch several blocks in reverse order
 //and have to check the blocks first before changing the state in the correct order
 func validateBlock(b *protocol.Block) error {
+
+	blockValidation.Lock()
+	defer blockValidation.Unlock()
 
 	//TODO: Add block size check
 	//this is necessary, because we need to first validate all blocks (need to fetch tx data)

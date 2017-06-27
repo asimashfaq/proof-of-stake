@@ -4,6 +4,7 @@ import (
 	"github.com/lisgie/bazo_miner/p2p"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
+	"log"
 )
 
 func incomingData() {
@@ -63,6 +64,15 @@ func processBlock(payload []byte) {
 	//block already confirmed and validated
 	if storage.ReadBlock(block.Hash) != nil {
 		return
+	}
+
+	//claim a lock and start validating
+	err := validateBlock(block)
+	if err != nil {
+		//no conflict, giving away for broadcast
+		log.Printf("Received block could not be validated: %v\n", err)
+	} else {
+		broadcastBlock(block)
 	}
 }
 

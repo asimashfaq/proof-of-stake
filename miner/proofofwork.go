@@ -3,6 +3,7 @@ package miner
 import (
 	"golang.org/x/crypto/sha3"
 	"math/big"
+	"errors"
 )
 
 func validateProofOfWork(diff uint8, hash [32]byte) bool {
@@ -18,7 +19,7 @@ func validateProofOfWork(diff uint8, hash [32]byte) bool {
 	return true
 }
 
-func proofOfWork(diff uint8, partialHash [32]byte) *big.Int {
+func proofOfWork(diff uint8, partialHash [32]byte) (*big.Int, error) {
 
 	var tmp [32]byte
 	var byteNr uint8
@@ -27,7 +28,13 @@ func proofOfWork(diff uint8, partialHash [32]byte) *big.Int {
 	oneIncr := big.NewInt(1)
 	cnt := big.NewInt(0)
 
+	startedWith := lastBlock.Hash
+
 	for ; ; cnt.Add(cnt, oneIncr) {
+
+		if startedWith != lastBlock.Hash {
+			return nil, errors.New("Abort mining, another block has been successfully validated in the meantime")
+		}
 		abort = false
 
 		tmp = sha3.Sum256(append(cnt.Bytes(), partialHash[:]...))
@@ -47,5 +54,5 @@ func proofOfWork(diff uint8, partialHash [32]byte) *big.Int {
 		break
 	}
 
-	return cnt
+	return cnt,nil
 }

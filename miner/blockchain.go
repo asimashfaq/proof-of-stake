@@ -20,7 +20,7 @@ var currentBlock, nextBlock *protocol.Block
 var MinerHash [32]byte
 var MinerPrivKey *ecdsa.PrivateKey
 
-var nextBlockAccess sync.Mutex
+var blockValidation = &sync.Mutex{}
 
 var timestamp []int64
 var parameterSlice []parameters
@@ -51,15 +51,20 @@ func Init() {
 
 func mining() {
 	for {
-		finalizeBlock(currentBlock)
-		fmt.Print("Block mined.\n")
-		if err := validateBlock(currentBlock); err != nil {
-			fmt.Printf("%v\n", err)
+		err := finalizeBlock(currentBlock)
+
+		//else a block was received meanwhile that was added to the chain, all the effort was in vain :(
+		//wait for lock here only
+		if err != nil {
+			log.Printf("%v\n", err)
+		} else {
+			broadcastBlock(currentBlock)
+			validateBlock(currentBlock)
 		}
 
 		//TODO: Mutex for state validation, build new block to mine only AFTER state update (opentxs->closedtxs)
 		//mining successful, construct new block out of mempool transactions
-		prevHash := currentBlock.Hash
+		prevHash := lastBlock.Hash
 		currentBlock = newBlock()
 		currentBlock.PrevHash = prevHash
 		prepareBlock(currentBlock)
@@ -69,7 +74,10 @@ func mining() {
 func prepareBlock(block *protocol.Block) {
 
 	//empty mempool (opentxs)
-
+	opentxs := storage.ReadAllOpenTxs()
+	for _,tx := range opentxs {
+		addTx(block,tx)
+	}
 }
 
 //some testing code
