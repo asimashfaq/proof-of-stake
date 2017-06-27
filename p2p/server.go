@@ -2,8 +2,6 @@ package p2p
 
 import (
 	"bufio"
-	"github.com/lisgie/bazo_miner/protocol"
-	"github.com/lisgie/bazo_miner/storage"
 	"log"
 	"net"
 	"os"
@@ -15,34 +13,47 @@ const (
 	PORT       = 8000
 	MIN_MINERS = 10
 	MAX_MINERS = 20
+	TX_BUFFER = 10
 )
 
 var (
 	LogFile    *os.File
 	peers      map[peer]bool
-	brdcstMsg  chan msgPeer
+	brdcstMsg  chan []byte
 	register   chan peer
 	disconnect chan peer
+
+	TxsIn chan TxInfo
+	BlockIn chan []byte
+
+	TxsOut chan TxInfo
+	BlockOut chan []byte
 )
 
-//we need that in order to not send back the broadcast to the peer we received it from
-type msgPeer struct {
-	payload []byte
-	conn    net.Conn
+//we need to decode incoming transactions, therefore type is needed
+//for outgoing transactions, the p2p package needs the information to build the proper header
+type TxInfo struct {
+	TxType uint8
+	Payload []byte
 }
 
-type peer chan<- msgPeer
+type peer chan<- []byte
 
+//4 channels for communication with miner, blocks in/out and txs in/out
 func Init() {
 
+	TxsIn = make(chan TxInfo, TX_BUFFER)
+	BlockIn = make(chan []byte)
+	TxsOut = make(chan TxInfo, TX_BUFFER)
+	BlockOut = make(chan []byte)
+
 	peers = make(map[peer]bool)
-	brdcstMsg = make(chan msgPeer)
+	brdcstMsg = make(chan []byte)
 	register = make(chan peer)
 	disconnect = make(chan peer)
 
 	go broadcastService()
 	//go checkHealth()
-
 
 	LogFile, _ = os.OpenFile("logp2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
@@ -66,7 +77,6 @@ func Init() {
 		}
 		go handleNewConn(conn)
 	}
-
 }
 
 func handleNewConn(conn net.Conn) {
@@ -100,7 +110,13 @@ func processRequest(conn net.Conn, header *Header, payload []byte) {
 	log.Printf("%v: Received request with following header:\n%v", conn.RemoteAddr().String(),header)
 	switch header.TypeID {
 	case FUNDSTX_BRDCST:
-		initiateTxBroadcast(conn, payload, FUNDSTX_BRDCST)
+		forwardTxToMiner(conn, payload, FUNDSTX_BRDCST)
+	case ACCTX_BRDCST:
+		forwardTxToMiner(conn, payload, ACCTX_BRDCST)
+	case CONFIGTX_BRDCST:
+		forwardTxToMiner(conn, payload, CONFIGTX_BRDCST)
+	case BLOCK_BRDCST:
+		forwardBlockToMiner(conn, payload)
 	case FUNDSTX_REQ:
 		txRes(conn, payload, FUNDSTX_REQ)
 	case ACCTX_REQ:
@@ -117,71 +133,29 @@ func processRequest(conn net.Conn, header *Header, payload []byte) {
 	}
 }
 
-//miner created a new block that needs to be broadcast
-func MinerBroadcastBlock(payload []byte) { brdcstMsg <- msgPeer{payload, nil} }
-
 func initiateBlockBroadcast(conn net.Conn, payload []byte) {
 
-	var block *protocol.Block
-	block = block.Decode(payload)
-	if block == nil {
-		return
-	}
-	if dec := storage.ReadBlock(block.Hash); dec != nil {
-		return
-	}
-	toBrdcst := BuildPacket(BLOCK_BRDCST, payload)
-	brdcstMsg <- msgPeer{toBrdcst, conn}
+
 }
 
-func initiateTxBroadcast(conn net.Conn, payload []byte, brdcstType uint8) {
+func receiveDataFromMiner() {
 
-	//check if we already did a broadcast by checking whether it's already been written to memory
-	//we save memory by not transmitting the hash, this has to be calculated, worth the tradeoff I guess
-	switch brdcstType {
-	case FUNDSTX_BRDCST:
-		var fTx *protocol.FundsTx
-		fTx = fTx.Decode(payload)
-
-		if fTx == nil {
-			return
-		}
-		if dec := storage.ReadOpenTx(fTx.Hash()); dec != nil {
-			return
-		}
-		if dec := storage.ReadClosedTx(fTx.Hash()); dec != nil {
-			return
-		}
-	case ACCTX_BRDCST:
-		var aTx *protocol.AccTx
-		aTx = aTx.Decode(payload)
-		if aTx == nil {
-			return
-		}
-		if dec := storage.ReadOpenTx(aTx.Hash()); dec != nil {
-			return
-		}
-		if dec := storage.ReadClosedTx(aTx.Hash()); dec != nil {
-			return
-		}
-	case CONFIGTX_BRDCST:
-		var cTx *protocol.ConfigTx
-		cTx = cTx.Decode(payload)
-		if cTx == nil {
-			return
-		}
-		if dec := storage.ReadOpenTx(cTx.Hash()); dec != nil {
-			return
-		}
-		if dec := storage.ReadClosedTx(cTx.Hash()); dec != nil {
-			return
+	for {
+		select {
+		case block := <-BlockOut:
+			toBrdcst := BuildPacket(BLOCK_BRDCST, block)
+			brdcstMsg <- toBrdcst
+		case txInfo := <-TxsOut:
+			toBrdcst := BuildPacket(txInfo.TxType,txInfo.Payload)
+			brdcstMsg<-toBrdcst
 		}
 	}
-
-	//build new broadcast packet
-	toBrdcst := BuildPacket(brdcstType,payload)
-	brdcstMsg<-msgPeer{toBrdcst,conn}
 }
+
+//we can't broadcast incoming messages directly, need to forward them to the miner (to check if
+//the tx has already been broadcast before, whether it was a valid tx at all)
+func forwardTxToMiner(conn net.Conn, payload []byte, brdcstType uint8) { TxsIn<-TxInfo{brdcstType, payload} }
+func forwardBlockToMiner(conn net.Conn, payload []byte) { BlockIn<-payload }
 
 //this is not accessed concurrently, one single goroutine
 func broadcastService() {
@@ -209,8 +183,6 @@ func checkHealth() {
 			time.Sleep(10*time.Second)
 			continue
 		}
-
-
 		//initiate new connection if not enough
 		//and call go outgoingConn(conn)
 	}
@@ -218,7 +190,7 @@ func checkHealth() {
 
 func minerConn(conn net.Conn) {
 
-	ch := make(chan msgPeer)
+	ch := make(chan []byte)
 	go peerWriter(conn, ch)
 
 	log.Printf("%v: Adding a new miner\n", conn.RemoteAddr().String())
@@ -251,10 +223,8 @@ func minerConn(conn net.Conn) {
 }
 
 //will be our broadcast mechanism
-func peerWriter(conn net.Conn, ch <-chan msgPeer) {
+func peerWriter(conn net.Conn, ch <-chan []byte) {
 	for msg := range ch {
-		if conn != msg.conn {
-			conn.Write(msg.payload)
-		}
+		conn.Write(msg)
 	}
 }

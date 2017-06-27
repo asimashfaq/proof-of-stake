@@ -22,8 +22,6 @@ var MinerPrivKey *ecdsa.PrivateKey
 
 var nextBlockAccess sync.Mutex
 
-var txQueue, blockQueue *Queue
-
 var timestamp []int64
 var parameterSlice []parameters
 var activeParameters *parameters
@@ -32,10 +30,7 @@ func Sync() {
 
 }
 
-func InitSystem() {
-
-	txQueue = NewQueue()
-	blockQueue = NewQueue()
+func Init() {
 
 	testing_setup()
 
@@ -50,27 +45,11 @@ func InitSystem() {
 	currentBlock = newBlock()
 	nextBlock = newBlock()
 
-	go consumeBlock()
-	go consumeTx()
+	go incomingData()
 	mining()
 }
 
-func consumeBlock() {
-
-}
-
-
-
-func publishBlock() {
-
-}
-
-func publishTx() {
-
-}
-
 func mining() {
-
 	for {
 		finalizeBlock(currentBlock)
 		fmt.Print("Block mined.\n")
@@ -78,30 +57,25 @@ func mining() {
 			fmt.Printf("%v\n", err)
 		}
 
-		nextBlockAccess.Lock()
+		//TODO: Mutex for state validation, build new block to mine only AFTER state update (opentxs->closedtxs)
+		//mining successful, construct new block out of mempool transactions
 		prevHash := currentBlock.Hash
-		currentBlock = nextBlock
+		currentBlock = newBlock()
 		currentBlock.PrevHash = prevHash
-		//please no memory leaks :/
-		nextBlock = newBlock()
-		nextBlockAccess.Unlock()
+		prepareBlock(currentBlock)
 	}
 }
 
-func InFundsTx(data []byte) {
+func prepareBlock(block *protocol.Block) {
 
-}
-
-func InAccTx(data []byte) {
-
-	/*tx := DecodeAccTx(data)
-	if tx == nil {
+	//empty mempool (opentxs)
+	var openTxs []storage.Kvtuple
+	openTxs = readAllOpenTxs()
+	if openTxs == nil {
+		//no new transactions, mine empty block
 		return
 	}
-	txQueue.Enqueue(tx)*/
-}
 
-func InBlock(data []byte) {
 
 }
 
@@ -117,8 +91,8 @@ func testing_setup() {
 	minerAcc := protocol.Account{Address: pubKey}
 	storage.State[shortMiner] = append(storage.State[shortMiner], &minerAcc)
 
-	pub1, _ := new(big.Int).SetString(RootPub1, 16)
-	pub2, _ := new(big.Int).SetString(RootPub2, 16)
+	pub1, _ := new(big.Int).SetString(protocol.RootPub1, 16)
+	pub2, _ := new(big.Int).SetString(protocol.RootPub2, 16)
 
 	copy(pubKey[:32], pub1.Bytes())
 	copy(pubKey[32:], pub2.Bytes())
@@ -132,9 +106,9 @@ func testing_setup() {
 	storage.RootKeys[rootHash] = &rootAcc
 	var accA, accB protocol.Account
 
-	puba1, _ := new(big.Int).SetString(pubA1, 16)
-	puba2, _ := new(big.Int).SetString(pubA2, 16)
-	priva, _ := new(big.Int).SetString(privA, 16)
+	puba1, _ := new(big.Int).SetString(protocol.PubA1, 16)
+	puba2, _ := new(big.Int).SetString(protocol.PubA2, 16)
+	priva, _ := new(big.Int).SetString(protocol.PrivA, 16)
 	PubKeyA := ecdsa.PublicKey{
 		elliptic.P256(),
 		puba1,
@@ -145,9 +119,9 @@ func testing_setup() {
 		priva,
 	}
 
-	pubb1, _ := new(big.Int).SetString(pubB1, 16)
-	pubb2, _ := new(big.Int).SetString(pubB2, 16)
-	privb, _ := new(big.Int).SetString(privB, 16)
+	pubb1, _ := new(big.Int).SetString(protocol.PubB1, 16)
+	pubb2, _ := new(big.Int).SetString(protocol.PubB2, 16)
+	privb, _ := new(big.Int).SetString(protocol.PrivB, 16)
 	PubKeyB := ecdsa.PublicKey{
 		elliptic.P256(),
 		pubb1,

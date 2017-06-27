@@ -211,6 +211,7 @@ func finalizeBlock(b *protocol.Block) {
 //and have to check the blocks first before changing the state in the correct order
 func validateBlock(b *protocol.Block) error {
 
+	//TODO: Add block size check
 	//this is necessary, because we need to first validate all blocks (need to fetch tx data)
 	//before doing any state validation, we save all of them temporarily so we don't have to
 	//refetch
@@ -260,7 +261,6 @@ func validateBlock(b *protocol.Block) error {
 }
 
 func preValidation(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, err error) {
-	//TODO: make sure none of the transactions are already confirmed
 	//check if fundsTxs is syntactically well-formed and signature is correct
 	for _, txHash := range b.FundsTxData {
 		closeTx := readClosedFundsTx(txHash)

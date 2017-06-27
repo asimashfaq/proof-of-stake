@@ -2,33 +2,90 @@ package miner
 
 import (
 	"github.com/lisgie/bazo_miner/protocol"
-	"time"
+	"github.com/lisgie/bazo_miner/p2p"
 )
 
-//we need to decode incoming transactions, therefore type is needed
-//for outgoing transactions, the p2p package needs the information to build the proper header
-type txInfo struct {
-	txType uint8
-	payload []byte
-}
-
-//receiving txs, blocks etc. and giving free for broadcasting asnychronously
-var (
-	txsIn chan txInfo
-	blockIn chan []byte
-
-	txsOut chan txInfo
-	blockOut chan []byte
-)
-
-func consumeTx() {
-
+func incomingData() {
 	for {
-		if txQueue.Size() != 0 {
-			nextBlockAccess.Lock()
-			addTx(nextBlock, txQueue.Dequeue().(protocol.Transaction))
-			nextBlockAccess.Unlock()
+		select {
+		case tx := <-p2p.TxsIn:
+			processTx(tx)
+		case block := <-p2p.BlockIn:
+			processBlock(block)
 		}
-		time.Sleep(20 * time.Millisecond)
 	}
 }
+
+func processTx(incomingTx p2p.TxInfo) {
+
+	var tx protocol.Transaction
+	switch incomingTx.TxType {
+	case p2p.FUNDSTX_BRDCST:
+		var fTx *protocol.FundsTx
+		fTx = fTx.Decode(incomingTx.Payload)
+
+		if fTx == nil {
+			return
+		}
+		if readOpenFundsTx(fTx.Hash()) != nil {
+			return
+		}
+		if readClosedFundsTx(fTx.Hash()) != nil {
+			return
+		}
+		tx = fTx
+	case p2p.ACCTX_BRDCST:
+		var aTx *protocol.AccTx
+		aTx = aTx.Decode(incomingTx.Payload)
+		if aTx == nil {
+			return
+		}
+		if readOpenAccTx(aTx.Hash()) != nil {
+			return
+		}
+		if readClosedAccTx(aTx.Hash()) != nil {
+			return
+		}
+		tx = aTx
+	case p2p.CONFIGTX_BRDCST:
+		var cTx *protocol.ConfigTx
+		cTx = cTx.Decode(incomingTx.Payload)
+		if cTx == nil {
+			return
+		}
+		if readOpenConfigTx(cTx.Hash()) != nil {
+			return
+		}
+		if readClosedConfigTx(cTx.Hash()) != nil {
+			return
+		}
+		tx = cTx
+	}
+
+	//write to mempool
+	writeOpenTx(tx)
+}
+
+func processBlock(payload []byte) {
+
+	var block *protocol.Block
+	block = block.Decode(payload)
+
+	//block already confirmed and validated
+	if readBlock(block.Hash) != nil {
+		return
+	}
+}
+
+func broadcastTx(tx protocol.Transaction) {
+	switch tx.(type) {
+	case *protocol.FundsTx:
+		p2p.TxsOut<-p2p.TxInfo{p2p.FUNDSTX_BRDCST,tx.Encode()}
+	case *protocol.AccTx:
+		p2p.TxsOut<-p2p.TxInfo{p2p.ACCTX_BRDCST, tx.Encode()}
+	case *protocol.ConfigTx:
+		p2p.TxsOut<-p2p.TxInfo{p2p.CONFIGTX_BRDCST, tx.Encode()}
+	}
+}
+
+func broadcastBlock(block *protocol.Block) { p2p.BlockOut<-block.Encode() }
