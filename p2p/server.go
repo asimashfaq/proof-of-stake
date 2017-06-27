@@ -13,7 +13,7 @@ const (
 	PORT       = 8000
 	MIN_MINERS = 10
 	MAX_MINERS = 20
-	TX_BUFFER = 10
+	TX_BUFFER  = 10
 )
 
 var (
@@ -23,17 +23,17 @@ var (
 	register   chan peer
 	disconnect chan peer
 
-	TxsIn chan TxInfo
+	TxsIn   chan TxInfo
 	BlockIn chan []byte
 
-	TxsOut chan TxInfo
+	TxsOut   chan TxInfo
 	BlockOut chan []byte
 )
 
 //we need to decode incoming transactions, therefore type is needed
 //for outgoing transactions, the p2p package needs the information to build the proper header
 type TxInfo struct {
-	TxType uint8
+	TxType  uint8
 	Payload []byte
 }
 
@@ -107,7 +107,7 @@ func handleNewConn(conn net.Conn) {
 
 func processRequest(conn net.Conn, header *Header, payload []byte) {
 
-	log.Printf("%v: Received request with following header:\n%v", conn.RemoteAddr().String(),header)
+	log.Printf("%v: Received request with following header:\n%v", conn.RemoteAddr().String(), header)
 	switch header.TypeID {
 	case FUNDSTX_BRDCST:
 		forwardTxToMiner(conn, payload, FUNDSTX_BRDCST)
@@ -135,7 +135,6 @@ func processRequest(conn net.Conn, header *Header, payload []byte) {
 
 func initiateBlockBroadcast(conn net.Conn, payload []byte) {
 
-
 }
 
 func receiveDataFromMiner() {
@@ -146,16 +145,18 @@ func receiveDataFromMiner() {
 			toBrdcst := BuildPacket(BLOCK_BRDCST, block)
 			brdcstMsg <- toBrdcst
 		case txInfo := <-TxsOut:
-			toBrdcst := BuildPacket(txInfo.TxType,txInfo.Payload)
-			brdcstMsg<-toBrdcst
+			toBrdcst := BuildPacket(txInfo.TxType, txInfo.Payload)
+			brdcstMsg <- toBrdcst
 		}
 	}
 }
 
 //we can't broadcast incoming messages directly, need to forward them to the miner (to check if
 //the tx has already been broadcast before, whether it was a valid tx at all)
-func forwardTxToMiner(conn net.Conn, payload []byte, brdcstType uint8) { TxsIn<-TxInfo{brdcstType, payload} }
-func forwardBlockToMiner(conn net.Conn, payload []byte) { BlockIn<-payload }
+func forwardTxToMiner(conn net.Conn, payload []byte, brdcstType uint8) {
+	TxsIn <- TxInfo{brdcstType, payload}
+}
+func forwardBlockToMiner(conn net.Conn, payload []byte) { BlockIn <- payload }
 
 //this is not accessed concurrently, one single goroutine
 func broadcastService() {
@@ -180,7 +181,7 @@ func checkHealth() {
 
 	for {
 		if len(peers) >= MIN_MINERS {
-			time.Sleep(10*time.Second)
+			time.Sleep(10 * time.Second)
 			continue
 		}
 		//initiate new connection if not enough

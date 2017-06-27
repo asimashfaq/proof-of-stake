@@ -22,7 +22,6 @@ const (
 	RootPriv = "277ed539f56122c25a6fc115d07d632b47e71416c9aebf1beb54ee704f11842c"
 )
 
-
 const (
 	ACC_SIZE = 76
 )

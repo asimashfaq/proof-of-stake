@@ -1,8 +1,8 @@
 package miner
 
 import (
-	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/p2p"
+	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 )
 
@@ -44,8 +44,12 @@ func processTx(incomingTx p2p.TxInfo) {
 		}
 		tx = cTx
 	}
-	if storage.ReadOpenTx(tx.Hash()) != nil { return }
-	if storage.ReadClosedTx(tx.Hash()) != nil { return }
+	if storage.ReadOpenTx(tx.Hash()) != nil {
+		return
+	}
+	if storage.ReadClosedTx(tx.Hash()) != nil {
+		return
+	}
 
 	//write to mempool
 	storage.WriteOpenTx(tx)
@@ -65,12 +69,12 @@ func processBlock(payload []byte) {
 func broadcastTx(tx protocol.Transaction) {
 	switch tx.(type) {
 	case *protocol.FundsTx:
-		p2p.TxsOut<-p2p.TxInfo{p2p.FUNDSTX_BRDCST,tx.Encode()}
+		p2p.TxsOut <- p2p.TxInfo{p2p.FUNDSTX_BRDCST, tx.Encode()}
 	case *protocol.AccTx:
-		p2p.TxsOut<-p2p.TxInfo{p2p.ACCTX_BRDCST, tx.Encode()}
+		p2p.TxsOut <- p2p.TxInfo{p2p.ACCTX_BRDCST, tx.Encode()}
 	case *protocol.ConfigTx:
-		p2p.TxsOut<-p2p.TxInfo{p2p.CONFIGTX_BRDCST, tx.Encode()}
+		p2p.TxsOut <- p2p.TxInfo{p2p.CONFIGTX_BRDCST, tx.Encode()}
 	}
 }
 
-func broadcastBlock(block *protocol.Block) { p2p.BlockOut<-block.Encode() }
+func broadcastBlock(block *protocol.Block) { p2p.BlockOut <- block.Encode() }

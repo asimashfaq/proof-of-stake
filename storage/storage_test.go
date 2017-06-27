@@ -1,10 +1,10 @@
 package storage
 
 import (
+	"github.com/lisgie/bazo_miner/protocol"
+	"math/rand"
 	"testing"
 	"time"
-	"math/rand"
-	"github.com/lisgie/bazo_miner/protocol"
 )
 
 func TestReadWriteDeleteTx(t *testing.T) {
@@ -92,4 +92,3 @@ func TestReadWriteDeleteTx(t *testing.T) {
 		}
 	}
 }
-

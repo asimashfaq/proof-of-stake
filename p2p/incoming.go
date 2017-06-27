@@ -3,8 +3,8 @@ package p2p
 import (
 	"bufio"
 	"encoding/binary"
-	"log"
 	"fmt"
+	"log"
 )
 
 const (
@@ -15,8 +15,8 @@ const (
 
 //Java can't handle uints, should we only allow lengths of up to 2^31?
 type Header struct {
-	Len      uint32
-	TypeID   uint8
+	Len    uint32
+	TypeID uint8
 }
 
 func BuildPacket(typeID uint8, payload []byte) (packet []byte) {
@@ -56,7 +56,7 @@ func ExtractHeader(reader *bufio.Reader) *Header {
 
 func (header Header) String() string {
 	return fmt.Sprintf(
-			"Length: %v\n"+
+		"Length: %v\n"+
 			"TypeID: %v\n\n",
 		header.Len,
 		header.TypeID,

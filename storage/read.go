@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/boltdb/bolt"
+	"github.com/lisgie/bazo_miner/protocol"
 )
 
 func ReadBlock(hash [32]byte) (block *protocol.Block) {
@@ -63,7 +63,7 @@ func ReadAllOpenTxs() (allOpenTxs []protocol.Transaction) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openfunds"))
 		b.ForEach(func(k, v []byte) error {
-			allOpenTxs = append(allOpenTxs,fundstx.Decode(v))
+			allOpenTxs = append(allOpenTxs, fundstx.Decode(v))
 			return nil
 		})
 		return nil
@@ -73,7 +73,7 @@ func ReadAllOpenTxs() (allOpenTxs []protocol.Transaction) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openaccs"))
 		b.ForEach(func(k, v []byte) error {
-			allOpenTxs = append(allOpenTxs,acctx.Decode(v))
+			allOpenTxs = append(allOpenTxs, acctx.Decode(v))
 			return nil
 		})
 		return nil
@@ -83,7 +83,7 @@ func ReadAllOpenTxs() (allOpenTxs []protocol.Transaction) {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openconfigs"))
 		b.ForEach(func(k, v []byte) error {
-			allOpenTxs = append(allOpenTxs,configtx.Decode(v))
+			allOpenTxs = append(allOpenTxs, configtx.Decode(v))
 			return nil
 		})
 		return nil

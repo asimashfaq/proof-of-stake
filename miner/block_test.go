@@ -3,11 +3,11 @@ package miner
 import (
 	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
 	"math/rand"
 	"reflect"
 	"testing"
 	"time"
-	"github.com/lisgie/bazo_miner/storage"
 )
 
 //Tests block adding, verification, serialization and deserialization

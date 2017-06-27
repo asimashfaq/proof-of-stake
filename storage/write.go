@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/boltdb/bolt"
+	"github.com/lisgie/bazo_miner/protocol"
 )
 
 func WriteBlock(block *protocol.Block) {

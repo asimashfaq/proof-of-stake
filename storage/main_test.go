@@ -1,14 +1,14 @@
 package storage
 
 import (
-	"math/big"
-	"github.com/lisgie/bazo_miner/protocol"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"testing"
+	"github.com/lisgie/bazo_miner/protocol"
 	"io/ioutil"
-	"os"
 	"log"
+	"math/big"
+	"os"
+	"testing"
 )
 
 var accA, accB, minerAcc *protocol.Account
@@ -29,7 +29,6 @@ func TestMain(m *testing.M) {
 
 	TearDown()
 }
-
 
 func addTestingAccounts() {
 
@@ -108,6 +107,3 @@ func addRootAccounts() {
 	State[shortRootHash] = append(State[shortRootHash], &rootAcc)
 	RootKeys[rootHash] = &rootAcc
 }
-
-
-

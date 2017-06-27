@@ -3,8 +3,8 @@ package miner
 import (
 	"errors"
 	"github.com/lisgie/bazo_miner/protocol"
-	"log"
 	"github.com/lisgie/bazo_miner/storage"
+	"log"
 )
 
 //for blocks that already have been validated but were overwritten by a longer chain

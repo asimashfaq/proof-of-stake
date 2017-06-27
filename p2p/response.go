@@ -2,10 +2,10 @@ package p2p
 
 import (
 	"encoding/binary"
+	"github.com/lisgie/bazo_miner/protocol"
+	"github.com/lisgie/bazo_miner/storage"
 	"net"
 	"time"
-	"github.com/lisgie/bazo_miner/storage"
-	"github.com/lisgie/bazo_miner/protocol"
 )
 
 func txRes(conn net.Conn, payload []byte, txKind uint8) {
@@ -25,7 +25,7 @@ func txRes(conn net.Conn, payload []byte, txKind uint8) {
 	}
 
 	if tx == nil {
-		packet := BuildPacket(NOT_FOUND,nil)
+		packet := BuildPacket(NOT_FOUND, nil)
 		conn.Write(packet)
 		return
 	}
@@ -59,7 +59,7 @@ func accRes(conn net.Conn, payload []byte) {
 	encodedAcc := acc.Encode()
 
 	if encodedAcc == nil {
-		packet := BuildPacket(NOT_FOUND,nil)
+		packet := BuildPacket(NOT_FOUND, nil)
 		conn.Write(packet)
 		return
 	}

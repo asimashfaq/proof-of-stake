@@ -70,7 +70,6 @@ func prepareBlock(block *protocol.Block) {
 
 	//empty mempool (opentxs)
 
-
 }
 
 //some testing code
