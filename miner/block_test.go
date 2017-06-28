@@ -15,7 +15,7 @@ func TestBlock(t *testing.T) {
 
 	cleanAndPrepare()
 
-	b := newBlock()
+	b := newBlock([32]byte{})
 	hashFundsSlice, hashAccSlice, hashConfigSlice := createBlockWithTxs(b)
 	finalizeBlock(b)
 
@@ -48,31 +48,28 @@ func TestBlock(t *testing.T) {
 func TestMultipleBlocks(t *testing.T) {
 
 	cleanAndPrepare()
-	b := newBlock()
+	b := newBlock([32]byte{})
 	createBlockWithTxs(b)
 	finalizeBlock(b)
 	if err := validateBlock(b); err != nil {
 		t.Errorf("Block validation for (%v) failed: %v\n", b, err)
 	}
 
-	b2 := newBlock()
-	b2.PrevHash = b.Hash
+	b2 := newBlock(b.Hash)
 	createBlockWithTxs(b2)
 	finalizeBlock(b2)
 	if err := validateBlock(b2); err != nil {
 		t.Errorf("Block failed: %v\n", b2)
 	}
 
-	b3 := newBlock()
-	b3.PrevHash = b2.Hash
+	b3 := newBlock(b2.Hash)
 	createBlockWithTxs(b3)
 	finalizeBlock(b3)
 	if err := validateBlock(b3); err != nil {
 		t.Errorf("Block failed: %v\n", b3)
 	}
 
-	b4 := newBlock()
-	b4.PrevHash = b3.Hash
+	b4 := newBlock(b3.Hash)
 	createBlockWithTxs(b4)
 	finalizeBlock(b4)
 	if err := validateBlock(b4); err != nil {

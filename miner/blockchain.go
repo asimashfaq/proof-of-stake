@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"log"
@@ -15,7 +14,6 @@ import (
 )
 
 var LogFile *os.File
-var currentBlock, nextBlock *protocol.Block
 
 var MinerHash [32]byte
 var MinerPrivKey *ecdsa.PrivateKey
@@ -32,18 +30,15 @@ func Sync() {
 
 func Init() {
 
-	testing_setup()
+	//testing_setup()
 
-	LogFile, _ = os.OpenFile("logminer "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	LogFile, _ = os.OpenFile(".logminer "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
 
 	log.Println("Starting system, initializing state map")
-	genesisBlock := newBlock()
+	genesisBlock := newBlock([32]byte{})
 	collectStatistics(genesisBlock)
 	storage.WriteBlock(genesisBlock)
-
-	currentBlock = newBlock()
-	nextBlock = newBlock()
 
 	go incomingData()
 	mining()
@@ -51,22 +46,23 @@ func Init() {
 
 func mining() {
 	for {
+		currentBlock := newBlock([32]byte{})
 		err := finalizeBlock(currentBlock)
+		log.Printf("Successfully mined a block: %v\n", currentBlock)
 
 		//else a block was received meanwhile that was added to the chain, all the effort was in vain :(
 		//wait for lock here only
 		if err != nil {
 			log.Printf("%v\n", err)
 		} else {
-			broadcastBlock(currentBlock)
+			//broadcastBlock(currentBlock)
 			validateBlock(currentBlock)
 		}
 
 		//TODO: Mutex for state validation, build new block to mine only AFTER state update (opentxs->closedtxs)
 		//mining successful, construct new block out of mempool transactions
-		prevHash := lastBlock.Hash
-		currentBlock = newBlock()
-		currentBlock.PrevHash = prevHash
+		nextBlock := newBlock(lastBlock.Hash)
+		currentBlock = nextBlock
 		prepareBlock(currentBlock)
 	}
 }

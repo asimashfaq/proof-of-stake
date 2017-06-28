@@ -55,14 +55,17 @@ func Init() {
 	go broadcastService()
 	//go checkHealth()
 
-	LogFile, _ = os.OpenFile("logp2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	LogFile, _ = os.OpenFile(".logp2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
 	//after this call, there are some peers connected
 
 	//to avoid that all new peers connect to all bootstrap peers, we just connect to one or two
 	//and request neighboring ip addresses
 	//neighboring ip addresses are incoming and outgoing addresses
+	go listener()
+}
 
+func listener() {
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(PORT))
 	if err != nil {
 		log.Printf("%v\n", err)

@@ -22,7 +22,7 @@ func TestFundsTxStateChange(t *testing.T) {
 	var testSize uint32
 	testSize = 1000
 
-	b := newBlock()
+	b := newBlock([32]byte{})
 	var funds []*protocol.FundsTx
 
 	var feeA, feeB uint64

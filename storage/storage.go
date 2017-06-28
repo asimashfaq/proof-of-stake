@@ -5,6 +5,8 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"log"
+	"os"
+	"time"
 )
 
 var db *bolt.DB
@@ -12,6 +14,10 @@ var State map[[8]byte][]*protocol.Account
 var RootKeys map[[32]byte]*protocol.Account
 
 func Init() {
+
+	LogFile, _ := os.OpenFile(".logstorage "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	log.SetOutput(LogFile)
+
 	State = make(map[[8]byte][]*protocol.Account)
 	RootKeys = make(map[[32]byte]*protocol.Account)
 

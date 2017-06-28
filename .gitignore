@@ -3,3 +3,4 @@ pkg/
 log*
 *.db
 *.out
+.log*

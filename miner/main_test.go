@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"github.com/lisgie/bazo_miner/p2p"
 )
 
 var accA, accB, minerAcc *protocol.Account
@@ -118,7 +119,7 @@ func cleanAndPrepare() {
 
 	localBlockCount = 0
 	globalBlockCount = 0
-	genesis := newBlock()
+	genesis := newBlock([32]byte{})
 	collectStatistics(genesis)
 	storage.WriteBlock(genesis)
 
@@ -150,11 +151,8 @@ func cleanAndPrepare() {
 
 func TestMain(m *testing.M) {
 
-	//initialize states
-	storage.State = make(map[[8]byte][]*protocol.Account)
-	storage.RootKeys = make(map[[32]byte]*protocol.Account)
-
 	storage.Init()
+	p2p.Init()
 
 	//setting a new random seed
 	addTestingAccounts()

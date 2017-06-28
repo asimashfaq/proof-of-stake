@@ -21,9 +21,10 @@ type blockData struct {
 }
 
 //imitating constructor
-func newBlock() *protocol.Block {
+func newBlock(prevHash [32]byte) *protocol.Block {
 	b := new(protocol.Block)
 	b.Header = 0x01
+	b.Hash = prevHash
 	b.StateCopy = make(map[[32]byte]*protocol.Account)
 	return b
 }
@@ -207,6 +208,8 @@ func finalizeBlock(b *protocol.Block) error {
 	b.NrFundsTx = uint16(len(b.FundsTxData))
 	b.NrAccTx = uint16(len(b.AccTxData))
 	b.NrConfigTx = uint8(len(b.ConfigTxData))
+
+	return nil
 }
 
 //this function needs to be split into block syntax/PoW check and actual state change
