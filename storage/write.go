@@ -17,6 +17,8 @@ func WriteBlock(block *protocol.Block) {
 //breaking the "tx" shortcut for here and using "transaction" to distinguish between bolt's transactions
 func WriteOpenTx(transaction protocol.Transaction) {
 
+	//unfortunately we need to make a special case for fundsTx, this is because
+	//we need to take the hash without the verified fields!
 	var bucket string
 	switch transaction.(type) {
 	case *protocol.FundsTx:

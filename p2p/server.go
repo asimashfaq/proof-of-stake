@@ -55,7 +55,7 @@ func Init() {
 	go broadcastService()
 	//go checkHealth()
 
-	LogFile, _ = os.OpenFile(".logp2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	LogFile, _ = os.OpenFile("../log/p2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
 	//after this call, there are some peers connected
 
@@ -66,6 +66,7 @@ func Init() {
 }
 
 func listener() {
+	
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(PORT))
 	if err != nil {
 		log.Printf("%v\n", err)
@@ -132,7 +133,6 @@ func processRequest(conn net.Conn, header *Header, payload []byte) {
 		accRes(conn, payload)
 	case MINER_PING:
 		pongRes(conn, payload)
-
 	}
 }
 

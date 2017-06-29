@@ -59,13 +59,8 @@ func addTestingAccounts() {
 	accBHash := serializeHashContent(accB.Address)
 
 	//just to bootstrap
-	var shortHashA [8]byte
-	var shortHashB [8]byte
-	copy(shortHashA[:], accAHash[0:8])
-	copy(shortHashB[:], accBHash[0:8])
-
-	storage.State[shortHashA] = append(storage.State[shortHashA], accA)
-	storage.State[shortHashB] = append(storage.State[shortHashB], accB)
+	storage.State[accAHash] = accA
+	storage.State[accBHash] = accB
 
 	MinerPrivKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	var pubKey [64]byte
@@ -75,7 +70,7 @@ func addTestingAccounts() {
 	MinerHash = serializeHashContent(pubKey)
 	copy(shortMiner[:], MinerHash[0:8])
 	minerAcc.Address = pubKey
-	storage.State[shortMiner] = append(storage.State[shortMiner], minerAcc)
+	storage.State[MinerHash] = minerAcc
 
 }
 
@@ -101,17 +96,15 @@ func addRootAccounts() {
 
 	rootHash := serializeHashContent(pubKey)
 
-	var shortRootHash [8]byte
-	copy(shortRootHash[:], rootHash[0:8])
 	rootAcc := protocol.Account{Address: pubKey}
-	storage.State[shortRootHash] = append(storage.State[shortRootHash], &rootAcc)
+	storage.State[rootHash] = &rootAcc
 	storage.RootKeys[rootHash] = &rootAcc
 }
 
 func cleanAndPrepare() {
 
 	storage.DeleteAll()
-	tmpState := make(map[[8]byte][]*protocol.Account)
+	tmpState := make(map[[32]byte]*protocol.Account)
 	tmpRootKeys := make(map[[32]byte]*protocol.Account)
 
 	storage.State = tmpState

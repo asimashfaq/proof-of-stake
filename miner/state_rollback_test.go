@@ -96,19 +96,10 @@ func TestAccStateChangeRollback(t *testing.T) {
 
 	accStateChange(accs)
 
-	var shortHash [8]byte
 	for _, acc := range accs {
-		found := false
 		accHash := serializeHashContent(acc.PubKey)
-		copy(shortHash[:], accHash[0:8])
-		accSlice := storage.State[shortHash]
-		for _, singleAcc := range accSlice {
-			singleAccHash := serializeHashContent(singleAcc.Address)
-			if singleAccHash == accHash {
-				found = true
-			}
-		}
-		if !found {
+		acc := storage.State[accHash]
+		if acc == nil {
 			t.Errorf("Account State failed to update for the following account: %v\n", acc)
 		}
 	}
@@ -116,17 +107,9 @@ func TestAccStateChangeRollback(t *testing.T) {
 	accStateChangeRollback(accs)
 
 	for _, acc := range accs {
-		found := false
 		accHash := serializeHashContent(acc.PubKey)
-		copy(shortHash[:], accHash[0:8])
-		accSlice := storage.State[shortHash]
-		for _, singleAcc := range accSlice {
-			singleAccHash := serializeHashContent(singleAcc.Address)
-			if singleAccHash == accHash {
-				found = true
-			}
-		}
-		if found {
+		acc := storage.State[accHash]
+		if acc != nil {
 			t.Errorf("Account State failed to rollback the following account: %v\n", acc)
 		}
 	}

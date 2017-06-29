@@ -19,8 +19,8 @@ func TestFundsTxSerialization(t *testing.T) {
 		decodedTx = decodedTx.Decode(data)
 
 		//this is done by verify() which is outside protocol package, we're just testing serialization here
-		decodedTx.FromHash = accAHash
-		decodedTx.ToHash = accBHash
+		decodedTx.From = accAHash
+		decodedTx.To = accBHash
 
 		if !reflect.DeepEqual(tx, decodedTx) {
 			t.Errorf("FundsTx Serialization failed (%v) vs. (%v)\n", tx, decodedTx)

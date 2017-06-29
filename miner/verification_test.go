@@ -11,8 +11,8 @@ func TestFundsTxVerification(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 	accAHash := serializeHashContent(accA.Address)
 	accBHash := serializeHashContent(accB.Address)
-	loopMax := int(rand.Uint32() % 10000)
-	for i := 0; i < loopMax; i++ {
+	//loopMax := int(rand.Uint32() % 10000)
+	for i := 0; i < 1; i++ {
 		tx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%100000+1, rand.Uint64()%10+1, uint32(i), accAHash, accBHash, &PrivKeyA)
 		if verifyFundsTx(tx) == false {
 			t.Errorf("Tx could not be verified: \n%v", tx)

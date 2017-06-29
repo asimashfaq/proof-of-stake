@@ -71,5 +71,6 @@ func (*Account) Decode(encodedAcc []byte) (acc *Account) {
 }
 
 func (acc Account) String() string {
-	return fmt.Sprintf("Hash: %x, Address: %x, TxCnt: %v, Balance: %v", serializeHashContent(acc.Address), acc.Address[0:8], acc.TxCnt, acc.Balance)
+	addressHash := serializeHashContent(acc.Address)
+	return fmt.Sprintf("Hash: %x, Address: %x, TxCnt: %v, Balance: %v", addressHash[0:12], acc.Address[0:8], acc.TxCnt, acc.Balance)
 }

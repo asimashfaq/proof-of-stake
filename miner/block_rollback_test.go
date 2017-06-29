@@ -16,32 +16,29 @@ func TestValidateBlockRollback(t *testing.T) {
 	accsBefore2 := make(map[[64]byte]protocol.Account)
 	accsAfter := make(map[[64]byte]protocol.Account)
 
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			accsBefore[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		accsBefore[acc.Address] = *acc
 	}
 
 	createBlockWithTxs(b)
 	finalizeBlock(b)
 	validateBlock(b)
 
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			accsAfter[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		accsAfter[acc.Address] = *acc
 	}
 
 	if reflect.DeepEqual(accsBefore, accsAfter) {
 		t.Error("State wasn't changed despite validating a block!")
 	}
 
-	validateBlockRollback(b)
+	err := validateBlockRollback(b)
+	if err != nil {
+		t.Errorf("%v\n", err)
+	}
 
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			accsBefore2[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		accsBefore2[acc.Address] = *acc
 	}
 
 	if !reflect.DeepEqual(accsBefore, accsBefore2) {
@@ -66,11 +63,10 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	var paramb3 []parameters
 
 	//no deep copy, becasue we use []*Account
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			stategenesis[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		stategenesis[acc.Address] = *acc
 	}
+
 	paramgenesis = make([]parameters, len(parameterSlice))
 	copy(paramgenesis, parameterSlice)
 
@@ -81,11 +77,10 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		t.Errorf("Block validation for (%v) failed: %v\n", b, err)
 	}
 
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			stateb[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		stateb[acc.Address] = *acc
 	}
+
 	paramb = make([]parameters, len(parameterSlice))
 	copy(paramb, parameterSlice)
 
@@ -96,11 +91,10 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		t.Errorf("Block failed: %v\n", b2)
 	}
 
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			stateb2[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		stateb2[acc.Address] = *acc
 	}
+
 	paramb2 = make([]parameters, len(parameterSlice))
 	copy(paramb2, parameterSlice)
 
@@ -111,11 +105,10 @@ func TestMultipleBlocksRollback(t *testing.T) {
 		t.Errorf("Block failed: %v\n", b3)
 	}
 
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			stateb3[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		stateb3[acc.Address] = *acc
 	}
+
 	paramb3 = make([]parameters, len(parameterSlice))
 	copy(paramb3, parameterSlice)
 
@@ -130,10 +123,8 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	if err := validateBlockRollback(b4); err != nil {
 		t.Errorf("%v\n", err)
 	}
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			tmpState[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		tmpState[acc.Address] = *acc
 	}
 
 	if !reflect.DeepEqual(tmpState, stateb3) || !reflect.DeepEqual(paramb3, parameterSlice) {
@@ -147,10 +138,8 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	if err := validateBlockRollback(b3); err != nil {
 		t.Errorf("%v\n", err)
 	}
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			tmpState[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		tmpState[acc.Address] = *acc
 	}
 	if !reflect.DeepEqual(tmpState, stateb2) || !reflect.DeepEqual(paramb2, parameterSlice) {
 		t.Error("Block rollback failed.")
@@ -162,10 +151,8 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	if err := validateBlockRollback(b2); err != nil {
 		t.Errorf("%v\n", err)
 	}
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			tmpState[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		tmpState[acc.Address] = *acc
 	}
 	if !reflect.DeepEqual(tmpState, stateb) || !reflect.DeepEqual(paramb, parameterSlice) {
 		t.Error("Block rollback failed.")
@@ -177,10 +164,8 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	if err := validateBlockRollback(b); err != nil {
 		t.Errorf("%v\n", err)
 	}
-	for _, accSlice := range storage.State {
-		for _, acc := range accSlice {
-			tmpState[acc.Address] = *acc
-		}
+	for _, acc := range storage.State {
+		tmpState[acc.Address] = *acc
 	}
 	if !reflect.DeepEqual(tmpState, stategenesis) || !reflect.DeepEqual(paramgenesis, parameterSlice) {
 		t.Error("Block rollback failed.")

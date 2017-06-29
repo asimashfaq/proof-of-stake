@@ -115,20 +115,11 @@ func TestAccTxStateChange(t *testing.T) {
 
 	accStateChange(accs)
 
-	var shortHash [8]byte
 	for _, acc := range accs {
-		found := false
 		accHash := serializeHashContent(acc.PubKey)
-		copy(shortHash[:], accHash[0:8])
-		accSlice := storage.State[shortHash]
+		acc := storage.State[accHash]
 		//make sure the previously created acc is in the state
-		for _, singleAcc := range accSlice {
-			singleAccHash := serializeHashContent(singleAcc.Address)
-			if singleAccHash == accHash {
-				found = true
-			}
-		}
-		if !found {
+		if acc == nil {
 			t.Errorf("Account State failed to update for the following account: %v\n", acc)
 		}
 	}

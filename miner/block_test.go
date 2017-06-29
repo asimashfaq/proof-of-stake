@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"math/rand"
@@ -37,7 +36,6 @@ func TestBlock(t *testing.T) {
 		t.Error("AccTx data is not properly serialized!")
 	}
 	if !reflect.DeepEqual(hashConfigSlice, decodedBlock.ConfigTxData) {
-		fmt.Printf("%v, %v\n", len(hashConfigSlice), len(decodedBlock.ConfigTxData))
 		t.Error("ConfigTx data is not properly serialized!")
 	}
 	if !reflect.DeepEqual(b, decodedBlock) {

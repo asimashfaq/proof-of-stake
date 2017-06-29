@@ -24,7 +24,7 @@ type blockData struct {
 func newBlock(prevHash [32]byte) *protocol.Block {
 	b := new(protocol.Block)
 	b.Header = 0x01
-	b.Hash = prevHash
+	b.PrevHash = prevHash
 	b.StateCopy = make(map[[32]byte]*protocol.Account)
 	return b
 }
@@ -84,54 +84,54 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 	}
 
 	//checking if the sender account is already in the local state copy
-	if _, exists := b.StateCopy[tx.FromHash]; !exists {
-		for _, acc := range storage.State[tx.From] {
+	if _, exists := b.StateCopy[tx.From]; !exists {
+		if acc := storage.State[tx.From]; acc != nil {
 			hash := serializeHashContent(acc.Address)
-			if hash == tx.FromHash {
+			if hash == tx.From {
 				newAcc := protocol.Account{}
 				newAcc = *acc
-				b.StateCopy[tx.FromHash] = &newAcc
+				b.StateCopy[tx.From] = &newAcc
 			}
 		}
 	}
 
 	//vice versa for receiver account
-	if _, exists := b.StateCopy[tx.ToHash]; !exists {
-		for _, acc := range storage.State[tx.To] {
+	if _, exists := b.StateCopy[tx.To]; !exists {
+		if acc := storage.State[tx.To]; acc != nil {
 			hash := serializeHashContent(acc.Address)
-			if hash == tx.ToHash {
+			if hash == tx.To {
 				newAcc := protocol.Account{}
 				newAcc = *acc
-				b.StateCopy[tx.ToHash] = &newAcc
+				b.StateCopy[tx.To] = &newAcc
 			}
 		}
 	}
 
 	//rootkey doesn't need to get checked for balance
 	//however, txcnt is still increased, makes things a little easiert in the state manipulation
-	if !isRootKey(tx.FromHash) {
-		if (tx.Amount + tx.Fee) > b.StateCopy[tx.FromHash].Balance {
+	if !isRootKey(tx.From) {
+		if (tx.Amount + tx.Fee) > b.StateCopy[tx.From].Balance {
 			return errors.New("Not enough funds to complete the transaction!")
 		}
 	}
 
 	//check if txcnt makes sense
-	if b.StateCopy[tx.FromHash].TxCnt != tx.TxCnt {
-		err := fmt.Sprintf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)", tx.TxCnt, b.StateCopy[tx.FromHash].TxCnt)
+	if b.StateCopy[tx.From].TxCnt != tx.TxCnt {
+		err := fmt.Sprintf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)", tx.TxCnt, b.StateCopy[tx.From].TxCnt)
 		return errors.New(err)
 	}
 
 	//don't add tx if amount leads to overflow at receiver acc (amount == 0 has already been checked with verify())
-	if b.StateCopy[tx.ToHash].Balance+tx.Amount > protocol.MAX_MONEY {
-		err := fmt.Sprintf("Transaction amount (%v) leads to overflow at receiver account balance (%v).\n", tx.Amount, b.StateCopy[tx.ToHash].Balance)
+	if b.StateCopy[tx.To].Balance+tx.Amount > protocol.MAX_MONEY {
+		err := fmt.Sprintf("Transaction amount (%v) leads to overflow at receiver account balance (%v).\n", tx.Amount, b.StateCopy[tx.To].Balance)
 		return errors.New(err)
 	}
 
-	accSender := b.StateCopy[tx.FromHash]
+	accSender := b.StateCopy[tx.From]
 	accSender.TxCnt += 1
 	accSender.Balance -= tx.Amount
 
-	accReceiver := b.StateCopy[tx.ToHash]
+	accReceiver := b.StateCopy[tx.To]
 	accReceiver.Balance += tx.Amount
 
 	b.FundsTxData = append(b.FundsTxData, tx.Hash())
@@ -152,13 +152,9 @@ func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 	}
 
 	//at this point the tx has already been verified
-	var mapId [8]byte
 	accHash := sha3.Sum256(tx.PubKey[:])
-	copy(mapId[:], accHash[0:8])
-	for _, j := range storage.State[mapId] {
-		if bytes.Compare(tx.PubKey[:], j.Address[:]) == 0 {
-			return errors.New("Account already exists.")
-		}
+	if _,exists := storage.State[accHash]; exists {
+		return errors.New("Account already exists.")
 	}
 
 	b.AccTxData = append(b.AccTxData, tx.Hash())
@@ -219,6 +215,8 @@ func validateBlock(b *protocol.Block) error {
 
 	blockValidation.Lock()
 	defer blockValidation.Unlock()
+
+	log.Printf("Validating block: %v\n", b)
 
 	//TODO: Add block size check
 	//this is necessary, because we need to first validate all blocks (need to fetch tx data)
@@ -313,6 +311,10 @@ func preValidation(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSl
 		configTxSlice = append(configTxSlice, tx.(*protocol.ConfigTx))
 	}
 
+	if acc := getAccountFromHash(b.Beneficiary); acc == nil {
+		return nil,nil,nil,errors.New("Beneficiary not in the State.")
+	}
+
 	startIndex := 0
 	for _, singleByte := range b.Nonce {
 		if singleByte != 0x00 {
@@ -377,7 +379,7 @@ func stateValidation(data blockData) error {
 	}
 
 	log.Print("Block validated and state changed accordingly: \n")
-	PrintState()
+	printState()
 
 	return nil
 }

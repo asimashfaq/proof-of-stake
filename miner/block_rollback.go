@@ -15,7 +15,6 @@ func validateBlockRollback(b *protocol.Block) error {
 	if err != nil {
 		return err
 	}
-
 	data := blockData{fundsTxSlice, accTxSlice, configTxSlice, b}
 
 	//before manipulating the state, we need to go back to pre-block system parameters

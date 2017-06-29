@@ -10,15 +10,15 @@ import (
 )
 
 var db *bolt.DB
-var State map[[8]byte][]*protocol.Account
+var State map[[32]byte]*protocol.Account
 var RootKeys map[[32]byte]*protocol.Account
 
 func Init() {
 
-	LogFile, _ := os.OpenFile(".logstorage "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	LogFile, _ := os.OpenFile("../log/storage "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
 
-	State = make(map[[8]byte][]*protocol.Account)
+	State = make(map[[32]byte]*protocol.Account)
 	RootKeys = make(map[[32]byte]*protocol.Account)
 
 	var err error

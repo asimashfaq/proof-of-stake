@@ -20,7 +20,7 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 		var err error
 		//check if we have to issue new coins
 		for hash, rootAcc := range storage.RootKeys {
-			if hash == tx.FromHash {
+			if hash == tx.From {
 				log.Printf("Root Key Transaction: %x\n", hash[0:8])
 
 				if rootAcc.Balance+tx.Amount+tx.Fee > protocol.MAX_MONEY {
@@ -33,14 +33,14 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 			}
 		}
 
-		accSender, accReceiver := storage.GetAccountFromHash(tx.FromHash), storage.GetAccountFromHash(tx.ToHash)
+		accSender, accReceiver := storage.GetAccountFromHash(tx.From), storage.GetAccountFromHash(tx.To)
 		if accSender == nil {
-			log.Printf("CRITICAL: Sender does not exist in the State: %x\n", tx.FromHash[0:8])
+			log.Printf("CRITICAL: Sender does not exist in the State: %x\n", tx.From[0:8])
 			err = errors.New("Sender does not exist in the State.")
 		}
 
 		if accReceiver == nil {
-			log.Printf("CRITICAL: Receiver does not exist in the State: %x\n", tx.ToHash[0:8])
+			log.Printf("CRITICAL: Receiver does not exist in the State: %x\n", tx.To[0:8])
 			err = errors.New("Receiver does not exist in the State.")
 		}
 
@@ -97,16 +97,14 @@ func accStateChange(txSlice []*protocol.AccTx) error {
 		}
 
 		//create a regular account
-		var fixedHash [8]byte
 		addressHash := sha3.Sum256(tx.PubKey[:])
 		acc := storage.GetAccountFromHash(addressHash)
 		if acc != nil {
 			log.Printf("CRITICAL: Address already exists in the state: %x\n", addressHash[0:4])
 			return errors.New("CRITICAL: Address already exists in the state")
 		}
-		copy(fixedHash[:], addressHash[0:8])
 		newAcc := protocol.Account{Address: tx.PubKey}
-		storage.State[fixedHash] = append(storage.State[fixedHash], &newAcc)
+		storage.State[addressHash] = &newAcc
 	}
 	return nil
 }
@@ -181,7 +179,7 @@ func collectTxFees(fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccT
 		}
 		minerAcc.Balance += tx.Fee
 
-		senderAcc := storage.GetAccountFromHash(tx.FromHash)
+		senderAcc := storage.GetAccountFromHash(tx.From)
 		senderAcc.Balance -= tx.Fee
 
 		tmpFundsTx = append(tmpFundsTx, tx)
@@ -218,6 +216,10 @@ func collectTxFees(fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccT
 func collectBlockReward(reward uint64, minerHash [32]byte) error {
 	miner := storage.GetAccountFromHash(minerHash)
 
+	if miner == nil {
+		return errors.New("Miner doesn't exist in the state!")
+	}
+
 	if miner.Balance+reward > protocol.MAX_MONEY {
 		log.Printf("Miner balance (%v) overflows with block reward (%v).\n", miner.Balance, reward)
 		return errors.New("Miner balance overflows with transaction fee.\n")
@@ -226,11 +228,9 @@ func collectBlockReward(reward uint64, minerHash [32]byte) error {
 	return nil
 }
 
-func PrintState() {
+func printState() {
 	log.Println("State updated: ")
-	for key, val := range storage.State {
-		for _, acc := range val {
-			log.Printf("%x: %v\n", key[0:8], acc)
-		}
+	for key, acc := range storage.State {
+		log.Printf("%x: %v\n", key[0:10], acc)
 	}
 }

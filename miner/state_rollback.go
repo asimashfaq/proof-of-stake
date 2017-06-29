@@ -3,6 +3,7 @@ package miner
 import (
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
+	"log"
 )
 
 func fundsStateChangeRollback(txSlice []*protocol.FundsTx) {
@@ -10,7 +11,7 @@ func fundsStateChangeRollback(txSlice []*protocol.FundsTx) {
 	for cnt := len(txSlice) - 1; cnt >= 0; cnt-- {
 		tx := txSlice[cnt]
 
-		accSender, accReceiver := storage.GetAccountFromHash(tx.FromHash), storage.GetAccountFromHash(tx.ToHash)
+		accSender, accReceiver := storage.GetAccountFromHash(tx.From), storage.GetAccountFromHash(tx.To)
 
 		accSender.TxCnt -= 1
 		accSender.Balance += tx.Amount
@@ -25,24 +26,11 @@ func accStateChangeRollback(txSlice []*protocol.AccTx) {
 	for _, tx := range txSlice {
 		accHash := serializeHashContent(tx.PubKey)
 
-		var fixedHash [8]byte
-		copy(fixedHash[:], accHash[0:8])
-
-		accSlice := storage.State[fixedHash]
-		for i := range accSlice {
-			accSliceHash := serializeHashContent(accSlice[i].Address)
-			if accSliceHash == accHash {
-				//deleting the account from the state
-				//https://github.com/golang/go/wiki/SliceTricks, preventing mem leaks
-				copy(accSlice[i:], accSlice[i+1:])
-				accSlice[len(accSlice)-1] = nil
-				accSlice = accSlice[:len(accSlice)-1]
-			}
+		acc := storage.State[accHash]
+		if acc == nil {
+			log.Fatal("An account that should have been saved does not exist!")
 		}
-		//preventing memory leaks, this is important
-		if len(accSlice) == 0 {
-			delete(storage.State, fixedHash)
-		}
+		delete(storage.State,accHash)
 	}
 }
 
@@ -69,7 +57,7 @@ func collectTxFeesRollback(fundsTx []*protocol.FundsTx, accTx []*protocol.AccTx,
 	for _, tx := range fundsTx {
 		minerAcc.Balance -= tx.Fee
 
-		senderAcc := storage.GetAccountFromHash(tx.FromHash)
+		senderAcc := storage.GetAccountFromHash(tx.From)
 		senderAcc.Balance += tx.Fee
 	}
 

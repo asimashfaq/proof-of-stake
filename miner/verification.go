@@ -32,8 +32,6 @@ func verify(tx protocol.Transaction) bool {
 
 func verifyFundsTx(tx *protocol.FundsTx) bool {
 
-	var sig [24]byte
-	var concatSig [64]byte
 	pub1, pub2 := new(big.Int), new(big.Int)
 	r, s := new(big.Int), new(big.Int)
 
@@ -44,36 +42,29 @@ func verifyFundsTx(tx *protocol.FundsTx) bool {
 	}
 
 	//check if accounts are present in the actual state
-	for _, accFrom := range storage.State[tx.From] {
-		accFromHash := serializeHashContent(accFrom.Address)
-		for _, accTo := range storage.State[tx.To] {
-			accToHash := serializeHashContent(accTo.Address)
-			sig = [24]byte{}
-			for cnt := 0; cnt < 24; cnt++ {
-				sig[cnt] = tx.Xored[cnt] ^ accFromHash[cnt+8] ^ accToHash[cnt+8]
-			}
-			copy(concatSig[:24], sig[0:24])
-			copy(concatSig[24:], tx.Sig[:])
+	accFrom := storage.State[tx.From]
+	accTo := storage.State[tx.To]
+	accFromHash := serializeHashContent(accFrom.Address)
+	accToHash := serializeHashContent(accTo.Address)
 
-			pub1.SetBytes(accFrom.Address[:32])
-			pub2.SetBytes(accFrom.Address[32:])
+	pub1.SetBytes(accFrom.Address[:32])
+	pub2.SetBytes(accFrom.Address[32:])
 
-			r.SetBytes(concatSig[:32])
-			s.SetBytes(concatSig[32:])
+	r.SetBytes(tx.Sig[:32])
+	s.SetBytes(tx.Sig[32:])
 
-			tx.FromHash = accFromHash
-			tx.ToHash = accToHash
+	tx.From = accFromHash
+	tx.To = accToHash
 
-			txHash := tx.Hash()
+	txHash := tx.Hash()
 
-			pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
-			if ecdsa.Verify(&pubKey, txHash[:], r, s) == true && !reflect.DeepEqual(accFrom, accTo) {
-				tx.FromHash = accFromHash
-				tx.ToHash = accToHash
-				return true
-			}
-		}
+	pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
+	if ecdsa.Verify(&pubKey, txHash[:], r, s) == true && !reflect.DeepEqual(accFrom, accTo) {
+		tx.From = accFromHash
+		tx.To = accToHash
+		return true
 	}
+
 	return false
 }
 

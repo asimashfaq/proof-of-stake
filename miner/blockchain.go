@@ -2,15 +2,13 @@ package miner
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"log"
-	"math/big"
 	"os"
 	"sync"
 	"time"
+	"fmt"
 )
 
 var LogFile *os.File
@@ -23,6 +21,8 @@ var blockValidation = &sync.Mutex{}
 var timestamp []int64
 var parameterSlice []parameters
 var activeParameters *parameters
+var tmpSlice []parameters
+
 
 func Sync() {
 
@@ -30,26 +30,38 @@ func Sync() {
 
 func Init() {
 
-	//testing_setup()
+	testing_setup()
 
-	LogFile, _ = os.OpenFile(".logminer "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	LogFile, _ = os.OpenFile("../log/miner "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
 
+	//var tmpTimestamp []int64
+	parameterSlice = append(parameterSlice, parameters{
+		[32]byte{},
+		1,
+		1000,
+		2016,
+		60,
+		0,
+	})
+	activeParameters = &parameterSlice[0]
+
 	log.Println("Starting system, initializing state map")
-	genesisBlock := newBlock([32]byte{})
-	collectStatistics(genesisBlock)
-	storage.WriteBlock(genesisBlock)
+	//genesisBlock := newBlock([32]byte{})
+	//collectStatistics(genesisBlock)
+	//storage.WriteBlock(genesisBlock)
 
 	go incomingData()
 	mining()
 }
 
 func mining() {
+	currentBlock := newBlock([32]byte{})
 	for {
-		currentBlock := newBlock([32]byte{})
 		err := finalizeBlock(currentBlock)
-		log.Printf("Successfully mined a block: %v\n", currentBlock)
-
+		if err != nil {
+			fmt.Printf("Mining failure: %v\n", err)
+		}
 		//else a block was received meanwhile that was added to the chain, all the effort was in vain :(
 		//wait for lock here only
 		if err != nil {
@@ -58,6 +70,7 @@ func mining() {
 			//broadcastBlock(currentBlock)
 			validateBlock(currentBlock)
 		}
+
 
 		//TODO: Mutex for state validation, build new block to mine only AFTER state update (opentxs->closedtxs)
 		//mining successful, construct new block out of mempool transactions
@@ -72,13 +85,16 @@ func prepareBlock(block *protocol.Block) {
 	//empty mempool (opentxs)
 	opentxs := storage.ReadAllOpenTxs()
 	for _,tx := range opentxs {
-		addTx(block,tx)
+		err := addTx(block,tx)
+		if err != nil {
+			storage.DeleteOpenTx(tx)
+		}
 	}
 }
 
 //some testing code
 func testing_setup() {
-	MinerPrivKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	/*MinerPrivKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	var pubKey [64]byte
 	var shortMiner [8]byte
 	copy(pubKey[:32], MinerPrivKey.X.Bytes())
@@ -147,5 +163,5 @@ func testing_setup() {
 	copy(shortHashB[:], hashB[0:8])
 
 	storage.State[shortHashA] = append(storage.State[shortHashA], &accA)
-	storage.State[shortHashB] = append(storage.State[shortHashB], &accB)
+	storage.State[shortHashB] = append(storage.State[shortHashB], &accB)*/
 }

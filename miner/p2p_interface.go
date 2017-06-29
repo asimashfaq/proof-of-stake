@@ -54,6 +54,7 @@ func processTx(incomingTx p2p.TxInfo) {
 
 	//write to mempool
 	storage.WriteOpenTx(tx)
+	p2p.TxsOut<-incomingTx
 }
 
 func processBlock(payload []byte) {
