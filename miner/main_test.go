@@ -145,7 +145,7 @@ func cleanAndPrepare() {
 func TestMain(m *testing.M) {
 
 	storage.Init()
-	p2p.Init()
+	p2p.Init("8000")
 
 	//setting a new random seed
 	addTestingAccounts()

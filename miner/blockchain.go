@@ -9,12 +9,15 @@ import (
 	"sync"
 	"time"
 	"fmt"
+	"crypto/elliptic"
+	"math/big"
 )
 
 var LogFile *os.File
 
-var MinerHash [32]byte
-var MinerPrivKey *ecdsa.PrivateKey
+//using these accounts a mining beneficiary
+var accA, accB protocol.Account
+var hashA, hashB [32]byte
 
 var blockValidation = &sync.Mutex{}
 
@@ -32,7 +35,7 @@ func Init() {
 
 	testing_setup()
 
-	LogFile, _ = os.OpenFile("../log/miner "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	LogFile, _ = os.OpenFile("log/miner "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
 
 	//var tmpTimestamp []int64
@@ -45,6 +48,12 @@ func Init() {
 		0,
 	})
 	activeParameters = &parameterSlice[0]
+
+	localBlockCount = 0
+	globalBlockCount = 0
+	genesis := newBlock([32]byte{})
+	collectStatistics(genesis)
+	storage.WriteBlock(genesis)
 
 	log.Println("Starting system, initializing state map")
 	//genesisBlock := newBlock([32]byte{})
@@ -62,15 +71,15 @@ func mining() {
 		if err != nil {
 			fmt.Printf("Mining failure: %v\n", err)
 		}
+		fmt.Printf("Block mined.")
 		//else a block was received meanwhile that was added to the chain, all the effort was in vain :(
 		//wait for lock here only
 		if err != nil {
 			log.Printf("%v\n", err)
 		} else {
-			//broadcastBlock(currentBlock)
+			broadcastBlock(currentBlock)
 			validateBlock(currentBlock)
 		}
-
 
 		//TODO: Mutex for state validation, build new block to mine only AFTER state update (opentxs->closedtxs)
 		//mining successful, construct new block out of mempool transactions
@@ -94,15 +103,8 @@ func prepareBlock(block *protocol.Block) {
 
 //some testing code
 func testing_setup() {
-	/*MinerPrivKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+
 	var pubKey [64]byte
-	var shortMiner [8]byte
-	copy(pubKey[:32], MinerPrivKey.X.Bytes())
-	copy(pubKey[32:], MinerPrivKey.Y.Bytes())
-	MinerHash = serializeHashContent(pubKey)
-	copy(shortMiner[:], MinerHash[0:8])
-	minerAcc := protocol.Account{Address: pubKey}
-	storage.State[shortMiner] = append(storage.State[shortMiner], &minerAcc)
 
 	pub1, _ := new(big.Int).SetString(protocol.RootPub1, 16)
 	pub2, _ := new(big.Int).SetString(protocol.RootPub2, 16)
@@ -112,12 +114,9 @@ func testing_setup() {
 
 	rootHash := serializeHashContent(pubKey)
 
-	var shortRootHash [8]byte
-	copy(shortRootHash[:], rootHash[0:8])
 	rootAcc := protocol.Account{Address: pubKey}
-	storage.State[shortRootHash] = append(storage.State[shortRootHash], &rootAcc)
+	storage.State[rootHash] = &rootAcc
 	storage.RootKeys[rootHash] = &rootAcc
-	var accA, accB protocol.Account
 
 	puba1, _ := new(big.Int).SetString(protocol.PubA1, 16)
 	puba2, _ := new(big.Int).SetString(protocol.PubA2, 16)
@@ -148,20 +147,14 @@ func testing_setup() {
 	accA = protocol.Account{Balance: 1500000}
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
-	hashA := serializeHashContent(accA.Address)
+	hashA = serializeHashContent(accA.Address)
 
 	//This one is just for testing purposes
 	accB = protocol.Account{Balance: 702000}
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
-	hashB := serializeHashContent(accB.Address)
+	hashB = serializeHashContent(accB.Address)
 
-	//just to bootstrap
-	var shortHashA [8]byte
-	var shortHashB [8]byte
-	copy(shortHashA[:], hashA[0:8])
-	copy(shortHashB[:], hashB[0:8])
-
-	storage.State[shortHashA] = append(storage.State[shortHashA], &accA)
-	storage.State[shortHashB] = append(storage.State[shortHashB], &accB)*/
+	storage.State[hashA] = &accA
+	storage.State[hashB] = &accB
 }

@@ -13,16 +13,16 @@ var db *bolt.DB
 var State map[[32]byte]*protocol.Account
 var RootKeys map[[32]byte]*protocol.Account
 
-func Init() {
+func Init(dbname string) {
 
-	LogFile, _ := os.OpenFile("../log/storage "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	LogFile, _ := os.OpenFile("log/storage "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	log.SetOutput(LogFile)
 
 	State = make(map[[32]byte]*protocol.Account)
 	RootKeys = make(map[[32]byte]*protocol.Account)
 
 	var err error
-	db, err = bolt.Open("miner.db", 0600, nil)
+	db, err = bolt.Open(dbname, 0600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

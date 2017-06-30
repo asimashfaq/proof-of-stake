@@ -147,7 +147,7 @@ func calculateNewDifficulty() {
 func getDifficulty() uint8 {
 	//if chain doesn't exist yet
 	if blockDifficulty == 0 {
-		return 18
+		return 24
 	}
 
 	return blockDifficulty

@@ -184,7 +184,9 @@ func finalizeBlock(b *protocol.Block) error {
 	//merkle tree only built from funds transactions
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData, b.AccTxData, b.ConfigTxData)
 	b.Timestamp = time.Now().Unix()
-	copy(b.Beneficiary[:], MinerHash[:])
+
+	//TODO: Make this nicer, chooing by command line argument
+	copy(b.Beneficiary[:], hashA[:])
 
 	//anonymous struct
 	partialHash := hashBlock(b)
