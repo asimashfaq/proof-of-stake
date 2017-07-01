@@ -57,7 +57,7 @@ func ExtractHeader(reader *bufio.Reader) *Header {
 func (header Header) String() string {
 	return fmt.Sprintf(
 		"Length: %v\n"+
-			"TypeID: %v\n\n",
+			"TypeID: %v\n",
 		header.Len,
 		header.TypeID,
 	)

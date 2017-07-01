@@ -1,10 +1,11 @@
 package miner
 
 import (
-	"golang.org/x/crypto/sha3"
-	"math/big"
 	"errors"
+	"golang.org/x/crypto/sha3"
 	"log"
+	"math/big"
+	"time"
 )
 
 func validateProofOfWork(diff uint8, hash [32]byte) bool {
@@ -35,6 +36,9 @@ func proofOfWork(diff uint8, partialHash [32]byte) (*big.Int, error) {
 
 	for ; ; cnt.Add(cnt, oneIncr) {
 
+		//CPU IS BUUUUUUUUUUUUUUURNING otherwise
+		time.Sleep(3 * time.Millisecond)
+
 		if startedWith != lastBlock.Hash {
 			return nil, errors.New("Abort mining, another block has been successfully validated in the meantime")
 		}
@@ -57,5 +61,5 @@ func proofOfWork(diff uint8, partialHash [32]byte) (*big.Int, error) {
 		break
 	}
 
-	return cnt,nil
+	return cnt, nil
 }

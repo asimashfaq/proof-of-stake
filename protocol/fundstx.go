@@ -16,13 +16,13 @@ const (
 //when we broadcast transactions we need a way to distinguish with a type
 
 type FundsTx struct {
-	Header   byte
-	Amount   uint64
-	Fee      uint64
-	TxCnt    uint32
-	From [32]byte
-	To   [32]byte
-	Sig      [64]byte
+	Header byte
+	Amount uint64
+	Fee    uint64
+	TxCnt  uint32
+	From   [32]byte
+	To     [32]byte
+	Sig    [64]byte
 }
 
 func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, to [32]byte, key *ecdsa.PrivateKey) (tx *FundsTx, err error) {
@@ -125,8 +125,8 @@ func (*FundsTx) Decode(encodedTx []byte) (tx *FundsTx) {
 	return tx
 }
 
-func (tx *FundsTx) TxFee() uint64 {	return tx.Fee }
-func (tx *FundsTx) Size() uint8 { return FUNDSTX_SIZE }
+func (tx *FundsTx) TxFee() uint64 { return tx.Fee }
+func (tx *FundsTx) Size() uint8   { return FUNDSTX_SIZE }
 
 func (tx FundsTx) String() string {
 	return fmt.Sprintf(

@@ -11,17 +11,14 @@ func incomingData() {
 	for {
 		select {
 		case tx := <-p2p.TxsIn:
-			log.Printf("Received transaction: %v\n", tx.TxType)
 			processTx(tx)
 		case block := <-p2p.BlockIn:
-			log.Print("Received block from the network.")
 			processBlock(block)
 		}
 	}
 }
 
 func processTx(incomingTx p2p.TxInfo) {
-
 
 	var tx protocol.Transaction
 	switch incomingTx.TxType {
@@ -60,7 +57,7 @@ func processTx(incomingTx p2p.TxInfo) {
 	//write to mempool
 	log.Printf("Writing transaction (%v) in the mempool.\n", tx.Hash())
 	storage.WriteOpenTx(tx)
-	p2p.TxsOut<-incomingTx
+	p2p.TxsOut <- incomingTx
 }
 
 func processBlock(payload []byte) {
@@ -70,7 +67,7 @@ func processBlock(payload []byte) {
 
 	//block already confirmed and validated
 	if storage.ReadBlock(block.Hash) != nil {
-		log.Printf("Received block has already been validated: %v\n", block.Hash[0:12])
+		log.Printf("Received block (%x) has already been validated.\n", block.Hash[0:12])
 		return
 	}
 
@@ -78,9 +75,9 @@ func processBlock(payload []byte) {
 	err := validateBlock(block)
 	if err != nil {
 		//no conflict, giving away for broadcast
-		log.Printf("Received block (%v) could not be validated: %v\n", block.Hash, err)
+		log.Printf("Received block (%x) could not be validated: %v\n", block.Hash[0:12], err)
 	} else {
-		log.Print("Received block (%v) has been validated and broadcast again.", block.Hash)
+		log.Printf("Received block (%x) has been validated and broadcast again.", block.Hash[0:12])
 		broadcastBlock(block)
 	}
 }

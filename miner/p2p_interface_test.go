@@ -1,12 +1,11 @@
-
 package miner
 
 import (
-"testing"
-"math/rand"
-"time"
-"github.com/lisgie/bazo_miner/protocol"
-"github.com/lisgie/bazo_miner/p2p"
+	"github.com/lisgie/bazo_miner/p2p"
+	"github.com/lisgie/bazo_miner/protocol"
+	"math/rand"
+	"testing"
+	"time"
 )
 
 var done chan struct{}
@@ -31,7 +30,7 @@ func TestIncomingData(t *testing.T) {
 	//at this point all transactions have been written
 	//wait two more blocks to make sure all transactions have been validated
 	for {
-		time.Sleep(1*time.Second)
+		time.Sleep(1 * time.Second)
 		if globalBlockCount >= tmpCount+2 {
 			break
 		}
@@ -44,10 +43,10 @@ func fundstx() {
 		accAHash := serializeHashContent(accA.Address)
 		accBHash := serializeHashContent(accB.Address)
 		tx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accAHash, accBHash, &PrivKeyA)
-		time.Sleep(10*time.Second)
-		p2p.TxsIn<-p2p.TxInfo{p2p.FUNDSTX_BRDCST, tx.Encode()}
+		time.Sleep(10 * time.Second)
+		p2p.TxsIn <- p2p.TxInfo{p2p.FUNDSTX_BRDCST, tx.Encode()}
 	}
-	done<-struct{}{}
+	done <- struct{}{}
 }
 
 func acctx() {
@@ -55,11 +54,11 @@ func acctx() {
 	for cnt := 0; cnt < 10; cnt++ {
 		tx, err := protocol.ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
 		if err == nil {
-			p2p.TxsIn<-p2p.TxInfo{p2p.ACCTX_BRDCST,tx.Encode()}
+			p2p.TxsIn <- p2p.TxInfo{p2p.ACCTX_BRDCST, tx.Encode()}
 			time.Sleep(time.Second)
 		}
 	}
-	done<-struct{}{}
+	done <- struct{}{}
 }
 
 func configtx() {
@@ -67,13 +66,10 @@ func configtx() {
 	for cnt := 0; cnt < 10; cnt++ {
 		tx, err := protocol.ConstrConfigTx(0, uint8(rand.Uint64()%10)+1, rand.Uint64()%12328738, rand.Uint64()%10000, &RootPrivKey)
 		//don't mess with the fee interval
-		if err == nil && tx.Id != 3{
-			p2p.TxsIn<-p2p.TxInfo{p2p.CONFIGTX_BRDCST,tx.Encode()}
+		if err == nil && tx.Id != 3 {
+			p2p.TxsIn <- p2p.TxInfo{p2p.CONFIGTX_BRDCST, tx.Encode()}
 			time.Sleep(time.Second)
 		}
 	}
-	done<-struct{}{}
+	done <- struct{}{}
 }
-
-
-

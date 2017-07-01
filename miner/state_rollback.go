@@ -30,7 +30,7 @@ func accStateChangeRollback(txSlice []*protocol.AccTx) {
 		if acc == nil {
 			log.Fatal("An account that should have been saved does not exist!")
 		}
-		delete(storage.State,accHash)
+		delete(storage.State, accHash)
 	}
 }
 

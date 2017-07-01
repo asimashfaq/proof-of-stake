@@ -2,15 +2,15 @@ package miner
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
+	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"log"
+	"math/big"
 	"os"
 	"sync"
 	"time"
-	"fmt"
-	"crypto/elliptic"
-	"math/big"
 )
 
 var LogFile *os.File
@@ -25,7 +25,6 @@ var timestamp []int64
 var parameterSlice []parameters
 var activeParameters *parameters
 var tmpSlice []parameters
-
 
 func Sync() {
 
@@ -70,8 +69,9 @@ func mining() {
 		err := finalizeBlock(currentBlock)
 		if err != nil {
 			fmt.Printf("Mining failure: %v\n", err)
+		} else {
+			fmt.Println("Block mined.")
 		}
-		fmt.Printf("Block mined.")
 		//else a block was received meanwhile that was added to the chain, all the effort was in vain :(
 		//wait for lock here only
 		if err != nil {
@@ -93,8 +93,8 @@ func prepareBlock(block *protocol.Block) {
 
 	//empty mempool (opentxs)
 	opentxs := storage.ReadAllOpenTxs()
-	for _,tx := range opentxs {
-		err := addTx(block,tx)
+	for _, tx := range opentxs {
+		err := addTx(block, tx)
 		if err != nil {
 			storage.DeleteOpenTx(tx)
 		}

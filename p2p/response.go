@@ -5,6 +5,8 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -79,5 +81,34 @@ func timeRes(conn net.Conn) {
 func pongRes(conn net.Conn, payload []byte) {
 
 	packet := BuildPacket(MINER_PONG, nil)
+	conn.Write(packet)
+}
+
+func neighborRes(conn net.Conn, payload []byte) {
+	//only supporting ipv4 addresses for now, makes fixed-size structure easier
+	//in the future following structure is possible:
+	//1) nr of ipv4 addresses, 2) nr of ipv6 addresses, followed by list of both
+
+	var packet []byte
+
+	payload = make([]byte, len(peers)*4) //4 = size of ipv4 address
+	index := 0
+	for p := range peers {
+		discardPort := strings.Split(p.conn.RemoteAddr().String(), ":")
+		split := strings.Split(discardPort[0], ".")
+		//serializing ip addresses
+		for ipv4addr := 0; ipv4addr < 4; ipv4addr++ {
+			addrPart, err := strconv.Atoi(split[ipv4addr])
+			if err != nil {
+				packet = BuildPacket(NEIGHBOR_RES, nil)
+				conn.Write(packet)
+				return
+			}
+			payload[index] = byte(addrPart)
+			index++
+		}
+	}
+
+	packet = BuildPacket(NEIGHBOR_RES, payload)
 	conn.Write(packet)
 }

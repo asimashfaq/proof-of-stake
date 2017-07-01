@@ -153,7 +153,7 @@ func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 
 	//at this point the tx has already been verified
 	accHash := sha3.Sum256(tx.PubKey[:])
-	if _,exists := storage.State[accHash]; exists {
+	if _, exists := storage.State[accHash]; exists {
 		return errors.New("Account already exists.")
 	}
 
@@ -190,7 +190,7 @@ func finalizeBlock(b *protocol.Block) error {
 
 	//anonymous struct
 	partialHash := hashBlock(b)
-	nonce,err := proofOfWork(getDifficulty(), partialHash)
+	nonce, err := proofOfWork(getDifficulty(), partialHash)
 	if err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func preValidation(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSl
 	}
 
 	if acc := getAccountFromHash(b.Beneficiary); acc == nil {
-		return nil,nil,nil,errors.New("Beneficiary not in the State.")
+		return nil, nil, nil, errors.New("Beneficiary not in the State.")
 	}
 
 	startIndex := 0

@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"github.com/lisgie/bazo_miner/p2p"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"io/ioutil"
@@ -11,7 +12,6 @@ import (
 	"math/big"
 	"os"
 	"testing"
-	"github.com/lisgie/bazo_miner/p2p"
 )
 
 var accA, accB, minerAcc *protocol.Account
