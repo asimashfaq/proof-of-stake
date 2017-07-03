@@ -25,6 +25,11 @@ func getRandomPeer() *peer {
 	return peerSlice[pos]
 }
 
+//needs to be accessible by the miner package, thus capital
+func BlockReq(hash [32]byte) {
+
+}
+
 //asynchronous call, don't wait for response
 func neighborReq() {
 

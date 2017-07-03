@@ -95,5 +95,8 @@ func postValidationRollback(data blockData) {
 	}
 
 	collectStatisticsRollback(data.block)
-	storage.DeleteBlock(data.block.Hash)
+
+	//for transactions we switch from closed to open. However, we do not write back blocks
+	//to open storage, because in case of rollback the chain they belonged to is likely to starve
+	storage.DeleteClosedBlock(data.block.Hash)
 }

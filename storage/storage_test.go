@@ -92,3 +92,42 @@ func TestReadWriteDeleteTx(t *testing.T) {
 		}
 	}
 }
+
+func TestReadWriteDeleteBlock(t *testing.T) {
+
+	//this shouldn't panic
+	DeleteOpenBlock([32]byte{'0'})
+
+	b,b2,b3 := new(protocol.Block),new(protocol.Block),new(protocol.Block)
+	b.Hash = [32]byte{'0'}
+	b2.Hash = [32]byte{'1'}
+	b3.Hash = [32]byte{'2'}
+	WriteOpenBlock(b)
+	WriteOpenBlock(b2)
+	WriteOpenBlock(b3)
+
+	if ReadOpenBlock(b.Hash) == nil || ReadOpenBlock(b2.Hash) == nil || ReadOpenBlock(b3.Hash) == nil {
+		t.Error("Failed to write block to open block storage.")
+	}
+
+	newb1 := ReadOpenBlock(b.Hash)
+	newb2 := ReadOpenBlock(b2.Hash)
+	newb3 := ReadOpenBlock(b3.Hash)
+
+	DeleteOpenBlock(newb1.Hash)
+	DeleteOpenBlock(newb2.Hash)
+	DeleteOpenBlock(newb3.Hash)
+
+	WriteClosedBlock(newb1)
+	WriteClosedBlock(newb2)
+	WriteClosedBlock(newb3)
+
+	if ReadOpenBlock(newb1.Hash) != nil ||
+		ReadOpenBlock(newb2.Hash) != nil ||
+		ReadOpenBlock(newb3.Hash) != nil ||
+		ReadClosedBlock(b.Hash) == nil ||
+		ReadClosedBlock(b2.Hash) == nil ||
+		ReadClosedBlock(b3.Hash) == nil {
+			t.Error("Failed to write block to kv storage.")
+		}
+}

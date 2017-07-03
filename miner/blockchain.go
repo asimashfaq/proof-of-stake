@@ -16,7 +16,7 @@ import (
 var logger *log.Logger
 
 //using these accounts a mining beneficiary
-var accA, accB protocol.Account
+var accA, accB, minerAcc *protocol.Account
 var hashA, hashB [32]byte
 
 var blockValidation = &sync.Mutex{}
@@ -52,7 +52,7 @@ func Init() {
 	globalBlockCount = 0
 	genesis := newBlock([32]byte{})
 	collectStatistics(genesis)
-	storage.WriteBlock(genesis)
+	storage.WriteClosedBlock(genesis)
 
 	logger.Println("Starting system, initializing state map")
 	//genesisBlock := newBlock([32]byte{})
@@ -144,17 +144,17 @@ func testing_setup() {
 		privb,
 	}
 
-	accA = protocol.Account{Balance: 1500000}
+	accA = &protocol.Account{Balance: 1500000}
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
 	hashA = serializeHashContent(accA.Address)
 
 	//This one is just for testing purposes
-	accB = protocol.Account{Balance: 702000}
+	accB = &protocol.Account{Balance: 702000}
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
 	hashB = serializeHashContent(accB.Address)
 
-	storage.State[hashA] = &accA
-	storage.State[hashB] = &accB
+	storage.State[hashA] = accA
+	storage.State[hashB] = accB
 }

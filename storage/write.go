@@ -5,10 +5,20 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 )
 
-func WriteBlock(block *protocol.Block) {
+//TODO: Error checking
+func WriteOpenBlock(block *protocol.Block) {
 
 	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("blocks"))
+		b := tx.Bucket([]byte("openblocks"))
+		err := b.Put(block.Hash[:], block.Encode())
+		return err
+	})
+}
+
+func WriteClosedBlock(block *protocol.Block) {
+
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("closedblocks"))
 		err := b.Put(block.Hash[:], block.Encode())
 		return err
 	})

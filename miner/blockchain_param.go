@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
+	"time"
+	"github.com/lisgie/bazo_miner/p2p"
 )
 
 //this are "constants" that can be changed with config transactions
@@ -79,7 +81,7 @@ func collectStatisticsRollback(b *protocol.Block) {
 
 	timestamp[int(localBlockCount)] = 0
 
-	newLastBlock := storage.ReadBlock(b.PrevHash)
+	newLastBlock := storage.ReadClosedBlock(b.PrevHash)
 	lastBlock = newLastBlock
 }
 
@@ -100,7 +102,8 @@ func getBlockSequences(newBlock *protocol.Block) (blocksToRollback, blocksToVali
 			break
 		}
 		blocksToRollback = append(blocksToRollback, tmpBlock)
-		tmpBlock = storage.ReadBlock(tmpBlock.PrevHash)
+		//the block needs to be in closed storage
+		tmpBlock = storage.ReadClosedBlock(tmpBlock.PrevHash)
 	}
 
 	//compare current length with new chain length
@@ -119,7 +122,7 @@ func getNewChain(newBlock *protocol.Block) (ancestor *protocol.Block, newChain [
 		newChain = append(newChain, newBlock)
 
 		prevBlockHash := newBlock.PrevHash
-		potentialAncestor := storage.ReadBlock(prevBlockHash)
+		potentialAncestor := storage.ReadClosedBlock(prevBlockHash)
 
 		if potentialAncestor != nil {
 			//found ancestor
@@ -132,6 +135,16 @@ func getNewChain(newBlock *protocol.Block) (ancestor *protocol.Block, newChain [
 		}
 
 		//fetch the block we apparently missed
+		p2p.BlockReq(prevBlockHash)
+
+		//blocking wait
+		select {
+		case newBlock = <-blockReqChan:
+			//limit the waiting time to 30 seconds
+		case time.After(30*time.Second):
+			return nil,nil
+		}
+
 		//newBlock = blockReq(prevBlockHash)
 	}
 
@@ -147,7 +160,7 @@ func calculateNewDifficulty() {
 func getDifficulty() uint8 {
 	//if chain doesn't exist yet
 	if blockDifficulty == 0 {
-		return 14
+		return 10
 	}
 
 	return blockDifficulty

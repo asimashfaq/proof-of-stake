@@ -8,14 +8,13 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"os"
 	"testing"
+	"log"
 )
 
-var accA, accB, minerAcc *protocol.Account
-var PrivKeyA, PrivKeyB ecdsa.PrivateKey
+var PrivKeyA, PrivKeyB, MinerPrivKey ecdsa.PrivateKey
 var PubKeyA, PubKeyB ecdsa.PublicKey
 var RootPrivKey ecdsa.PrivateKey
 
@@ -51,26 +50,26 @@ func addTestingAccounts() {
 
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
-	accAHash := serializeHashContent(accA.Address)
+	hashA = serializeHashContent(accA.Address)
 
 	//This one is just for testing purposes
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
 	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
-	accBHash := serializeHashContent(accB.Address)
+	hashB := serializeHashContent(accB.Address)
 
 	//just to bootstrap
-	storage.State[accAHash] = accA
-	storage.State[accBHash] = accB
+	storage.State[hashA] = accA
+	storage.State[hashB] = accB
 
-	MinerPrivKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	minerPrivKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	var pubKey [64]byte
 	var shortMiner [8]byte
-	copy(pubKey[:32], MinerPrivKey.X.Bytes())
-	copy(pubKey[32:], MinerPrivKey.Y.Bytes())
-	MinerHash = serializeHashContent(pubKey)
-	copy(shortMiner[:], MinerHash[0:8])
+	copy(pubKey[:32], minerPrivKey.X.Bytes())
+	copy(pubKey[32:], minerPrivKey.Y.Bytes())
+	minerHash := serializeHashContent(pubKey)
+	copy(shortMiner[:], minerHash[0:8])
 	minerAcc.Address = pubKey
-	storage.State[MinerHash] = minerAcc
+	storage.State[minerHash] = minerAcc
 
 }
 
@@ -144,14 +143,15 @@ func cleanAndPrepare() {
 
 func TestMain(m *testing.M) {
 
-	storage.Init()
+	storage.Init("test.db")
 	p2p.Init("8000")
 
 	//setting a new random seed
 	addTestingAccounts()
 	addRootAccounts()
 	//we don't want logging msgs when testing, designated messages
-	log.SetOutput(ioutil.Discard)
+	logger = log.New(nil,"",0)
+	logger.SetOutput(ioutil.Discard)
 	os.Exit(m.Run())
 
 	storage.TearDown()

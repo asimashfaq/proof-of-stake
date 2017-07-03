@@ -13,9 +13,7 @@ func PrintOpenTxs() {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openfunds"))
 		b.ForEach(func(k, v []byte) error {
-			//debugging
-			var ftx *protocol.FundsTx
-			fmt.Printf("%x: %v\n", k, ftx.Decode(v))
+			fmt.Printf("%x: %x\n", k,v)
 			return nil
 		})
 		return nil

@@ -18,7 +18,7 @@ var RootPrivKey ecdsa.PrivateKey
 
 func TestMain(m *testing.M) {
 
-	Init()
+	Init("test.db")
 	//setting a new random seed
 	DeleteAll()
 	addTestingAccounts()

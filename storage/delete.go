@@ -5,10 +5,19 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 )
 
-func DeleteBlock(hash [32]byte) {
+func DeleteOpenBlock(hash [32]byte) {
 
 	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("blocks"))
+		b := tx.Bucket([]byte("openblocks"))
+		err := b.Delete(hash[:])
+		return err
+	})
+}
+
+func DeleteClosedBlock(hash [32]byte) {
+
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("closedblocks"))
 		err := b.Delete(hash[:])
 		return err
 	})

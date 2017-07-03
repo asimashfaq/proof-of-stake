@@ -37,10 +37,17 @@ func txRes(p *peer, payload []byte, txKind uint8) {
 
 func blockRes(p *peer, payload []byte) {
 
-	var blockHash [32]byte
+	var (
+		blockHash [32]byte
+		block *protocol.Block
+	)
+
 	copy(blockHash[:], payload[0:32])
 
-	block := storage.ReadBlock(blockHash)
+	block = storage.ReadClosedBlock(blockHash)
+	if block == nil {
+		block = storage.ReadOpenBlock(blockHash)
+	}
 
 	if block == nil {
 		packet := BuildPacket(NOT_FOUND, nil)

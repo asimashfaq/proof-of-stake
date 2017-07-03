@@ -31,7 +31,14 @@ func Init(dbname string) {
 	}
 
 	db.Update(func(tx *bolt.Tx) error {
-		_, err = tx.CreateBucket([]byte("blocks"))
+		_, err = tx.CreateBucket([]byte("openblocks"))
+		if err != nil {
+			return fmt.Errorf("Create bucket: %s", err)
+		}
+		return nil
+	})
+	db.Update(func(tx *bolt.Tx) error {
+		_, err = tx.CreateBucket([]byte("closedblocks"))
 		if err != nil {
 			return fmt.Errorf("Create bucket: %s", err)
 		}

@@ -386,7 +386,6 @@ func stateValidation(data blockData) error {
 }
 
 func postValidation(data blockData) {
-
 	//put all txs from the block from open to close
 	for _, tx := range data.fundsTxSlice {
 		storage.WriteClosedTx(tx)
@@ -407,7 +406,10 @@ func postValidation(data blockData) {
 	//the new system parameters get active if the block was successfully validated
 	configStateChange(data.configTxSlice, data.block.Hash)
 	collectStatistics(data.block)
-	storage.WriteBlock(data.block)
+
+	//it might be that block is not in the openblock storage, but this doesn't matter
+	storage.DeleteOpenBlock(data.block.Hash)
+	storage.WriteClosedBlock(data.block)
 }
 
 func hashBlock(b *protocol.Block) (hash [32]byte) {

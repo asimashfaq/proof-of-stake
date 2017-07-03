@@ -5,11 +5,27 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 )
 
-func ReadBlock(hash [32]byte) (block *protocol.Block) {
+func ReadOpenBlock(hash [32]byte) (block *protocol.Block) {
 
 	var encodedBlock []byte
 	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("blocks"))
+		b := tx.Bucket([]byte("openblocks"))
+		encodedBlock = b.Get(hash[:])
+		return nil
+	})
+
+	if encodedBlock == nil {
+		return nil
+	}
+
+	return block.Decode(encodedBlock)
+}
+
+func ReadClosedBlock(hash [32]byte) (block *protocol.Block) {
+
+	var encodedBlock []byte
+	db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("closedblocks"))
 		encodedBlock = b.Get(hash[:])
 		return nil
 	})
