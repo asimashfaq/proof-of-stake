@@ -65,7 +65,7 @@ func processBlock(payload []byte) {
 	block = block.Decode(payload)
 
 	//block already confirmed and validated
-	if storage.ReadBlock(block.Hash) != nil {
+	if storage.ReadClosedBlock(block.Hash) != nil {
 		logger.Printf("Received block (%x) has already been validated.\n", block.Hash[0:12])
 		return
 	}
