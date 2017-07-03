@@ -8,7 +8,6 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"golang.org/x/crypto/sha3"
-	"log"
 	"time"
 )
 
@@ -36,12 +35,12 @@ func addTx(b *protocol.Block, tx protocol.Transaction) error {
 	//verifies correctness for the specific transaction
 	//i'd actually like to use !(&tx).verify to pass by pointer, but golang doesn't allow this
 	if tx.TxFee() < FEE_MINIMUM {
-		log.Printf("Transaction fee too low: %v (minimum is: %v)\n", tx.TxFee(), FEE_MINIMUM)
+		logger.Printf("Transaction fee too low: %v (minimum is: %v)\n", tx.TxFee(), FEE_MINIMUM)
 		return errors.New("Transaction rejected because fee is below minimal fee threshold.")
 	}
 
 	if !verify(tx) {
-		log.Printf("Transaction could not be verified: %v\n", tx)
+		logger.Printf("Transaction could not be verified: %v\n", tx)
 		return errors.New("Transaction could not be verified.")
 	}
 
@@ -49,19 +48,19 @@ func addTx(b *protocol.Block, tx protocol.Transaction) error {
 	case *protocol.FundsTx:
 		err := addFundsTx(b, tx.(*protocol.FundsTx))
 		if err != nil {
-			log.Printf("Adding fundsTx tx failed (%v): %v\n", err, tx.(*protocol.FundsTx))
+			logger.Printf("Adding fundsTx tx failed (%v): %v\n", err, tx.(*protocol.FundsTx))
 			return err
 		}
 	case *protocol.AccTx:
 		err := addAccTx(b, tx.(*protocol.AccTx))
 		if err != nil {
-			log.Printf("Adding accTx tx failed (%v): %v\n", err, tx.(*protocol.AccTx))
+			logger.Printf("Adding accTx tx failed (%v): %v\n", err, tx.(*protocol.AccTx))
 			return err
 		}
 	case *protocol.ConfigTx:
 		err := addConfigTx(b, tx.(*protocol.ConfigTx))
 		if err != nil {
-			log.Printf("Adding configTx tx failed (%v): %v\n", err, tx.(*protocol.ConfigTx))
+			logger.Printf("Adding configTx tx failed (%v): %v\n", err, tx.(*protocol.ConfigTx))
 			return err
 		}
 	default:
@@ -136,7 +135,7 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 
 	b.FundsTxData = append(b.FundsTxData, tx.Hash())
 	storage.WriteOpenTx(tx)
-	log.Printf("Added tx to the block FundsTxData slice: %v", *tx)
+	logger.Printf("Added tx to the block FundsTxData slice: %v", *tx)
 	return nil
 }
 
@@ -159,7 +158,7 @@ func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 
 	b.AccTxData = append(b.AccTxData, tx.Hash())
 	storage.WriteOpenTx(tx)
-	log.Printf("Added tx to the AccTxData slice: %v", *tx)
+	logger.Printf("Added tx to the AccTxData slice: %v", *tx)
 	return nil
 }
 
@@ -176,7 +175,7 @@ func addConfigTx(b *protocol.Block, tx *protocol.ConfigTx) error {
 
 	b.ConfigTxData = append(b.ConfigTxData, tx.Hash())
 	storage.WriteOpenTx(tx)
-	log.Printf("Added tx to the ConfigTxData slice: %v", *tx)
+	logger.Printf("Added tx to the ConfigTxData slice: %v", *tx)
 	return nil
 }
 
@@ -218,7 +217,7 @@ func validateBlock(b *protocol.Block) error {
 	blockValidation.Lock()
 	defer blockValidation.Unlock()
 
-	log.Printf("Validating block: %v\n", b)
+	logger.Printf("Validating block: %v\n", b)
 
 	//TODO: Add block size check
 	//this is necessary, because we need to first validate all blocks (need to fetch tx data)
@@ -329,19 +328,19 @@ func preValidation(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSl
 	partialHash := hashBlock(b)
 	if b.Hash != sha3.Sum256(append(nonce, partialHash[:]...)) || !validateProofOfWork(getDifficulty(), b.Hash) {
 		return nil, nil, nil, errors.New("Proof of work is incorrect.")
-		log.Println("Proof of work is incorrect.")
+		logger.Println("Proof of work is incorrect.")
 
 	}
 
-	log.Println("Proof of work validation passed.")
+	logger.Println("Proof of work validation passed.")
 
 	//cmp merkle tree
 	if buildMerkleTree(b.FundsTxData, b.AccTxData, b.ConfigTxData) != b.MerkleRoot {
 		return nil, nil, nil, errors.New("Merkle Root incorrect.")
-		log.Println("Merkle Root incorrect.")
+		logger.Println("Merkle Root incorrect.")
 	}
 
-	log.Println("Merkle root hash passed.")
+	logger.Println("Merkle root hash passed.")
 	return fundsTxSlice, accTxSlice, configTxSlice, err
 }
 
@@ -380,7 +379,7 @@ func stateValidation(data blockData) error {
 		return err
 	}
 
-	log.Print("Block validated and state changed accordingly: \n")
+	logger.Print("Block validated and state changed accordingly: \n")
 	printState()
 
 	return nil

@@ -19,7 +19,8 @@ const (
 )
 
 var (
-	LogFile    *os.File
+	//LogFile    *os.File
+	logger *log.Logger
 	peers      map[peer]bool
 	brdcstMsg  chan []byte
 	register   chan peer
@@ -47,8 +48,9 @@ type peer struct {
 //4 channels for communication with miner, blocks in/out and txs in/out
 func Init(port string) error {
 
-	LogFile, _ = os.OpenFile("log/p2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
-	log.SetOutput(LogFile)
+	LogFile, _ := os.OpenFile("log/p2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	logger = log.New(LogFile,"",log.LstdFlags)
+
 
 	TxsIn = make(chan TxInfo, TX_BUFFER)
 	BlockIn = make(chan []byte)
@@ -68,13 +70,13 @@ func Init(port string) error {
 
 	//just to test on localhost
 	if port != "8000" {
-		log.Print("Start mining as a non-bootstrap node.")
+		logger.Print("Start mining as a non-bootstrap node.")
 		err := bootstrap()
 		if err != nil {
 			return err
 		}
 	} else {
-		log.Print("Start mining as a bootstrap node.")
+		logger.Print("Start mining as a bootstrap node.")
 	}
 
 	go listener(port)
@@ -87,7 +89,7 @@ func bootstrap() error {
 	//add to connection list
 	conn, err := initiateNewMinerConnection(BOOTSTRAP_SERVER)
 	if err != nil {
-		log.Printf("%v\n", err)
+		logger.Printf("%v\n", err)
 		return err
 	}
 	go minerConn(conn)
@@ -114,7 +116,7 @@ func bootstrap() error {
 		//remove the trailing dot
 		conn, err := initiateNewMinerConnection(addr[0 : len(addr)-1])
 		if err != nil {
-			log.Printf("Connection to miner addr %v could not be established.\n", addr[0:len(addr)-1])
+			logger.Printf("Connection to miner addr %v could not be established.\n", addr[0:len(addr)-1])
 			continue
 		}
 		go minerConn(conn)
@@ -149,14 +151,14 @@ func listener(port string) {
 
 	listener, err := net.Listen("tcp", ":"+port)
 	if err != nil {
-		log.Printf("%v\n", err)
+		logger.Printf("%v\n", err)
 		return
 	}
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("%v\n", err)
+			logger.Printf("%v\n", err)
 			continue
 		}
 		go handleNewConn(conn)
@@ -165,11 +167,10 @@ func listener(port string) {
 
 func handleNewConn(conn net.Conn) {
 
-	log.Printf("New incoming connection: %v\n", conn.RemoteAddr().String())
-
+	logger.Printf("New incoming connection: %v\n", conn.RemoteAddr().String())
 	header, payload, err := rcvData(conn)
 	if err != nil {
-		log.Printf("%v\n", err)
+		logger.Printf("%v\n", err)
 	}
 
 	processRequest(conn, header, payload)
@@ -183,7 +184,7 @@ func handleNewConn(conn net.Conn) {
 
 func processRequest(conn net.Conn, header *Header, payload []byte) {
 
-	log.Printf("Received request from %v with following header:\n%v", conn.RemoteAddr().String(), header)
+	logger.Printf("Received request from %v with following header:\n%v", conn.RemoteAddr().String(), header)
 	switch header.TypeID {
 	case FUNDSTX_BRDCST:
 		forwardTxToMiner(conn, payload, FUNDSTX_BRDCST)
@@ -215,11 +216,11 @@ func receiveDataFromMiner() {
 	for {
 		select {
 		case block := <-BlockOut:
-			log.Printf("Received a block from the miner for broadcasting.")
+			logger.Printf("Received a block from the miner for broadcasting.")
 			toBrdcst := BuildPacket(BLOCK_BRDCST, block)
 			brdcstMsg <- toBrdcst
 		case txInfo := <-TxsOut:
-			log.Printf("Received a transaction from the miner for broadcasting: ID: %v.\n", txInfo.TxType)
+			logger.Printf("Received a transaction from the miner for broadcasting: ID: %v.\n", txInfo.TxType)
 			toBrdcst := BuildPacket(txInfo.TxType, txInfo.Payload)
 			brdcstMsg <- toBrdcst
 		}
@@ -229,17 +230,17 @@ func receiveDataFromMiner() {
 //we can't broadcast incoming messages directly, need to forward them to the miner (to check if
 //the tx has already been broadcast before, whether it was a valid tx at all)
 func forwardTxToMiner(conn net.Conn, payload []byte, brdcstType uint8) {
-	log.Printf("Received a transaction (ID: %v) from %v.\n", brdcstType, conn.RemoteAddr().String())
+	logger.Printf("Received a transaction (ID: %v) from %v.\n", brdcstType, conn.RemoteAddr().String())
 	TxsIn <- TxInfo{brdcstType, payload}
 }
 func forwardBlockToMiner(conn net.Conn, payload []byte) {
-	log.Printf("Received a block from %v.\n", conn.RemoteAddr().String())
+	logger.Printf("Received a block from %v.\n", conn.RemoteAddr().String())
 	BlockIn <- payload
 }
 
 //this is not accessed concurrently, one single goroutine
 func broadcastService() {
-	log.Print("Start broadcasting service.")
+	logger.Print("Start broadcasting service.")
 	for {
 		select {
 		//broadcasting all messages
@@ -272,7 +273,7 @@ func checkHealth() {
 
 func minerConn(conn net.Conn) {
 
-	log.Printf("Adding a new miner: %v\n", conn.RemoteAddr().String())
+	logger.Printf("Adding a new miner: %v\n", conn.RemoteAddr().String())
 
 	ch := make(chan []byte)
 	p := peer{conn, ch}
@@ -292,7 +293,7 @@ func minerConn(conn net.Conn) {
 //will be our broadcast mechanism
 func peerWriter(p peer) {
 	for msg := range p.ch {
-		log.Printf("Sending payload to %v\n", p.conn.RemoteAddr().String())
+		logger.Printf("Sending payload to %v\n", p.conn.RemoteAddr().String())
 		p.conn.Write(msg)
 	}
 }

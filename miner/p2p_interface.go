@@ -4,7 +4,6 @@ import (
 	"github.com/lisgie/bazo_miner/p2p"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
-	"log"
 )
 
 func incomingData() {
@@ -46,16 +45,16 @@ func processTx(incomingTx p2p.TxInfo) {
 		tx = cTx
 	}
 	if storage.ReadOpenTx(tx.Hash()) != nil {
-		log.Printf("Received transaction (%v) already in the mempool.\n", tx.Hash())
+		logger.Printf("Received transaction (%v) already in the mempool.\n", tx.Hash())
 		return
 	}
 	if storage.ReadClosedTx(tx.Hash()) != nil {
-		log.Printf("Received transaction (%v) already validated.\n", tx.Hash())
+		logger.Printf("Received transaction (%v) already validated.\n", tx.Hash())
 		return
 	}
 
 	//write to mempool
-	log.Printf("Writing transaction (%v) in the mempool.\n", tx.Hash())
+	logger.Printf("Writing transaction (%v) in the mempool.\n", tx.Hash())
 	storage.WriteOpenTx(tx)
 	p2p.TxsOut <- incomingTx
 }
@@ -67,7 +66,7 @@ func processBlock(payload []byte) {
 
 	//block already confirmed and validated
 	if storage.ReadBlock(block.Hash) != nil {
-		log.Printf("Received block (%x) has already been validated.\n", block.Hash[0:12])
+		logger.Printf("Received block (%x) has already been validated.\n", block.Hash[0:12])
 		return
 	}
 
@@ -75,9 +74,9 @@ func processBlock(payload []byte) {
 	err := validateBlock(block)
 	if err != nil {
 		//no conflict, giving away for broadcast
-		log.Printf("Received block (%x) could not be validated: %v\n", block.Hash[0:12], err)
+		logger.Printf("Received block (%x) could not be validated: %v\n", block.Hash[0:12], err)
 	} else {
-		log.Printf("Received block (%x) has been validated and broadcast again.", block.Hash[0:12])
+		logger.Printf("Received block (%x) has been validated and broadcast again.", block.Hash[0:12])
 		broadcastBlock(block)
 	}
 }

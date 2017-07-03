@@ -3,7 +3,6 @@ package miner
 import (
 	"errors"
 	"golang.org/x/crypto/sha3"
-	"log"
 	"math/big"
 	"time"
 )
@@ -23,7 +22,7 @@ func validateProofOfWork(diff uint8, hash [32]byte) bool {
 
 func proofOfWork(diff uint8, partialHash [32]byte) (*big.Int, error) {
 
-	log.Printf("Start mining a new block with difficulty: %v\n", diff)
+	logger.Printf("Start mining a new block with difficulty: %v\n", diff)
 
 	var tmp [32]byte
 	var byteNr uint8

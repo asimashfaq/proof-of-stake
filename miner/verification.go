@@ -5,7 +5,6 @@ import (
 	"crypto/elliptic"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
-	"log"
 	"math/big"
 	"reflect"
 )
@@ -37,7 +36,7 @@ func verifyFundsTx(tx *protocol.FundsTx) bool {
 
 	//fundstx only makes sense if amount > 0
 	if tx.Amount == 0 || tx.Amount > protocol.MAX_MONEY {
-		log.Printf("Invalid transaction amount %v\n", tx.Amount)
+		logger.Printf("Invalid transaction amount %v\n", tx.Amount)
 		return false
 	}
 

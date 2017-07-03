@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
-	"log"
 )
 
 //for blocks that already have been validated but were overwritten by a longer chain
@@ -36,7 +35,7 @@ func preValidationRollback(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx,
 		//verify acts as "enricher", e.g. writing the necessary hashes in the structure
 		verify(tx)
 		if tx == nil {
-			log.Printf("CRITICAL: Validated fundsTx was not in the confirmed tx storage: %v\n", hash)
+			logger.Printf("CRITICAL: Validated fundsTx was not in the confirmed tx storage: %v\n", hash)
 			return nil, nil, nil, errors.New("CRITICAL: Validated fundsTx was not in the confirmed tx storage")
 		}
 		fundsTxSlice = append(fundsTxSlice, tx)
@@ -45,7 +44,7 @@ func preValidationRollback(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx,
 	for _, hash := range b.AccTxData {
 		tx := storage.ReadClosedTx(hash).(*protocol.AccTx)
 		if tx == nil {
-			log.Printf("CRITICAL: Validated accTx was not in the confirmed tx storage: %v\n", hash)
+			logger.Printf("CRITICAL: Validated accTx was not in the confirmed tx storage: %v\n", hash)
 			return nil, nil, nil, errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
 		}
 		accTxSlice = append(accTxSlice, tx)
@@ -54,7 +53,7 @@ func preValidationRollback(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx,
 	for _, hash := range b.ConfigTxData {
 		tx := storage.ReadClosedTx(hash).(*protocol.ConfigTx)
 		if tx == nil {
-			log.Printf("CRITICAL: Validated configTx was not in the confirmed tx storage: %v\n", hash)
+			logger.Printf("CRITICAL: Validated configTx was not in the confirmed tx storage: %v\n", hash)
 			return nil, nil, nil, errors.New("CRITICAL: Validated configTx was not in the confirmed tx storage")
 		}
 		configTxSlice = append(configTxSlice, tx)

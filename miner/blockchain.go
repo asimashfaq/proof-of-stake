@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
-	"log"
 	"math/big"
 	"os"
 	"sync"
 	"time"
+	"log"
 )
 
-var LogFile *os.File
+var logger *log.Logger
 
 //using these accounts a mining beneficiary
 var accA, accB protocol.Account
@@ -34,8 +34,8 @@ func Init() {
 
 	testing_setup()
 
-	LogFile, _ = os.OpenFile("log/miner "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
-	log.SetOutput(LogFile)
+	LogFile, _ := os.OpenFile("log/miner "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	logger = log.New(LogFile,"",log.LstdFlags)
 
 	//var tmpTimestamp []int64
 	parameterSlice = append(parameterSlice, parameters{
@@ -54,7 +54,7 @@ func Init() {
 	collectStatistics(genesis)
 	storage.WriteBlock(genesis)
 
-	log.Println("Starting system, initializing state map")
+	logger.Println("Starting system, initializing state map")
 	//genesisBlock := newBlock([32]byte{})
 	//collectStatistics(genesisBlock)
 	//storage.WriteBlock(genesisBlock)
@@ -75,7 +75,7 @@ func mining() {
 		//else a block was received meanwhile that was added to the chain, all the effort was in vain :(
 		//wait for lock here only
 		if err != nil {
-			log.Printf("%v\n", err)
+			logger.Printf("%v\n", err)
 		} else {
 			broadcastBlock(currentBlock)
 			validateBlock(currentBlock)

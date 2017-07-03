@@ -5,7 +5,6 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"golang.org/x/crypto/sha3"
-	"log"
 )
 
 func isRootKey(hash [32]byte) bool {
@@ -21,10 +20,10 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 		//check if we have to issue new coins
 		for hash, rootAcc := range storage.RootKeys {
 			if hash == tx.From {
-				log.Printf("Root Key Transaction: %x\n", hash[0:8])
+				logger.Printf("Root Key Transaction: %x\n", hash[0:8])
 
 				if rootAcc.Balance+tx.Amount+tx.Fee > protocol.MAX_MONEY {
-					log.Printf("Root Account overflows (%v) with given transaction amount (%v) and fee (%v).\n", rootAcc.Balance, tx.Amount, tx.Fee)
+					logger.Printf("Root Account overflows (%v) with given transaction amount (%v) and fee (%v).\n", rootAcc.Balance, tx.Amount, tx.Fee)
 					err = errors.New("Sender does not exist in the State.")
 				}
 
@@ -35,29 +34,29 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 
 		accSender, accReceiver := storage.GetAccountFromHash(tx.From), storage.GetAccountFromHash(tx.To)
 		if accSender == nil {
-			log.Printf("CRITICAL: Sender does not exist in the State: %x\n", tx.From[0:8])
+			logger.Printf("CRITICAL: Sender does not exist in the State: %x\n", tx.From[0:8])
 			err = errors.New("Sender does not exist in the State.")
 		}
 
 		if accReceiver == nil {
-			log.Printf("CRITICAL: Receiver does not exist in the State: %x\n", tx.To[0:8])
+			logger.Printf("CRITICAL: Receiver does not exist in the State: %x\n", tx.To[0:8])
 			err = errors.New("Receiver does not exist in the State.")
 		}
 
 		//also check for txCnt
 		if tx.TxCnt != accSender.TxCnt {
-			log.Printf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)\n", tx.TxCnt, accSender.TxCnt)
+			logger.Printf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)\n", tx.TxCnt, accSender.TxCnt)
 			err = errors.New("TxCnt mismatch!")
 		}
 
 		if (tx.Amount + tx.Fee) > accSender.Balance {
-			log.Printf("Sender does not have enough balance: %x\n", accSender.Balance)
+			logger.Printf("Sender does not have enough balance: %x\n", accSender.Balance)
 			err = errors.New("Sender does not have enough funds for the transaction.")
 		}
 
 		//overflow protection
 		if tx.Amount+accReceiver.Balance > protocol.MAX_MONEY {
-			log.Printf("Transaction amount (%v) would lead to balance overflow at the receiver account (%v)\n", tx.Amount, accReceiver.Balance)
+			logger.Printf("Transaction amount (%v) would lead to balance overflow at the receiver account (%v)\n", tx.Amount, accReceiver.Balance)
 			err = errors.New("Transaction amount would lead to balance overflow at the receiver account\n")
 		}
 
@@ -100,7 +99,7 @@ func accStateChange(txSlice []*protocol.AccTx) error {
 		addressHash := sha3.Sum256(tx.PubKey[:])
 		acc := storage.GetAccountFromHash(addressHash)
 		if acc != nil {
-			log.Printf("CRITICAL: Address already exists in the state: %x\n", addressHash[0:4])
+			logger.Printf("CRITICAL: Address already exists in the state: %x\n", addressHash[0:4])
 			return errors.New("CRITICAL: Address already exists in the state")
 		}
 		newAcc := protocol.Account{Address: tx.PubKey}
@@ -174,7 +173,7 @@ func collectTxFees(fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccT
 		if minerAcc.Balance+tx.Fee > protocol.MAX_MONEY {
 			//rollback of all perviously transferred transaction fees to the protocol's account
 			collectTxFeesRollback(tmpFundsTx, tmpAccTx, tmpConfigTx, minerHash)
-			log.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
+			logger.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
 			return errors.New("Miner balance overflows with transaction fee.\n")
 		}
 		minerAcc.Balance += tx.Fee
@@ -189,7 +188,7 @@ func collectTxFees(fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccT
 		if minerAcc.Balance+tx.Fee > protocol.MAX_MONEY {
 			//rollback of all perviously transferred transaction fees to the protocol's account
 			collectTxFeesRollback(tmpFundsTx, tmpAccTx, tmpConfigTx, minerHash)
-			log.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
+			logger.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
 			return errors.New("Miner balance overflows with transaction fee.\n")
 		}
 
@@ -203,7 +202,7 @@ func collectTxFees(fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccT
 		if minerAcc.Balance+tx.Fee > protocol.MAX_MONEY {
 			//rollback of all perviously transferred transaction fees to the protocol's account
 			collectTxFeesRollback(tmpFundsTx, tmpAccTx, tmpConfigTx, minerHash)
-			log.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
+			logger.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
 			return errors.New("Miner balance overflows with transaction fee.\n")
 		}
 		minerAcc.Balance += tx.Fee
@@ -221,7 +220,7 @@ func collectBlockReward(reward uint64, minerHash [32]byte) error {
 	}
 
 	if miner.Balance+reward > protocol.MAX_MONEY {
-		log.Printf("Miner balance (%v) overflows with block reward (%v).\n", miner.Balance, reward)
+		logger.Printf("Miner balance (%v) overflows with block reward (%v).\n", miner.Balance, reward)
 		return errors.New("Miner balance overflows with transaction fee.\n")
 	}
 	miner.Balance += reward
@@ -229,8 +228,8 @@ func collectBlockReward(reward uint64, minerHash [32]byte) error {
 }
 
 func printState() {
-	log.Println("State updated: ")
+	logger.Println("State updated: ")
 	for key, acc := range storage.State {
-		log.Printf("%x: %v\n", key[0:10], acc)
+		logger.Printf("%x: %v\n", key[0:10], acc)
 	}
 }

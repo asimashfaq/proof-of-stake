@@ -3,7 +3,6 @@ package miner
 import (
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
-	"log"
 )
 
 func fundsStateChangeRollback(txSlice []*protocol.FundsTx) {
@@ -28,7 +27,7 @@ func accStateChangeRollback(txSlice []*protocol.AccTx) {
 
 		acc := storage.State[accHash]
 		if acc == nil {
-			log.Fatal("An account that should have been saved does not exist!")
+			logger.Fatal("An account that should have been saved does not exist!")
 		}
 		delete(storage.State, accHash)
 	}
