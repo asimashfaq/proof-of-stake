@@ -30,7 +30,7 @@ func BuildPacket(typeID uint8, payload []byte) (packet []byte) {
 	return packet
 }
 
-func ExtractHeader(reader *bufio.Reader) *Header {
+func ExtractHeader(reader *bufio.Reader) (*Header,error) {
 	//the first four bytes of any incoming messages is the length of the payload
 	//error catching after every read is necessary to avoid panicking
 	var headerArr [HEADER_LEN]byte
@@ -39,7 +39,7 @@ func ExtractHeader(reader *bufio.Reader) *Header {
 		extr, err := reader.ReadByte()
 		if err != nil {
 			log.Printf("Invalid packet received (%v)\n", err)
-			return nil
+			return nil,err
 		}
 		headerArr[i] = extr
 	}
@@ -51,7 +51,7 @@ func ExtractHeader(reader *bufio.Reader) *Header {
 	header := new(Header)
 	header.Len = packetLen
 	header.TypeID = uint8(headerArr[4])
-	return header
+	return header,nil
 }
 
 func (header Header) String() string {

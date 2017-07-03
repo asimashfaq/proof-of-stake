@@ -2,40 +2,37 @@ package p2p
 
 import (
 	"math/rand"
-	"net"
+	"time"
 )
 
 //get a random miner connection
-func getConn() net.Conn {
+func getRandomPeer() *peer {
 
-	var conns []net.Conn
+	var peerSlice []*peer
 
-	if len(peers) == 0 {
-		return nil
+	for {
+		if len(peers) > 0 {
+			break
+		}
+		time.Sleep(50*time.Millisecond)
 	}
 
 	pos := int(rand.Uint32()) % len(peers)
-	for tmpConn := range peers {
-		conns = append(conns, tmpConn.conn)
+	for tmpPeer := range peers {
+		peerSlice = append(peerSlice, tmpPeer)
 	}
 
-	return conns[pos]
+	return peerSlice[pos]
 }
 
-func neighborReq() []byte {
+//asynchronous call, don't wait for response
+func neighborReq() {
 
-	conn := getConn()
-	if conn == nil {
-		return nil
+	p := getRandomPeer()
+	if p == nil {
+		return
 	}
 
 	packet := BuildPacket(NEIGHBOR_REQ, nil)
-	conn.Write(packet)
-
-	header, payload, err := rcvData(conn)
-	if err != nil || header.TypeID != NEIGHBOR_RES {
-		return nil
-	}
-
-	return payload
+	sendData(p,packet)
 }

@@ -2,22 +2,32 @@ package p2p
 
 import (
 	"bufio"
-	"net"
 )
 
-func rcvData(conn net.Conn) (*Header, []byte, error) {
+func rcvData(p *peer) (*Header, []byte, error) {
 
-	reader := bufio.NewReader(conn)
-	header := ExtractHeader(reader)
-	payload := make([]byte, header.Len-HEADER_LEN)
+	reader := bufio.NewReader(p.conn)
+	header, err := ExtractHeader(reader)
+	if err != nil {
+		logger.Printf("Invalid packet received (%v)\n", err)
+		p.conn.Close()
+		return nil,nil,err
+	}
+	payload := make([]byte, header.Len)
 
-	var err error
 	for cnt := 0; cnt < int(header.Len); cnt++ {
 		payload[cnt], err = reader.ReadByte()
 		if err != nil {
+			p.conn.Close()
 			return nil, nil, err
 		}
 	}
 
 	return header, payload, nil
+}
+
+func sendData(p *peer, payload []byte) {
+	p.l.Lock()
+	p.conn.Write(payload)
+	p.l.Unlock()
 }

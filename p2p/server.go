@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"fmt"
+	"sync"
 )
 
 const (
@@ -21,10 +23,10 @@ const (
 var (
 	//LogFile    *os.File
 	logger *log.Logger
-	peers      map[peer]bool
+	peers      map[*peer]bool
 	brdcstMsg  chan []byte
-	register   chan peer
-	disconnect chan peer
+	register   chan *peer
+	disconnect chan *peer
 
 	TxsIn   chan TxInfo
 	BlockIn chan []byte
@@ -43,6 +45,7 @@ type TxInfo struct {
 type peer struct {
 	conn net.Conn
 	ch   chan []byte
+	l sync.Mutex
 }
 
 //4 channels for communication with miner, blocks in/out and txs in/out
@@ -57,10 +60,10 @@ func Init(port string) error {
 	TxsOut = make(chan TxInfo, TX_BUFFER)
 	BlockOut = make(chan []byte)
 
-	peers = make(map[peer]bool)
+	peers = make(map[*peer]bool)
 	brdcstMsg = make(chan []byte)
-	register = make(chan peer)
-	disconnect = make(chan peer)
+	register = make(chan *peer)
+	disconnect = make(chan *peer)
 
 	go broadcastService()
 	go receiveDataFromMiner()
@@ -87,24 +90,22 @@ func bootstrap() error {
 	//connect to bootstrap server
 	//initiate MINER_PING
 	//add to connection list
-	conn, err := initiateNewMinerConnection(BOOTSTRAP_SERVER)
+	p, err := initiateNewMinerConnection(BOOTSTRAP_SERVER)
 	if err != nil {
 		logger.Printf("%v\n", err)
 		return err
 	}
-	go minerConn(conn)
+	go minerConn(p)
 
 	//once connected to the bootstrap, get his neighbors as well
-	packet := BuildPacket(NEIGHBOR_REQ, nil)
-	conn.Write(packet)
 
-	iplist := neighborReq()
+	/*fmt.Printf("#%v\n", iplist)
 	if iplist == nil {
 		return nil
 	}
 
 	//parse the incoming ipv4 addresses
-
+	fmt.Printf("%v\n", iplist)
 	index := 0
 	for cnt := 0; cnt < len(iplist)/IPV4ADDR; cnt++ {
 		var addr string
@@ -121,16 +122,17 @@ func bootstrap() error {
 		}
 		go minerConn(conn)
 		index += IPV4ADDR
-	}
+	}*/
 
 	return nil
 }
 
-func initiateNewMinerConnection(ip string) (net.Conn, error) {
+func initiateNewMinerConnection(ip string) (*peer, error) {
 
 	var conn net.Conn
 
 	conn, err := net.Dial("tcp", ip+":"+strconv.Itoa(PORT))
+	p := &peer{conn,nil,sync.Mutex{}}
 
 	if err != nil {
 		return nil, err
@@ -139,12 +141,12 @@ func initiateNewMinerConnection(ip string) (net.Conn, error) {
 	packet := BuildPacket(MINER_PING, nil)
 	conn.Write(packet)
 
-	header, _, err := rcvData(conn)
+	header, _, err := rcvData(p)
 	if err != nil || header.TypeID != MINER_PONG {
 		return nil, errors.New("Connecting to bootstrap server failed.")
 	}
 
-	return conn, nil
+	return p, nil
 }
 
 func listener(port string) {
@@ -161,53 +163,62 @@ func listener(port string) {
 			logger.Printf("%v\n", err)
 			continue
 		}
-		go handleNewConn(conn)
+		p := &peer{conn,nil,sync.Mutex{}}
+		go handleNewConn(p)
 	}
 }
 
-func handleNewConn(conn net.Conn) {
+func handleNewConn(p *peer) {
 
-	logger.Printf("New incoming connection: %v\n", conn.RemoteAddr().String())
-	header, payload, err := rcvData(conn)
+	logger.Printf("New incoming connection: %v\n", p.conn.RemoteAddr().String())
+	header, payload, err := rcvData(p)
 	if err != nil {
 		logger.Printf("%v\n", err)
+		return
 	}
 
-	processRequest(conn, header, payload)
+	processRequest(p, header, payload)
 
 	if header.TypeID == MINER_PING {
-		go minerConn(conn)
+		go minerConn(p)
 	} else {
-		conn.Close()
+		p.conn.Close()
 	}
 }
 
-func processRequest(conn net.Conn, header *Header, payload []byte) {
+func processRequest(p *peer, header *Header, payload []byte) {
 
-	logger.Printf("Received request from %v with following header:\n%v", conn.RemoteAddr().String(), header)
+	logger.Printf("Received request from %v with following header:\n%v", p.conn.RemoteAddr().String(), header)
 	switch header.TypeID {
+		//BROADCASTING
 	case FUNDSTX_BRDCST:
-		forwardTxToMiner(conn, payload, FUNDSTX_BRDCST)
+		forwardTxToMiner(p, payload, FUNDSTX_BRDCST)
 	case ACCTX_BRDCST:
-		forwardTxToMiner(conn, payload, ACCTX_BRDCST)
+		forwardTxToMiner(p, payload, ACCTX_BRDCST)
 	case CONFIGTX_BRDCST:
-		forwardTxToMiner(conn, payload, CONFIGTX_BRDCST)
+		forwardTxToMiner(p, payload, CONFIGTX_BRDCST)
 	case BLOCK_BRDCST:
-		forwardBlockToMiner(conn, payload)
+		forwardBlockToMiner(p, payload)
+
+		//Miner Requests
 	case FUNDSTX_REQ:
-		txRes(conn, payload, FUNDSTX_REQ)
+		txRes(p, payload, FUNDSTX_REQ)
 	case ACCTX_REQ:
-		txRes(conn, payload, ACCTX_REQ)
+		txRes(p, payload, ACCTX_REQ)
 	case CONFIGTX_REQ:
-		txRes(conn, payload, CONFIGTX_REQ)
+		txRes(p, payload, CONFIGTX_REQ)
 	case BLOCK_REQ:
-		blockRes(conn, payload)
+		blockRes(p, payload)
 	case ACC_REQ:
-		accRes(conn, payload)
+		accRes(p, payload)
 	case MINER_PING:
-		pongRes(conn, payload)
+		pongRes(p, payload)
 	case NEIGHBOR_REQ:
-		neighborRes(conn, payload)
+		neighborRes(p, payload)
+
+		//Miner Responses
+	case NEIGHBOR_RES:
+		fmt.Printf("%v\n%v\n%v\n", p, header, payload)
 	}
 }
 
@@ -229,12 +240,12 @@ func receiveDataFromMiner() {
 
 //we can't broadcast incoming messages directly, need to forward them to the miner (to check if
 //the tx has already been broadcast before, whether it was a valid tx at all)
-func forwardTxToMiner(conn net.Conn, payload []byte, brdcstType uint8) {
-	logger.Printf("Received a transaction (ID: %v) from %v.\n", brdcstType, conn.RemoteAddr().String())
+func forwardTxToMiner(p *peer, payload []byte, brdcstType uint8) {
+	logger.Printf("Received a transaction (ID: %v) from %v.\n", brdcstType, p.conn.RemoteAddr().String())
 	TxsIn <- TxInfo{brdcstType, payload}
 }
-func forwardBlockToMiner(conn net.Conn, payload []byte) {
-	logger.Printf("Received a block from %v.\n", conn.RemoteAddr().String())
+func forwardBlockToMiner(p *peer, payload []byte) {
+	logger.Printf("Received a block from %v.\n", p.conn.RemoteAddr().String())
 	BlockIn <- payload
 }
 
@@ -252,7 +263,6 @@ func broadcastService() {
 			peers[p] = true
 		case p := <-disconnect:
 			delete(peers, p)
-			p.conn.Close()
 			close(p.ch)
 		}
 	}
@@ -271,29 +281,31 @@ func checkHealth() {
 	}
 }
 
-func minerConn(conn net.Conn) {
+func minerConn(p *peer) {
 
-	logger.Printf("Adding a new miner: %v\n", conn.RemoteAddr().String())
+	logger.Printf("Adding a new miner: %v\n", p.conn.RemoteAddr().String())
 
 	ch := make(chan []byte)
-	p := peer{conn, ch}
+	//give the peer a channel
+	p.ch = ch
 	register <- p
 	go peerWriter(p)
 
 	for {
-		header, payload, err := rcvData(p.conn)
+		header, payload, err := rcvData(p)
 		if err != nil {
 			disconnect <- p
+			return
 		}
 
-		processRequest(conn, header, payload)
+		processRequest(p, header, payload)
 	}
 }
 
 //will be our broadcast mechanism
-func peerWriter(p peer) {
+func peerWriter(p *peer) {
 	for msg := range p.ch {
 		logger.Printf("Sending payload to %v\n", p.conn.RemoteAddr().String())
-		p.conn.Write(msg)
+		sendData(p,msg)
 	}
 }
