@@ -62,6 +62,10 @@ func (acc *Account) Encode() (encodedAcc []byte) {
 
 func (*Account) Decode(encodedAcc []byte) (acc *Account) {
 
+	if len(encodedAcc) != ACC_SIZE {
+		return nil
+	}
+
 	acc = new(Account)
 	copy(acc.Address[:], encodedAcc[0:64])
 	acc.Balance = binary.BigEndian.Uint64(encodedAcc[64:72])

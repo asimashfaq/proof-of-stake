@@ -98,8 +98,8 @@ func (tx *AccTx) Encode() (encodedTx []byte) {
 
 func (*AccTx) Decode(encodedTx []byte) (tx *AccTx) {
 
-	if len(encodedTx) < ACCTX_SIZE {
-		log.Printf("DecodeAccTx, received buffer is too short: %v\n", len(encodedTx))
+	if len(encodedTx) != ACCTX_SIZE {
+		log.Printf("DecodeAccTx, received buffer does not match account size: %v\n", len(encodedTx))
 		return nil
 	}
 

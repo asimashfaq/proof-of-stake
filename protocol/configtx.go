@@ -114,8 +114,8 @@ func (tx *ConfigTx) Encode() (encodedTx []byte) {
 
 func (*ConfigTx) Decode(encodedTx []byte) (tx *ConfigTx) {
 
-	if len(encodedTx) < CONFIGTX_SIZE {
-		log.Printf("DecodeConfigTx, received buffer is too short: %v\n", len(encodedTx))
+	if len(encodedTx) != CONFIGTX_SIZE {
+		log.Printf("DecodeConfigTx, received buffer does not match Config Tx size: %v\n", len(encodedTx))
 		return nil
 	}
 
