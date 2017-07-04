@@ -26,10 +26,6 @@ var parameterSlice []parameters
 var activeParameters *parameters
 var tmpSlice []parameters
 
-func Sync() {
-
-}
-
 func Init() {
 
 	testing_setup()
@@ -81,11 +77,12 @@ func mining() {
 			validateBlock(currentBlock)
 		}
 
-		//TODO: Mutex for state validation, build new block to mine only AFTER state update (opentxs->closedtxs)
 		//mining successful, construct new block out of mempool transactions
+		blockValidation.Lock()
 		nextBlock := newBlock(lastBlock.Hash)
 		currentBlock = nextBlock
 		prepareBlock(currentBlock)
+		blockValidation.Unlock()
 	}
 }
 

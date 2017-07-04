@@ -113,7 +113,7 @@ func cleanAndPrepare() {
 	globalBlockCount = 0
 	genesis := newBlock([32]byte{})
 	collectStatistics(genesis)
-	storage.WriteBlock(genesis)
+	storage.WriteClosedBlock(genesis)
 
 	var tmpSlice []parameters
 	var tmpTimestamp []int64

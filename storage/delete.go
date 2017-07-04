@@ -67,14 +67,21 @@ func DeleteClosedTx(transaction protocol.Transaction) {
 func DeleteAll() {
 
 	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("blocks"))
+		b := tx.Bucket([]byte("openblocks"))
 		b.ForEach(func(k, v []byte) error {
 			b.Delete(k)
 			return nil
 		})
 		return nil
 	})
-
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("closedblocks"))
+		b.ForEach(func(k, v []byte) error {
+			b.Delete(k)
+			return nil
+		})
+		return nil
+	})
 	db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openfunds"))
 		b.ForEach(func(k, v []byte) error {

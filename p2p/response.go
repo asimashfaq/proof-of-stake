@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"fmt"
 )
 
 func txRes(p *peer, payload []byte, txKind uint8) {
@@ -43,6 +44,7 @@ func blockRes(p *peer, payload []byte) {
 	)
 
 	copy(blockHash[:], payload[0:32])
+	fmt.Printf("Got a request for block with hash %x\n", blockHash)
 
 	block = storage.ReadClosedBlock(blockHash)
 	if block == nil {

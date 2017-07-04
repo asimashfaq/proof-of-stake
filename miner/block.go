@@ -9,6 +9,7 @@ import (
 	"github.com/lisgie/bazo_miner/storage"
 	"golang.org/x/crypto/sha3"
 	"time"
+	"github.com/lisgie/bazo_miner/p2p"
 )
 
 //acts as a temporary datastructure to fetch the payload of all transactions
@@ -184,7 +185,7 @@ func finalizeBlock(b *protocol.Block) error {
 	b.MerkleRoot = buildMerkleTree(b.FundsTxData, b.AccTxData, b.ConfigTxData)
 	b.Timestamp = time.Now().Unix()
 
-	//TODO: Make this nicer, chooing by command line argument
+	//TODO: Make this nicer, choosing by command line argument
 	copy(b.Beneficiary[:], hashA[:])
 
 	//anonymous struct
@@ -217,8 +218,6 @@ func validateBlock(b *protocol.Block) error {
 	blockValidation.Lock()
 	defer blockValidation.Unlock()
 
-	logger.Printf("Validating block: %v\n", b)
-
 	//TODO: Add block size check
 	//this is necessary, because we need to first validate all blocks (need to fetch tx data)
 	//before doing any state validation, we save all of them temporarily so we don't have to
@@ -248,6 +247,7 @@ func validateBlock(b *protocol.Block) error {
 				//if one block fails along the way, we just stop, but this is very unlikely to happen
 				return err
 			}
+			logger.Printf("Validating block: %v\n", block)
 			postValidation(blockDataMap[block.Hash])
 		}
 	} else {
@@ -255,12 +255,14 @@ func validateBlock(b *protocol.Block) error {
 			if err := validateBlockRollback(block); err != nil {
 				return err
 			}
+			logger.Printf("Rolled back block: %v\n", block)
 		}
 		for _, block := range blocksToValidate {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				//if one block fails along the way, we just stop, but this is very unlikely to happen
 				return err
 			}
+			logger.Printf("Validating block: %v\n", block)
 			postValidation(blockDataMap[block.Hash])
 		}
 	}
@@ -270,46 +272,98 @@ func validateBlock(b *protocol.Block) error {
 
 func preValidation(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, err error) {
 	//check if fundsTxs is syntactically well-formed and signature is correct
+	//todo: fetching in parallel
 	for _, txHash := range b.FundsTxData {
 		closeTx := storage.ReadClosedTx(txHash)
 		if closeTx != nil {
 			return nil, nil, nil, errors.New("Block validation had fundsTx that was already in a previous block")
 		}
-		tx := storage.ReadOpenTx(txHash)
-		if tx == nil {
-			//TODO: fetch from the network and make sure not in the confirmed map
-			return nil, nil, nil, errors.New("FundsTx could not be read.")
+
+		var fundsTx *protocol.FundsTx
+		fundsTx = storage.ReadOpenTx(txHash).(*protocol.FundsTx)
+		if fundsTx == nil {
+			err := p2p.TxReq(txHash,p2p.FUNDSTX_REQ)
+			if err != nil {
+				return nil, nil, nil, errors.New(fmt.Sprintf("FundsTx could not be read: %v", err))
+			}
+
+			//blocking wait
+			var encodedTx []byte
+			select {
+			case encodedTx = <-p2p.TxReqChan:
+			case <-time.After(TXFETCH_TIMEOUT*time.Second):
+				return nil,nil,nil,errors.New("FundsTx fetch timed out.")
+			}
+			fundsTx = fundsTx.Decode(encodedTx)
 		}
 
-		if !verifyFundsTx(tx.(*protocol.FundsTx)) {
-			return nil, nil, nil, errors.New("Malformed transaction.")
+		if !verifyFundsTx(fundsTx) {
+			return nil, nil, nil, errors.New("FundsTx could not be verified.")
 		}
-		fundsTxSlice = append(fundsTxSlice, tx.(*protocol.FundsTx))
+		fundsTxSlice = append(fundsTxSlice, fundsTx)
 	}
 
 	//check if accTxs are syntactically well-formed and signature is correct
 	for _, txHash := range b.AccTxData {
-		tx := storage.ReadOpenTx(txHash)
-		if tx == nil {
-			//TODO: fetch from the network and make sure not in the confirmed map
-			return nil, nil, nil, errors.New("AccTx could not be read.")
+		closedTx := storage.ReadClosedTx(txHash)
+		if closedTx != nil {
+			return nil, nil, nil, errors.New("Block validation had accTx that was already in a previous block")
 		}
-		if !verifyAccTx(tx.(*protocol.AccTx)) {
-			return nil, nil, nil, errors.New("Malformed transaction.")
+
+		var accTx *protocol.AccTx
+		accTx = storage.ReadOpenTx(txHash).(*protocol.AccTx)
+		if accTx == nil {
+			err := p2p.TxReq(txHash,p2p.ACCTX_REQ)
+			if err != nil {
+				return nil, nil, nil, errors.New(fmt.Sprintf("FundsTx could not be read: %v", err))
+			}
+
+			//blocking wait
+			var encodedTx []byte
+			select {
+			case encodedTx = <-p2p.TxReqChan:
+				//limit the waiting time to 30 seconds
+			case <-time.After(TXFETCH_TIMEOUT*time.Second):
+				return nil,nil,nil,errors.New("FundsTx fetch timed out.")
+			}
+			accTx = accTx.Decode(encodedTx)
 		}
-		accTxSlice = append(accTxSlice, tx.(*protocol.AccTx))
+
+		if !verifyAccTx(accTx) {
+			return nil, nil, nil, errors.New("AccTx could not be verified.")
+		}
+		accTxSlice = append(accTxSlice, accTx)
 	}
 
 	for _, txHash := range b.ConfigTxData {
-		tx := storage.ReadOpenTx(txHash)
-		if tx == nil {
-			//TODO: fetch from the network and make sure not in the confirmed map
-			return nil, nil, nil, errors.New("ConfigTx could not be read.")
+		closedTx := storage.ReadClosedTx(txHash)
+		if closedTx != nil {
+			return nil, nil, nil, errors.New("Block validation had configTx that was already in a previous block")
 		}
-		if !verifyConfigTx(tx.(*protocol.ConfigTx)) {
-			return nil, nil, nil, errors.New("Malformed transaction.")
+
+		var configTx *protocol.ConfigTx
+		configTx = storage.ReadOpenTx(txHash).(*protocol.ConfigTx)
+		if configTx == nil {
+			err := p2p.TxReq(txHash,p2p.CONFIGTX_REQ)
+			if err != nil {
+				return nil, nil, nil, errors.New(fmt.Sprintf("ConfigTx could not be read: %v", err))
+			}
+
+			//blocking wait
+			var encodedTx []byte
+			select {
+			case encodedTx = <-p2p.TxReqChan:
+				//limit the waiting time to 30 seconds
+			case <-time.After(TXFETCH_TIMEOUT*time.Second):
+				return nil,nil,nil,errors.New("FundsTx fetch timed out.")
+			}
+			configTx = configTx.Decode(encodedTx)
 		}
-		configTxSlice = append(configTxSlice, tx.(*protocol.ConfigTx))
+
+		if !verifyConfigTx(configTx) {
+			return nil, nil, nil, errors.New("AccTx could not be verified.")
+		}
+		configTxSlice = append(configTxSlice, configTx)
 	}
 
 	if acc := getAccountFromHash(b.Beneficiary); acc == nil {

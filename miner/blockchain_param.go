@@ -8,17 +8,25 @@ import (
 	"github.com/lisgie/bazo_miner/p2p"
 )
 
-//this are "constants" that can be changed with config transactions
-var FEE_MINIMUM uint64
-var BLOCK_SIZE uint64
-var DIFF_INTERVAL uint64
-var BLOCK_INTERVAL uint64
-var BLOCK_REWARD uint64
+var (
+	//this are "constants" that can be changed with config transactions
+	FEE_MINIMUM uint64
+	BLOCK_SIZE uint64
+	DIFF_INTERVAL uint64
+	BLOCK_INTERVAL uint64
+	BLOCK_REWARD uint64
 
-var lastBlock *protocol.Block
-var globalBlockCount uint64
-var localBlockCount uint64
-var blockDifficulty uint8
+	lastBlock *protocol.Block
+	globalBlockCount uint64
+	localBlockCount uint64
+	blockDifficulty uint8
+)
+
+const (
+	//in seconds
+	TXFETCH_TIMEOUT = 5
+	BLOCKFETCH_TIMEOUT = 40
+)
 
 //new struct only created when at least one parameter changes in a block
 type parameters struct {
@@ -134,18 +142,23 @@ func getNewChain(newBlock *protocol.Block) (ancestor *protocol.Block, newChain [
 			return potentialAncestor, newChain
 		}
 
+		//it might be the case that we already started a sync and the block is in the openblock storage
+		newBlock = storage.ReadOpenBlock(prevBlockHash)
+		if newBlock != nil {
+			continue
+		}
 		//fetch the block we apparently missed
 		p2p.BlockReq(prevBlockHash)
 
 		//blocking wait
 		select {
-		case newBlock = <-blockReqChan:
+		case encodedBlock := <-p2p.BlockReqChan:
+			newBlock = newBlock.Decode(encodedBlock)
+			fmt.Printf("%v\n", newBlock)
 			//limit the waiting time to 30 seconds
-		case time.After(30*time.Second):
+		case <-time.After(BLOCKFETCH_TIMEOUT*time.Second):
 			return nil,nil
 		}
-
-		//newBlock = blockReq(prevBlockHash)
 	}
 
 	return nil, nil
@@ -160,7 +173,7 @@ func calculateNewDifficulty() {
 func getDifficulty() uint8 {
 	//if chain doesn't exist yet
 	if blockDifficulty == 0 {
-		return 10
+		return 11
 	}
 
 	return blockDifficulty

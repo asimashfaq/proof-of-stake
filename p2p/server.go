@@ -54,6 +54,10 @@ func Init(port string) error {
 	TxsOut = make(chan TxInfo, TX_BUFFER)
 	BlockOut = make(chan []byte)
 
+	//channels for specific miner requests
+	BlockReqChan = make(chan []byte)
+	TxReqChan = make(chan []byte)
+
 	peers = make(map[*peer]bool)
 	brdcstMsg = make(chan []byte)
 	register = make(chan *peer)
@@ -171,7 +175,7 @@ func handleNewConn(p *peer) {
 		return
 	}
 
-	processRequest(p, header, payload)
+	processIncomingMsg(p, header, payload)
 
 	if header.TypeID == MINER_PING {
 		go minerConn(p)
@@ -180,7 +184,7 @@ func handleNewConn(p *peer) {
 	}
 }
 
-func processRequest(p *peer, header *Header, payload []byte) {
+func processIncomingMsg(p *peer, header *Header, payload []byte) {
 
 	logger.Printf("Received request from %v with following header:\n%v", p.conn.RemoteAddr().String(), header)
 	switch header.TypeID {
@@ -213,6 +217,14 @@ func processRequest(p *peer, header *Header, payload []byte) {
 		//Miner Responses
 	case NEIGHBOR_RES:
 		fmt.Printf("%v\n%v\n%v\n", p, header, payload)
+	case BLOCK_RES:
+		forwardBlockReqToMiner(p, payload)
+	case FUNDSTX_RES:
+		forwardTxReqToMiner(p, payload)
+	case ACCTX_RES:
+		forwardTxReqToMiner(p, payload)
+	case CONFIGTX_RES:
+		forwardTxReqToMiner(p, payload)
 	}
 }
 
@@ -261,11 +273,12 @@ func minerConn(p *peer) {
 	for {
 		header, payload, err := rcvData(p)
 		if err != nil {
+			logger.Printf("%v\n", err)
 			disconnect <- p
 			return
 		}
 
-		processRequest(p, header, payload)
+		processIncomingMsg(p, header, payload)
 	}
 }
 

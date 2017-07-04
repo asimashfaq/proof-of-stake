@@ -31,6 +31,10 @@ func verify(tx protocol.Transaction) bool {
 
 func verifyFundsTx(tx *protocol.FundsTx) bool {
 
+	if tx == nil {
+		return false
+	}
+
 	pub1, pub2 := new(big.Int), new(big.Int)
 	r, s := new(big.Int), new(big.Int)
 
@@ -70,6 +74,10 @@ func verifyFundsTx(tx *protocol.FundsTx) bool {
 
 func verifyAccTx(tx *protocol.AccTx) bool {
 
+	if tx == nil {
+		return false
+	}
+
 	r, s := new(big.Int), new(big.Int)
 	pub1, pub2 := new(big.Int), new(big.Int)
 
@@ -91,6 +99,10 @@ func verifyAccTx(tx *protocol.AccTx) bool {
 }
 
 func verifyConfigTx(tx *protocol.ConfigTx) bool {
+
+	if tx == nil {
+		return false
+	}
 
 	//account creation can only be done with a valid priv/pub key which is hard-coded
 	r, s := new(big.Int), new(big.Int)

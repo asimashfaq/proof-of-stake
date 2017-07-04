@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
-	"log"
 )
 
 const (
@@ -38,7 +37,6 @@ func ExtractHeader(reader *bufio.Reader) (*Header,error) {
 	for i := range headerArr {
 		extr, err := reader.ReadByte()
 		if err != nil {
-			log.Printf("Invalid packet received (%v)\n", err)
 			return nil,err
 		}
 		headerArr[i] = extr
