@@ -270,117 +270,45 @@ func validateBlock(b *protocol.Block) error {
 	return nil
 }
 
-func preValidation(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, err error) {
-	//check if fundsTxs is syntactically well-formed and signature is correct
-	//todo: fetching in parallel
-	for _, txHash := range b.FundsTxData {
-		closeTx := storage.ReadClosedTx(txHash)
-		if closeTx != nil {
-			return nil, nil, nil, errors.New("Block validation had fundsTx that was already in a previous block")
-		}
+func preValidation(block *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, err error) {
 
-		var fundsTx *protocol.FundsTx
-		fundsTx = storage.ReadOpenTx(txHash).(*protocol.FundsTx)
-		if fundsTx == nil {
-			err := p2p.TxReq(txHash,p2p.FUNDSTX_REQ)
-			if err != nil {
-				return nil, nil, nil, errors.New(fmt.Sprintf("FundsTx could not be read: %v", err))
-			}
+	//parallel transaction data fetch
+	errChan := make(chan error, 3)
 
-			//blocking wait
-			var encodedTx []byte
-			select {
-			case encodedTx = <-p2p.TxReqChan:
-			case <-time.After(TXFETCH_TIMEOUT*time.Second):
-				return nil,nil,nil,errors.New("FundsTx fetch timed out.")
-			}
-			fundsTx = fundsTx.Decode(encodedTx)
-		}
+	go fetchFundsTxData(block, fundsTxSlice, errChan)
+	go fetchAccTxData(block, accTxSlice, errChan)
+	go fetchConfigTxData(block, configTxSlice, errChan)
 
-		if !verifyFundsTx(fundsTx) {
-			return nil, nil, nil, errors.New("FundsTx could not be verified.")
+	for cnt := 0; cnt < 3; cnt++ {
+		err = <-errChan
+		fmt.Printf("%v\n", fundsTxSlice)
+		if err != nil {
+			return nil,nil,nil,err
 		}
-		fundsTxSlice = append(fundsTxSlice, fundsTx)
 	}
 
-	//check if accTxs are syntactically well-formed and signature is correct
-	for _, txHash := range b.AccTxData {
-		closedTx := storage.ReadClosedTx(txHash)
-		if closedTx != nil {
-			return nil, nil, nil, errors.New("Block validation had accTx that was already in a previous block")
-		}
+	fmt.Printf("Funds: \n")
+	fmt.Printf("%v\n", fundsTxSlice)
+	fmt.Printf("Accs: \n")
+	fmt.Printf("%v\n", accTxSlice)
+	fmt.Printf("Configs: \n")
+	fmt.Printf("%v\n", configTxSlice)
 
-		var accTx *protocol.AccTx
-		accTx = storage.ReadOpenTx(txHash).(*protocol.AccTx)
-		if accTx == nil {
-			err := p2p.TxReq(txHash,p2p.ACCTX_REQ)
-			if err != nil {
-				return nil, nil, nil, errors.New(fmt.Sprintf("FundsTx could not be read: %v", err))
-			}
-
-			//blocking wait
-			var encodedTx []byte
-			select {
-			case encodedTx = <-p2p.TxReqChan:
-				//limit the waiting time to 30 seconds
-			case <-time.After(TXFETCH_TIMEOUT*time.Second):
-				return nil,nil,nil,errors.New("FundsTx fetch timed out.")
-			}
-			accTx = accTx.Decode(encodedTx)
-		}
-
-		if !verifyAccTx(accTx) {
-			return nil, nil, nil, errors.New("AccTx could not be verified.")
-		}
-		accTxSlice = append(accTxSlice, accTx)
-	}
-
-	for _, txHash := range b.ConfigTxData {
-		closedTx := storage.ReadClosedTx(txHash)
-		if closedTx != nil {
-			return nil, nil, nil, errors.New("Block validation had configTx that was already in a previous block")
-		}
-
-		var configTx *protocol.ConfigTx
-		configTx = storage.ReadOpenTx(txHash).(*protocol.ConfigTx)
-		if configTx == nil {
-			err := p2p.TxReq(txHash,p2p.CONFIGTX_REQ)
-			if err != nil {
-				return nil, nil, nil, errors.New(fmt.Sprintf("ConfigTx could not be read: %v", err))
-			}
-
-			//blocking wait
-			var encodedTx []byte
-			select {
-			case encodedTx = <-p2p.TxReqChan:
-				//limit the waiting time to 30 seconds
-			case <-time.After(TXFETCH_TIMEOUT*time.Second):
-				return nil,nil,nil,errors.New("FundsTx fetch timed out.")
-			}
-			configTx = configTx.Decode(encodedTx)
-		}
-
-		if !verifyConfigTx(configTx) {
-			return nil, nil, nil, errors.New("AccTx could not be verified.")
-		}
-		configTxSlice = append(configTxSlice, configTx)
-	}
-
-	if acc := getAccountFromHash(b.Beneficiary); acc == nil {
+	if acc := getAccountFromHash(block.Beneficiary); acc == nil {
 		return nil, nil, nil, errors.New("Beneficiary not in the State.")
 	}
 
 	startIndex := 0
-	for _, singleByte := range b.Nonce {
+	for _, singleByte := range block.Nonce {
 		if singleByte != 0x00 {
 			break
 		}
 		startIndex++
 	}
-	nonce := b.Nonce[startIndex:]
+	nonce := block.Nonce[startIndex:]
 
-	partialHash := hashBlock(b)
-	if b.Hash != sha3.Sum256(append(nonce, partialHash[:]...)) || !validateProofOfWork(getDifficulty(), b.Hash) {
+	partialHash := hashBlock(block)
+	if block.Hash != sha3.Sum256(append(nonce, partialHash[:]...)) || !validateProofOfWork(getDifficulty(), block.Hash) {
 		return nil, nil, nil, errors.New("Proof of work is incorrect.")
 		logger.Println("Proof of work is incorrect.")
 
@@ -389,13 +317,125 @@ func preValidation(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSl
 	logger.Println("Proof of work validation passed.")
 
 	//cmp merkle tree
-	if buildMerkleTree(b.FundsTxData, b.AccTxData, b.ConfigTxData) != b.MerkleRoot {
+	if buildMerkleTree(block.FundsTxData, block.AccTxData, block.ConfigTxData) != block.MerkleRoot {
 		return nil, nil, nil, errors.New("Merkle Root incorrect.")
 		logger.Println("Merkle Root incorrect.")
 	}
 
 	logger.Println("Merkle root hash passed.")
 	return fundsTxSlice, accTxSlice, configTxSlice, err
+}
+
+func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, errChan chan error) {
+
+	for _, txHash := range block.FundsTxData {
+		closedTx := storage.ReadClosedTx(txHash)
+		if closedTx != nil {
+			errChan <- errors.New("Block validation had fundsTx that was already in a previous block")
+			return
+		}
+
+		var fundsTx *protocol.FundsTx
+		fundsTx = storage.ReadOpenTx(txHash).(*protocol.FundsTx)
+		if fundsTx == nil {
+			err := p2p.TxReq(txHash,p2p.FUNDSTX_REQ)
+			if err != nil {
+				errChan <- errors.New(fmt.Sprintf("FundsTx could not be read: %v", err))
+				return
+			}
+
+			//blocking wait
+			select {
+			case fundsTx = <-p2p.FundsTxChan:
+			case <-time.After(TXFETCH_TIMEOUT*time.Second):
+				errChan <- errors.New("FundsTx fetch timed out.")
+				return
+			}
+
+		}
+
+		if !verifyFundsTx(fundsTx) {
+			errChan <- errors.New("FundsTx could not be verified.")
+			return
+		}
+		fundsTxSlice = append(fundsTxSlice, fundsTx)
+	}
+	errChan <- nil
+}
+
+func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan chan error) {
+
+	for _, txHash := range block.AccTxData {
+		closedTx := storage.ReadClosedTx(txHash)
+		if closedTx != nil {
+			errChan <- errors.New("Block validation had accTx that was already in a previous block")
+			return
+		}
+
+		var tx protocol.Transaction
+		var accTx *protocol.AccTx
+		tx = storage.ReadOpenTx(txHash)
+		if tx != nil {
+			accTx = tx.(*protocol.AccTx)
+		} else {
+			err := p2p.TxReq(txHash,p2p.ACCTX_REQ)
+			if err != nil {
+				errChan <- errors.New(fmt.Sprintf("FundsTx could not be read: %v", err))
+				return
+			}
+
+			//blocking wait
+			select {
+			case accTx = <-p2p.AccTxChan:
+				//limit the waiting time to 30 seconds
+			case <-time.After(TXFETCH_TIMEOUT*time.Second):
+				errChan <- errors.New("FundsTx fetch timed out.")
+			}
+		}
+
+		if !verifyAccTx(accTx) {
+			errChan <- errors.New("AccTx could not be verified.")
+		}
+		accTxSlice = append(accTxSlice, accTx)
+	}
+	errChan<-nil
+}
+
+func fetchConfigTxData(block *protocol.Block, configTxSlice []*protocol.ConfigTx, errChan chan error) {
+
+	for _, txHash := range block.ConfigTxData {
+		closedTx := storage.ReadClosedTx(txHash)
+		if closedTx != nil {
+			errChan <- errors.New("Block validation had configTx that was already in a previous block")
+			return
+		}
+
+		var configTx *protocol.ConfigTx
+		configTx = storage.ReadOpenTx(txHash).(*protocol.ConfigTx)
+		if configTx == nil {
+			err := p2p.TxReq(txHash,p2p.CONFIGTX_REQ)
+			if err != nil {
+				errChan <- errors.New(fmt.Sprintf("ConfigTx could not be read: %v", err))
+				return
+			}
+
+			//blocking wait
+			select {
+			case configTx = <-p2p.ConfigTxChan:
+				//limit the waiting time to 30 seconds
+			case <-time.After(TXFETCH_TIMEOUT*time.Second):
+				errChan <- errors.New("FundsTx fetch timed out.")
+				return
+			}
+		}
+
+		if !verifyConfigTx(configTx) {
+			errChan <- errors.New("AccTx could not be verified.")
+			return
+		}
+		configTxSlice = append(configTxSlice, configTx)
+	}
+	errChan <- nil
 }
 
 //apply to State

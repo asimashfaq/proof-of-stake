@@ -1,6 +1,9 @@
 package p2p
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/lisgie/bazo_miner/protocol"
+)
 
 var (
 	//Data from the network, for the miner
@@ -11,8 +14,10 @@ var (
 	TxsOut   chan TxInfo
 	BlockOut chan []byte
 
-	//Data requested by miner, for tx we don't need the type because we know what we request
-	TxReqChan chan []byte
+	//Data requested by miner, to allow parallelism, we have a chan for every tx type
+	FundsTxChan chan *protocol.FundsTx
+	AccTxChan chan *protocol.AccTx
+	ConfigTxChan chan *protocol.ConfigTx
  	BlockReqChan chan []byte
 )
 
@@ -44,9 +49,35 @@ func forwardBlockToMiner(p *peer, payload []byte) {
 }
 
 //these are transactions the miner specifically requested
-func forwardTxReqToMiner(p *peer, payload []byte) {
-	logger.Printf("Received the response to a transaction request from %v.\n", p.conn.RemoteAddr().String())
-	TxReqChan<-payload
+func forwardTxReqToMiner(p *peer, payload []byte, txType uint8) {
+	if payload == nil {
+		return
+	}
+
+	logger.Printf("Received the response to a transaction request with type (%v) from %v.\n", txType, p.conn.RemoteAddr().String())
+	switch txType {
+	case FUNDSTX_RES:
+		var fundsTx *protocol.FundsTx
+		fundsTx = fundsTx.Decode(payload)
+		if fundsTx == nil {
+			return
+		}
+		FundsTxChan<-fundsTx
+	case ACCTX_RES:
+		var accTx *protocol.AccTx
+		accTx = accTx.Decode(payload)
+		if accTx == nil {
+			return
+		}
+		AccTxChan<-accTx
+	case CONFIGTX_RES:
+		var configTx *protocol.ConfigTx
+		configTx = configTx.Decode(payload)
+		if configTx == nil{
+			return
+		}
+		ConfigTxChan<-configTx
+	}
 }
 
 func forwardBlockReqToMiner(p *peer, payload []byte) {

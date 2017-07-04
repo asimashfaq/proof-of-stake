@@ -9,6 +9,7 @@ import (
 	"time"
 	"fmt"
 	"sync"
+	"github.com/lisgie/bazo_miner/protocol"
 )
 
 const (
@@ -56,7 +57,9 @@ func Init(port string) error {
 
 	//channels for specific miner requests
 	BlockReqChan = make(chan []byte)
-	TxReqChan = make(chan []byte)
+	FundsTxChan = make(chan *protocol.FundsTx)
+	AccTxChan = make(chan *protocol.AccTx)
+	ConfigTxChan = make(chan *protocol.ConfigTx)
 
 	peers = make(map[*peer]bool)
 	brdcstMsg = make(chan []byte)
@@ -220,11 +223,11 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 	case BLOCK_RES:
 		forwardBlockReqToMiner(p, payload)
 	case FUNDSTX_RES:
-		forwardTxReqToMiner(p, payload)
+		forwardTxReqToMiner(p, payload, FUNDSTX_RES)
 	case ACCTX_RES:
-		forwardTxReqToMiner(p, payload)
+		forwardTxReqToMiner(p, payload, ACCTX_RES)
 	case CONFIGTX_RES:
-		forwardTxReqToMiner(p, payload)
+		forwardTxReqToMiner(p, payload, CONFIGTX_RES)
 	}
 }
 
