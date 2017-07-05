@@ -86,18 +86,6 @@ func mining() {
 	}
 }
 
-func prepareBlock(block *protocol.Block) {
-
-	//empty mempool (opentxs)
-	opentxs := storage.ReadAllOpenTxs()
-	for _, tx := range opentxs {
-		err := addTx(block, tx)
-		if err != nil {
-			storage.DeleteOpenTx(tx)
-		}
-	}
-}
-
 //some testing code
 func testing_setup() {
 
