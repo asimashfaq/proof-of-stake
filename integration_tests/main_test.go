@@ -1,6 +1,7 @@
-package miner
+package integration_tests
 
-import (
+
+/*import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -157,4 +158,4 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 
 	storage.TearDown()
-}
+}*/

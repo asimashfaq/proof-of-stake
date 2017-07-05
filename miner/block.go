@@ -14,8 +14,8 @@ import (
 
 //acts as a temporary datastructure to fetch the payload of all transactions
 type blockData struct {
-	fundsTxSlice  []*protocol.FundsTx
 	accTxSlice    []*protocol.AccTx
+	fundsTxSlice  []*protocol.FundsTx
 	configTxSlice []*protocol.ConfigTx
 	block         *protocol.Block
 }
@@ -46,16 +46,16 @@ func addTx(b *protocol.Block, tx protocol.Transaction) error {
 	}
 
 	switch tx.(type) {
-	case *protocol.FundsTx:
-		err := addFundsTx(b, tx.(*protocol.FundsTx))
-		if err != nil {
-			logger.Printf("Adding fundsTx tx failed (%v): %v\n", err, tx.(*protocol.FundsTx))
-			return err
-		}
 	case *protocol.AccTx:
 		err := addAccTx(b, tx.(*protocol.AccTx))
 		if err != nil {
 			logger.Printf("Adding accTx tx failed (%v): %v\n", err, tx.(*protocol.AccTx))
+			return err
+		}
+	case *protocol.FundsTx:
+		err := addFundsTx(b, tx.(*protocol.FundsTx))
+		if err != nil {
+			logger.Printf("Adding fundsTx tx failed (%v): %v\n", err, tx.(*protocol.FundsTx))
 			return err
 		}
 	case *protocol.ConfigTx:
@@ -68,6 +68,29 @@ func addTx(b *protocol.Block, tx protocol.Transaction) error {
 		return errors.New("Transaction type not recognized.")
 	}
 
+	return nil
+}
+
+func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
+
+	if storage.ReadClosedTx(tx.Hash()) != nil {
+		return errors.New("This transaction was already included in a previous block.")
+	}
+
+	if tx.Fee < FEE_MINIMUM {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
+		return errors.New(err)
+	}
+
+	//at this point the tx has already been verified
+	accHash := sha3.Sum256(tx.PubKey[:])
+	if _, exists := storage.State[accHash]; exists {
+		return errors.New("Account already exists.")
+	}
+
+	b.AccTxData = append(b.AccTxData, tx.Hash())
+	storage.WriteOpenTx(tx)
+	logger.Printf("Added tx to the AccTxData slice: %v", *tx)
 	return nil
 }
 
@@ -140,29 +163,6 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 	return nil
 }
 
-func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
-
-	if storage.ReadClosedTx(tx.Hash()) != nil {
-		return errors.New("This transaction was already included in a previous block.")
-	}
-
-	if tx.Fee < FEE_MINIMUM {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
-		return errors.New(err)
-	}
-
-	//at this point the tx has already been verified
-	accHash := sha3.Sum256(tx.PubKey[:])
-	if _, exists := storage.State[accHash]; exists {
-		return errors.New("Account already exists.")
-	}
-
-	b.AccTxData = append(b.AccTxData, tx.Hash())
-	storage.WriteOpenTx(tx)
-	logger.Printf("Added tx to the AccTxData slice: %v", *tx)
-	return nil
-}
-
 func addConfigTx(b *protocol.Block, tx *protocol.ConfigTx) error {
 
 	if storage.ReadClosedTx(tx.Hash()) != nil {
@@ -182,7 +182,7 @@ func addConfigTx(b *protocol.Block, tx *protocol.ConfigTx) error {
 
 func finalizeBlock(b *protocol.Block) error {
 	//merkle tree only built from funds transactions
-	b.MerkleRoot = buildMerkleTree(b.FundsTxData, b.AccTxData, b.ConfigTxData)
+	b.MerkleRoot = buildMerkleTree(b.AccTxData, b.FundsTxData, b.ConfigTxData)
 	b.Timestamp = time.Now().Unix()
 
 	//TODO: Make this nicer, choosing by command line argument
@@ -203,8 +203,8 @@ func finalizeBlock(b *protocol.Block) error {
 	}
 
 	//this doesn't need to be hashed, because we already have the merkle tree taking care of consistency
-	b.NrFundsTx = uint16(len(b.FundsTxData))
 	b.NrAccTx = uint16(len(b.AccTxData))
+	b.NrFundsTx = uint16(len(b.FundsTxData))
 	b.NrConfigTx = uint8(len(b.ConfigTxData))
 
 	return nil
@@ -233,11 +233,11 @@ func validateBlock(b *protocol.Block) error {
 	//if not the whole chain of blocks is valid, we don't consider any of them
 	//this avoids the attack to create a fake long chain with only some blocks valid
 	for _, block := range blocksToValidate {
-		fundsTxs, accTxs, configTxs, err := preValidation(block)
+		accTxs, fundsTxs, configTxs, err := preValidation(block)
 		if err != nil {
 			return err
 		}
-		blockDataMap[block.Hash] = blockData{fundsTxs, accTxs, configTxs, block}
+		blockDataMap[block.Hash] = blockData{accTxs, fundsTxs, configTxs, block}
 	}
 
 	//no rollback needed, just a new block to validate
@@ -270,18 +270,18 @@ func validateBlock(b *protocol.Block) error {
 	return nil
 }
 
-func preValidation(block *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, err error) {
+func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, err error) {
 
 	//parallel transaction data fetch
 	errChan := make(chan error, 3)
 
 	//we need to allocate slice space for the underlying array when we give pass it as reference
-	fundsTxSlice = make([]*protocol.FundsTx, block.NrFundsTx)
 	accTxSlice = make([]*protocol.AccTx, block.NrAccTx)
+	fundsTxSlice = make([]*protocol.FundsTx, block.NrFundsTx)
 	configTxSlice = make([]*protocol.ConfigTx, block.NrConfigTx)
 
-	go fetchFundsTxData(block, fundsTxSlice, errChan)
 	go fetchAccTxData(block, accTxSlice, errChan)
+	go fetchFundsTxData(block, fundsTxSlice, errChan)
 	go fetchConfigTxData(block, configTxSlice, errChan)
 
 	for cnt := 0; cnt < 3; cnt++ {
@@ -314,13 +314,51 @@ func preValidation(block *protocol.Block) (fundsTxSlice []*protocol.FundsTx, acc
 	logger.Println("Proof of work validation passed.")
 
 	//cmp merkle tree
-	if buildMerkleTree(block.FundsTxData, block.AccTxData, block.ConfigTxData) != block.MerkleRoot {
+	if buildMerkleTree(block.AccTxData, block.FundsTxData, block.ConfigTxData) != block.MerkleRoot {
 		return nil, nil, nil, errors.New("Merkle Root incorrect.")
 		logger.Println("Merkle Root incorrect.")
 	}
 
 	logger.Println("Merkle root hash passed.")
-	return fundsTxSlice, accTxSlice, configTxSlice, err
+	return accTxSlice, fundsTxSlice, configTxSlice, err
+}
+
+func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan chan error) {
+
+	for cnt, txHash := range block.AccTxData {
+		closedTx := storage.ReadClosedTx(txHash)
+		if closedTx != nil {
+			errChan <- errors.New("Block validation had accTx that was already in a previous block")
+			return
+		}
+
+		var tx protocol.Transaction
+		var accTx *protocol.AccTx
+		tx = storage.ReadOpenTx(txHash)
+		if tx != nil {
+			accTx = tx.(*protocol.AccTx)
+		} else {
+			err := p2p.TxReq(txHash,p2p.ACCTX_REQ)
+			if err != nil {
+				errChan <- errors.New(fmt.Sprintf("AccTx could not be read: %v", err))
+				return
+			}
+
+			//blocking wait
+			select {
+			case accTx = <-p2p.AccTxChan:
+				//limit the waiting time to 30 seconds
+			case <-time.After(TXFETCH_TIMEOUT*time.Second):
+				errChan <- errors.New("AccTx fetch timed out.")
+			}
+		}
+
+		if !verifyAccTx(accTx) {
+			errChan <- errors.New("AccTx could not be verified.")
+		}
+		accTxSlice[cnt] = accTx
+	}
+	errChan<-nil
 }
 
 func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, errChan chan error) {
@@ -361,44 +399,6 @@ func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, e
 		fundsTxSlice[cnt] = fundsTx
 	}
 	errChan <- nil
-}
-
-func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan chan error) {
-
-	for cnt, txHash := range block.AccTxData {
-		closedTx := storage.ReadClosedTx(txHash)
-		if closedTx != nil {
-			errChan <- errors.New("Block validation had accTx that was already in a previous block")
-			return
-		}
-
-		var tx protocol.Transaction
-		var accTx *protocol.AccTx
-		tx = storage.ReadOpenTx(txHash)
-		if tx != nil {
-			accTx = tx.(*protocol.AccTx)
-		} else {
-			err := p2p.TxReq(txHash,p2p.ACCTX_REQ)
-			if err != nil {
-				errChan <- errors.New(fmt.Sprintf("AccTx could not be read: %v", err))
-				return
-			}
-
-			//blocking wait
-			select {
-			case accTx = <-p2p.AccTxChan:
-				//limit the waiting time to 30 seconds
-			case <-time.After(TXFETCH_TIMEOUT*time.Second):
-				errChan <- errors.New("AccTx fetch timed out.")
-			}
-		}
-
-		if !verifyAccTx(accTx) {
-			errChan <- errors.New("AccTx could not be verified.")
-		}
-		accTxSlice[cnt] = accTx
-	}
-	errChan<-nil
 }
 
 func fetchConfigTxData(block *protocol.Block, configTxSlice []*protocol.ConfigTx, errChan chan error) {
@@ -447,14 +447,13 @@ func stateValidation(data blockData) error {
 	//we collect the fundsTx in local memory to rollback when needed
 	//also, we don't want to fetch the same data several times
 
-	//collect all fundsTx
-	if err := fundsStateChange(data.fundsTxSlice); err != nil {
+	if err := accStateChange(data.accTxSlice); err != nil {
 		return err
 	}
 
-	if err := accStateChange(data.accTxSlice); err != nil {
+	if err := fundsStateChange(data.fundsTxSlice); err != nil {
 		//block invalid, rollback
-		fundsStateChangeRollback(data.fundsTxSlice)
+		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
 
@@ -463,16 +462,16 @@ func stateValidation(data blockData) error {
 
 	//both collectTxFees as well as collectBlockReward can throw an error when the balance of the protocol overflows
 	//collect fees for both transaction types
-	if err := collectTxFees(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary); err != nil {
-		accStateChangeRollback(data.accTxSlice)
+	if err := collectTxFees(data.accTxSlice, data.fundsTxSlice, data.configTxSlice, data.block.Beneficiary); err != nil {
 		fundsStateChangeRollback(data.fundsTxSlice)
+		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
 	//collect block reward
 	if err := collectBlockReward(activeParameters.block_reward, data.block.Beneficiary); err != nil {
-		collectTxFeesRollback(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary)
-		accStateChangeRollback(data.accTxSlice)
+		collectTxFeesRollback(data.accTxSlice, data.fundsTxSlice, data.configTxSlice, data.block.Beneficiary)
 		fundsStateChangeRollback(data.fundsTxSlice)
+		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
 
@@ -484,12 +483,12 @@ func stateValidation(data blockData) error {
 
 func postValidation(data blockData) {
 	//put all txs from the block from open to close
-	for _, tx := range data.fundsTxSlice {
+	for _, tx := range data.accTxSlice {
 		storage.WriteClosedTx(tx)
 		storage.DeleteOpenTx(tx)
 	}
 
-	for _, tx := range data.accTxSlice {
+	for _, tx := range data.fundsTxSlice {
 		storage.WriteClosedTx(tx)
 		storage.DeleteOpenTx(tx)
 	}

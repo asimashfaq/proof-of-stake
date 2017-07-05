@@ -5,7 +5,6 @@ import (
 	"github.com/lisgie/bazo_miner/storage"
 	"reflect"
 	"testing"
-
 )
 
 func TestValidateBlockRollback(t *testing.T) {

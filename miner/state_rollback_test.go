@@ -165,11 +165,11 @@ func TestCollectTxFeesRollback(t *testing.T) {
 		fee += tx.Fee
 	}
 
-	collectTxFees(funds, nil, nil, minerHash)
+	collectTxFees(nil, funds, nil, minerHash)
 	if minerBal+fee != minerAcc.Balance {
 		t.Errorf("%v + %v != %v\n", minerBal, fee, minerAcc.Balance)
 	}
-	collectTxFeesRollback(funds, nil, nil, minerHash)
+	collectTxFeesRollback(nil, funds, nil, minerHash)
 	if minerBal != minerAcc.Balance {
 		t.Errorf("Tx fees rollback failed: %v != %v\n", minerBal, minerAcc.Balance)
 	}
@@ -189,7 +189,7 @@ func TestCollectTxFeesRollback(t *testing.T) {
 	//should throw an error and result in a rollback, because of acc balance overflow
 	tmpBlock := newBlock([32]byte{})
 	tmpBlock.Beneficiary = minerHash
-	data := blockData{funds2, nil, nil, tmpBlock}
+	data := blockData{nil, funds2, nil, tmpBlock}
 	if err := stateValidation(data); err == nil ||
 		minerBal != minerAcc.Balance ||
 		accA.Balance != accABal ||

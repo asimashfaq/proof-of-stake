@@ -10,11 +10,11 @@ import (
 //if this is not atomic, we're doomed
 func validateBlockRollback(b *protocol.Block) error {
 
-	fundsTxSlice, accTxSlice, configTxSlice, err := preValidationRollback(b)
+	accTxSlice, fundsTxSlice, configTxSlice, err := preValidationRollback(b)
 	if err != nil {
 		return err
 	}
-	data := blockData{fundsTxSlice, accTxSlice, configTxSlice, b}
+	data := blockData{accTxSlice, fundsTxSlice, configTxSlice, b}
 
 	//before manipulating the state, we need to go back to pre-block system parameters
 	configStateChangeRollback(data.configTxSlice, b.Hash)
@@ -26,40 +26,46 @@ func validateBlockRollback(b *protocol.Block) error {
 	return nil
 }
 
-func preValidationRollback(b *protocol.Block) (fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, err error) {
+func preValidationRollback(b *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, err error) {
 
-	//fetch all transactions
-	for _, hash := range b.FundsTxData {
-		tx := storage.ReadClosedTx(hash).(*protocol.FundsTx)
-		//this is ugly, but necessary because the encoding of the transaction throws away the full hash
-		//verify acts as "enricher", e.g. writing the necessary hashes in the structure
-		verify(tx)
-		if tx == nil {
-			logger.Printf("CRITICAL: Validated fundsTx was not in the confirmed tx storage: %v\n", hash)
-			return nil, nil, nil, errors.New("CRITICAL: Validated fundsTx was not in the confirmed tx storage")
-		}
-		fundsTxSlice = append(fundsTxSlice, tx)
-	}
-
+	//fetch all transactions from closed storage
 	for _, hash := range b.AccTxData {
-		tx := storage.ReadClosedTx(hash).(*protocol.AccTx)
+		var accTx *protocol.AccTx
+		tx := storage.ReadClosedTx(hash)
 		if tx == nil {
 			logger.Printf("CRITICAL: Validated accTx was not in the confirmed tx storage: %v\n", hash)
 			return nil, nil, nil, errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
+		} else {
+			accTx = tx.(*protocol.AccTx)
 		}
-		accTxSlice = append(accTxSlice, tx)
+		accTxSlice = append(accTxSlice, accTx)
+	}
+
+	for _, hash := range b.FundsTxData {
+		var fundsTx *protocol.FundsTx
+		tx := storage.ReadClosedTx(hash)
+		if tx == nil {
+			logger.Printf("CRITICAL: Validated fundsTx was not in the confirmed tx storage: %v\n", hash)
+			return nil, nil, nil, errors.New("CRITICAL: Validated fundsTx was not in the confirmed tx storage")
+		} else {
+			fundsTx = tx.(*protocol.FundsTx)
+		}
+		fundsTxSlice = append(fundsTxSlice, fundsTx)
 	}
 
 	for _, hash := range b.ConfigTxData {
-		tx := storage.ReadClosedTx(hash).(*protocol.ConfigTx)
+		var configTx *protocol.ConfigTx
+		tx := storage.ReadClosedTx(hash)
 		if tx == nil {
 			logger.Printf("CRITICAL: Validated configTx was not in the confirmed tx storage: %v\n", hash)
 			return nil, nil, nil, errors.New("CRITICAL: Validated configTx was not in the confirmed tx storage")
+		} else {
+			configTx = tx.(*protocol.ConfigTx)
 		}
-		configTxSlice = append(configTxSlice, tx)
+		configTxSlice = append(configTxSlice, configTx)
 	}
 
-	return fundsTxSlice, accTxSlice, configTxSlice, nil
+	return accTxSlice, fundsTxSlice, configTxSlice, nil
 }
 
 func stateValidationRollback(data blockData) error {
@@ -70,9 +76,9 @@ func stateValidationRollback(data blockData) error {
 
 	//this has to go first, because the block that was mined, was mined with previous set system parameters
 	collectBlockRewardRollback(activeParameters.block_reward, data.block.Beneficiary)
-	collectTxFeesRollback(data.fundsTxSlice, data.accTxSlice, data.configTxSlice, data.block.Beneficiary)
-	accStateChangeRollback(data.accTxSlice)
+	collectTxFeesRollback(data.accTxSlice, data.fundsTxSlice, data.configTxSlice, data.block.Beneficiary)
 	fundsStateChangeRollback(data.fundsTxSlice)
+	accStateChangeRollback(data.accTxSlice)
 	return nil
 }
 

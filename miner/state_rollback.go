@@ -5,20 +5,6 @@ import (
 	"github.com/lisgie/bazo_miner/storage"
 )
 
-func fundsStateChangeRollback(txSlice []*protocol.FundsTx) {
-
-	for cnt := len(txSlice) - 1; cnt >= 0; cnt-- {
-		tx := txSlice[cnt]
-
-		accSender, accReceiver := storage.GetAccountFromHash(tx.From), storage.GetAccountFromHash(tx.To)
-
-		accSender.TxCnt -= 1
-		accSender.Balance += tx.Amount
-
-		accReceiver.Balance -= tx.Amount
-	}
-}
-
 //this only happens for complete block rollbacks, therefore no index because everything has to be rolled back
 func accStateChangeRollback(txSlice []*protocol.AccTx) {
 
@@ -30,6 +16,18 @@ func accStateChangeRollback(txSlice []*protocol.AccTx) {
 			logger.Fatal("An account that should have been saved does not exist!")
 		}
 		delete(storage.State, accHash)
+	}
+}
+
+func fundsStateChangeRollback(txSlice []*protocol.FundsTx) {
+
+	for cnt := len(txSlice) - 1; cnt >= 0; cnt-- {
+		tx := txSlice[cnt]
+
+		accSender, accReceiver := storage.GetAccountFromHash(tx.From), storage.GetAccountFromHash(tx.To)
+		accSender.TxCnt -= 1
+		accSender.Balance += tx.Amount
+		accReceiver.Balance -= tx.Amount
 	}
 }
 
@@ -49,21 +47,21 @@ func configStateChangeRollback(txSlice []*protocol.ConfigTx, blockHash [32]byte)
 	activeParameters = &parameterSlice[len(parameterSlice)-1]
 }
 
-func collectTxFeesRollback(fundsTx []*protocol.FundsTx, accTx []*protocol.AccTx, configTx []*protocol.ConfigTx, minerHash [32]byte) {
+func collectTxFeesRollback(accTx []*protocol.AccTx, fundsTx []*protocol.FundsTx, configTx []*protocol.ConfigTx, minerHash [32]byte) {
 
 	minerAcc := storage.GetAccountFromHash(minerHash)
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
+	for _, tx := range accTx {
+		//money gets created from thin air
+		//no need to subtract money from root key
+		minerAcc.Balance -= tx.Fee
+	}
+
 	for _, tx := range fundsTx {
 		minerAcc.Balance -= tx.Fee
 
 		senderAcc := storage.GetAccountFromHash(tx.From)
 		senderAcc.Balance += tx.Fee
-	}
-
-	for _, tx := range accTx {
-		//money gets created from thin air
-		//no need to subtract money from root key
-		minerAcc.Balance -= tx.Fee
 	}
 
 	for _, tx := range configTx {

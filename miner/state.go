@@ -12,6 +12,35 @@ func isRootKey(hash [32]byte) bool {
 	return exists
 }
 
+//for normal accounts, it
+func accStateChange(txSlice []*protocol.AccTx) error {
+
+	for _, tx := range txSlice {
+		switch tx.Header {
+		case 1:
+			//first bit set, given account will be a new root account
+			newAcc := protocol.Account{Address: tx.PubKey}
+			storage.RootKeys[sha3.Sum256(tx.PubKey[:])] = &newAcc
+			continue
+		case 2:
+			//second bit set, delete account from root account
+			delete(storage.RootKeys, sha3.Sum256(tx.PubKey[:]))
+			continue
+		}
+
+		//create a regular account
+		addressHash := sha3.Sum256(tx.PubKey[:])
+		acc := storage.GetAccountFromHash(addressHash)
+		if acc != nil {
+			logger.Printf("CRITICAL: Address already exists in the state: %x\n", addressHash[0:4])
+			return errors.New("CRITICAL: Address already exists in the state")
+		}
+		newAcc := protocol.Account{Address: tx.PubKey}
+		storage.State[addressHash] = &newAcc
+	}
+	return nil
+}
+
 func fundsStateChange(txSlice []*protocol.FundsTx) error {
 
 	for index, tx := range txSlice {
@@ -78,36 +107,6 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 	return nil
 }
 
-//for normal accounts, it
-func accStateChange(txSlice []*protocol.AccTx) error {
-
-	for _, tx := range txSlice {
-
-		switch tx.Header {
-		case 1:
-			//first bit set, given account will be a new root account
-			newAcc := protocol.Account{Address: tx.PubKey}
-			storage.RootKeys[sha3.Sum256(tx.PubKey[:])] = &newAcc
-			continue
-		case 2:
-			//second bit set, delete account from root account
-			delete(storage.RootKeys, sha3.Sum256(tx.PubKey[:]))
-			continue
-		}
-
-		//create a regular account
-		addressHash := sha3.Sum256(tx.PubKey[:])
-		acc := storage.GetAccountFromHash(addressHash)
-		if acc != nil {
-			logger.Printf("CRITICAL: Address already exists in the state: %x\n", addressHash[0:4])
-			return errors.New("CRITICAL: Address already exists in the state")
-		}
-		newAcc := protocol.Account{Address: tx.PubKey}
-		storage.State[addressHash] = &newAcc
-	}
-	return nil
-}
-
 //we accept config slices with unknown id, but don't act on the payload
 func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 
@@ -159,20 +158,34 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 	}
 }
 
-func collectTxFees(fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccTx, configTxSlice []*protocol.ConfigTx, minerHash [32]byte) error {
+func collectTxFees(accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, minerHash [32]byte) error {
 
-	var tmpFundsTx []*protocol.FundsTx
 	var tmpAccTx []*protocol.AccTx
+	var tmpFundsTx []*protocol.FundsTx
 	var tmpConfigTx []*protocol.ConfigTx
 
 	minerAcc := storage.GetAccountFromHash(minerHash)
+
+	for _, tx := range accTxSlice {
+		if minerAcc.Balance+tx.Fee > protocol.MAX_MONEY {
+			//rollback of all perviously transferred transaction fees to the protocol's account
+			collectTxFeesRollback(tmpAccTx, tmpFundsTx, tmpConfigTx, minerHash)
+			logger.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
+			return errors.New("Miner balance overflows with transaction fee.\n")
+		}
+
+		//money gets created from thin air
+		//no need to subtract money from root key
+		minerAcc.Balance += tx.Fee
+		tmpAccTx = append(tmpAccTx, tx)
+	}
 
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
 	for _, tx := range fundsTxSlice {
 		//preventing protocol account from overflowing
 		if minerAcc.Balance+tx.Fee > protocol.MAX_MONEY {
 			//rollback of all perviously transferred transaction fees to the protocol's account
-			collectTxFeesRollback(tmpFundsTx, tmpAccTx, tmpConfigTx, minerHash)
+			collectTxFeesRollback(tmpAccTx, tmpFundsTx, tmpConfigTx, minerHash)
 			logger.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
 			return errors.New("Miner balance overflows with transaction fee.\n")
 		}
@@ -184,24 +197,10 @@ func collectTxFees(fundsTxSlice []*protocol.FundsTx, accTxSlice []*protocol.AccT
 		tmpFundsTx = append(tmpFundsTx, tx)
 	}
 
-	for _, tx := range accTxSlice {
-		if minerAcc.Balance+tx.Fee > protocol.MAX_MONEY {
-			//rollback of all perviously transferred transaction fees to the protocol's account
-			collectTxFeesRollback(tmpFundsTx, tmpAccTx, tmpConfigTx, minerHash)
-			logger.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
-			return errors.New("Miner balance overflows with transaction fee.\n")
-		}
-
-		//money gets created from thin air
-		//no need to subtract money from root key
-		minerAcc.Balance += tx.Fee
-		tmpAccTx = append(tmpAccTx, tx)
-	}
-
 	for _, tx := range configTxSlice {
 		if minerAcc.Balance+tx.Fee > protocol.MAX_MONEY {
 			//rollback of all perviously transferred transaction fees to the protocol's account
-			collectTxFeesRollback(tmpFundsTx, tmpAccTx, tmpConfigTx, minerHash)
+			collectTxFeesRollback(tmpAccTx, tmpFundsTx, tmpConfigTx, minerHash)
 			logger.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
 			return errors.New("Miner balance overflows with transaction fee.\n")
 		}

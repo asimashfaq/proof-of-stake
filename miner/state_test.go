@@ -61,7 +61,7 @@ func TestFundsTxStateChange(t *testing.T) {
 		t.Errorf("State update failed: %v != %v or %v != %v\n", accA.Balance, balanceA, accB.Balance, balanceB)
 	}
 
-	collectTxFees(funds, nil, nil, minerAccHash)
+	collectTxFees(nil, funds, nil, minerAccHash)
 	if feeA+feeB != minerAcc.Balance-minerBal {
 		t.Error("Fee Collection failed!")
 	}
