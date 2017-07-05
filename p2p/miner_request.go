@@ -1,6 +1,9 @@
 package p2p
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 //all the request in this file are specifically initiated by the miner package
 func BlockReq(hash [32]byte) error {
@@ -24,6 +27,8 @@ func TxReq(hash [32]byte, reqType uint8) error {
 
 	packet := BuildPacket(reqType,hash[:])
 	sendData(p, packet)
+
+	fmt.Println("Sent transaction request packet.")
 
 	return nil
 }

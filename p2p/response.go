@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"fmt"
 )
 
 func txRes(p *peer, payload []byte, txKind uint8) {
@@ -32,7 +31,16 @@ func txRes(p *peer, payload []byte, txKind uint8) {
 		return
 	}
 
-	packet := BuildPacket(txKind, payload)
+	var packet []byte
+	switch txKind {
+	case FUNDSTX_REQ:
+		packet = BuildPacket(FUNDSTX_RES, tx.Encode())
+	case ACCTX_REQ:
+		packet = BuildPacket(ACCTX_RES, tx.Encode())
+	case CONFIGTX_REQ:
+		packet = BuildPacket(CONFIGTX_RES, tx.Encode())
+	}
+
 	sendData(p,packet)
 }
 
@@ -44,7 +52,6 @@ func blockRes(p *peer, payload []byte) {
 	)
 
 	copy(blockHash[:], payload[0:32])
-	fmt.Printf("Got a request for block with hash %x\n", blockHash)
 
 	block = storage.ReadClosedBlock(blockHash)
 	if block == nil {

@@ -45,16 +45,16 @@ func processTx(incomingTx p2p.TxInfo) {
 		tx = cTx
 	}
 	if storage.ReadOpenTx(tx.Hash()) != nil {
-		logger.Printf("Received transaction (%v) already in the mempool.\n", tx.Hash())
+		logger.Printf("Received transaction (%x) already in the mempool.\n", tx.Hash())
 		return
 	}
 	if storage.ReadClosedTx(tx.Hash()) != nil {
-		logger.Printf("Received transaction (%v) already validated.\n", tx.Hash())
+		logger.Printf("Received transaction (%x) already validated.\n", tx.Hash())
 		return
 	}
 
 	//write to mempool
-	logger.Printf("Writing transaction (%v) in the mempool.\n", tx.Hash())
+	logger.Printf("Writing transaction (%x) in the mempool.\n", tx.Hash())
 	storage.WriteOpenTx(tx)
 	p2p.TxsOut <- incomingTx
 }

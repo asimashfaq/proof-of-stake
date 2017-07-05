@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 	"time"
-	"fmt"
 	"sync"
 	"github.com/lisgie/bazo_miner/protocol"
 )
@@ -219,7 +218,6 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 
 		//Miner Responses
 	case NEIGHBOR_RES:
-		fmt.Printf("%v\n%v\n%v\n", p, header, payload)
 	case BLOCK_RES:
 		forwardBlockReqToMiner(p, payload)
 	case FUNDSTX_RES:

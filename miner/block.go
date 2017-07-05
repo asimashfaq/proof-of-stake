@@ -275,24 +275,21 @@ func preValidation(block *protocol.Block) (fundsTxSlice []*protocol.FundsTx, acc
 	//parallel transaction data fetch
 	errChan := make(chan error, 3)
 
+	//we need to allocate slice space for the underlying array when we give pass it as reference
+	fundsTxSlice = make([]*protocol.FundsTx, block.NrFundsTx)
+	accTxSlice = make([]*protocol.AccTx, block.NrAccTx)
+	configTxSlice = make([]*protocol.ConfigTx, block.NrConfigTx)
+
 	go fetchFundsTxData(block, fundsTxSlice, errChan)
 	go fetchAccTxData(block, accTxSlice, errChan)
 	go fetchConfigTxData(block, configTxSlice, errChan)
 
 	for cnt := 0; cnt < 3; cnt++ {
 		err = <-errChan
-		fmt.Printf("%v\n", fundsTxSlice)
 		if err != nil {
 			return nil,nil,nil,err
 		}
 	}
-
-	fmt.Printf("Funds: \n")
-	fmt.Printf("%v\n", fundsTxSlice)
-	fmt.Printf("Accs: \n")
-	fmt.Printf("%v\n", accTxSlice)
-	fmt.Printf("Configs: \n")
-	fmt.Printf("%v\n", configTxSlice)
 
 	if acc := getAccountFromHash(block.Beneficiary); acc == nil {
 		return nil, nil, nil, errors.New("Beneficiary not in the State.")
@@ -328,16 +325,19 @@ func preValidation(block *protocol.Block) (fundsTxSlice []*protocol.FundsTx, acc
 
 func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, errChan chan error) {
 
-	for _, txHash := range block.FundsTxData {
+	for cnt, txHash := range block.FundsTxData {
 		closedTx := storage.ReadClosedTx(txHash)
 		if closedTx != nil {
 			errChan <- errors.New("Block validation had fundsTx that was already in a previous block")
 			return
 		}
 
+		var tx protocol.Transaction
 		var fundsTx *protocol.FundsTx
-		fundsTx = storage.ReadOpenTx(txHash).(*protocol.FundsTx)
-		if fundsTx == nil {
+		tx = storage.ReadOpenTx(txHash)
+		if tx != nil {
+			fundsTx = tx.(*protocol.FundsTx)
+		} else {
 			err := p2p.TxReq(txHash,p2p.FUNDSTX_REQ)
 			if err != nil {
 				errChan <- errors.New(fmt.Sprintf("FundsTx could not be read: %v", err))
@@ -358,14 +358,14 @@ func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, e
 			errChan <- errors.New("FundsTx could not be verified.")
 			return
 		}
-		fundsTxSlice = append(fundsTxSlice, fundsTx)
+		fundsTxSlice[cnt] = fundsTx
 	}
 	errChan <- nil
 }
 
 func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan chan error) {
 
-	for _, txHash := range block.AccTxData {
+	for cnt, txHash := range block.AccTxData {
 		closedTx := storage.ReadClosedTx(txHash)
 		if closedTx != nil {
 			errChan <- errors.New("Block validation had accTx that was already in a previous block")
@@ -380,7 +380,7 @@ func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan
 		} else {
 			err := p2p.TxReq(txHash,p2p.ACCTX_REQ)
 			if err != nil {
-				errChan <- errors.New(fmt.Sprintf("FundsTx could not be read: %v", err))
+				errChan <- errors.New(fmt.Sprintf("AccTx could not be read: %v", err))
 				return
 			}
 
@@ -389,30 +389,33 @@ func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan
 			case accTx = <-p2p.AccTxChan:
 				//limit the waiting time to 30 seconds
 			case <-time.After(TXFETCH_TIMEOUT*time.Second):
-				errChan <- errors.New("FundsTx fetch timed out.")
+				errChan <- errors.New("AccTx fetch timed out.")
 			}
 		}
 
 		if !verifyAccTx(accTx) {
 			errChan <- errors.New("AccTx could not be verified.")
 		}
-		accTxSlice = append(accTxSlice, accTx)
+		accTxSlice[cnt] = accTx
 	}
 	errChan<-nil
 }
 
 func fetchConfigTxData(block *protocol.Block, configTxSlice []*protocol.ConfigTx, errChan chan error) {
 
-	for _, txHash := range block.ConfigTxData {
+	for cnt, txHash := range block.ConfigTxData {
 		closedTx := storage.ReadClosedTx(txHash)
 		if closedTx != nil {
 			errChan <- errors.New("Block validation had configTx that was already in a previous block")
 			return
 		}
 
+		var tx protocol.Transaction
 		var configTx *protocol.ConfigTx
-		configTx = storage.ReadOpenTx(txHash).(*protocol.ConfigTx)
-		if configTx == nil {
+		tx = storage.ReadOpenTx(txHash)
+		if tx != nil {
+			configTx = tx.(*protocol.ConfigTx)
+		} else {
 			err := p2p.TxReq(txHash,p2p.CONFIGTX_REQ)
 			if err != nil {
 				errChan <- errors.New(fmt.Sprintf("ConfigTx could not be read: %v", err))
@@ -424,16 +427,16 @@ func fetchConfigTxData(block *protocol.Block, configTxSlice []*protocol.ConfigTx
 			case configTx = <-p2p.ConfigTxChan:
 				//limit the waiting time to 30 seconds
 			case <-time.After(TXFETCH_TIMEOUT*time.Second):
-				errChan <- errors.New("FundsTx fetch timed out.")
+				errChan <- errors.New("ConfigTx fetch timed out.")
 				return
 			}
 		}
 
 		if !verifyConfigTx(configTx) {
-			errChan <- errors.New("AccTx could not be verified.")
+			errChan <- errors.New("ConfigTx could not be verified.")
 			return
 		}
-		configTxSlice = append(configTxSlice, configTx)
+		configTxSlice[cnt] = configTx
 	}
 	errChan <- nil
 }

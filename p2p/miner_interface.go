@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 )
 
@@ -81,7 +80,6 @@ func forwardTxReqToMiner(p *peer, payload []byte, txType uint8) {
 }
 
 func forwardBlockReqToMiner(p *peer, payload []byte) {
-	fmt.Printf("Received the response to a block request from %v: %x.\n", p.conn.RemoteAddr().String(), payload)
 	logger.Printf("Received the response to a block request from %v.\n", p.conn.RemoteAddr().String())
 	BlockReqChan<-payload
 }
