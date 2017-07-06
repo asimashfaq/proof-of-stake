@@ -8,10 +8,10 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"io/ioutil"
+	"log"
 	"math/big"
 	"os"
 	"testing"
-	"log"
 )
 
 var PrivKeyA, PrivKeyB, MinerPrivKey ecdsa.PrivateKey
@@ -152,7 +152,7 @@ func TestMain(m *testing.M) {
 	addTestingAccounts()
 	addRootAccounts()
 	//we don't want logging msgs when testing, designated messages
-	logger = log.New(nil,"",0)
+	logger = log.New(nil, "", 0)
 	logger.SetOutput(ioutil.Discard)
 	os.Exit(m.Run())
 

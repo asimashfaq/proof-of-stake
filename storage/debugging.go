@@ -13,7 +13,7 @@ func PrintOpenTxs() {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openfunds"))
 		b.ForEach(func(k, v []byte) error {
-			fmt.Printf("%x: %x\n", k,v)
+			fmt.Printf("%x: %x\n", k, v)
 			return nil
 		})
 		return nil

@@ -2,8 +2,8 @@ package p2p
 
 import (
 	"bufio"
-	"time"
 	"math/rand"
+	"time"
 )
 
 func rcvData(p *peer) (*Header, []byte, error) {
@@ -13,7 +13,7 @@ func rcvData(p *peer) (*Header, []byte, error) {
 	if err != nil {
 		logger.Printf("Connection to %v aborted: (%v)\n", p.conn.RemoteAddr().String(), err)
 		p.conn.Close()
-		return nil,nil,err
+		return nil, nil, err
 	}
 	payload := make([]byte, header.Len)
 
@@ -43,7 +43,7 @@ func getRandomPeer() *peer {
 		if len(peers) > 0 {
 			break
 		}
-		time.Sleep(50*time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 
 	pos := int(rand.Uint32()) % len(peers)

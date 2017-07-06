@@ -27,7 +27,7 @@ func txRes(p *peer, payload []byte, txKind uint8) {
 
 	if tx == nil {
 		packet := BuildPacket(NOT_FOUND, nil)
-		sendData(p,packet)
+		sendData(p, packet)
 		return
 	}
 
@@ -41,14 +41,14 @@ func txRes(p *peer, payload []byte, txKind uint8) {
 		packet = BuildPacket(CONFIGTX_RES, tx.Encode())
 	}
 
-	sendData(p,packet)
+	sendData(p, packet)
 }
 
 func blockRes(p *peer, payload []byte) {
 
 	var (
 		blockHash [32]byte
-		block *protocol.Block
+		block     *protocol.Block
 	)
 
 	copy(blockHash[:], payload[0:32])
@@ -60,12 +60,12 @@ func blockRes(p *peer, payload []byte) {
 
 	if block == nil {
 		packet := BuildPacket(NOT_FOUND, nil)
-		sendData(p,packet)
+		sendData(p, packet)
 		return
 	}
 
 	packet := BuildPacket(BLOCK_RES, block.Encode())
-	sendData(p,packet)
+	sendData(p, packet)
 }
 
 func accRes(p *peer, payload []byte) {
@@ -77,11 +77,11 @@ func accRes(p *peer, payload []byte) {
 
 	if encodedAcc == nil {
 		packet := BuildPacket(NOT_FOUND, nil)
-		sendData(p,packet)
+		sendData(p, packet)
 		return
 	}
 	packet := BuildPacket(ACC_RES, encodedAcc)
-	sendData(p,packet)
+	sendData(p, packet)
 }
 
 func timeRes(p *peer) {
@@ -90,13 +90,13 @@ func timeRes(p *peer) {
 	time := time.Now().Unix()
 	binary.BigEndian.PutUint64(buf[:], uint64(time))
 	packet := BuildPacket(TIME_RES, buf[:])
-	sendData(p,packet)
+	sendData(p, packet)
 }
 
 func pongRes(p *peer, payload []byte) {
 
 	packet := BuildPacket(MINER_PONG, nil)
-	sendData(p,packet)
+	sendData(p, packet)
 }
 
 func neighborRes(p *peer, payload []byte) {
@@ -115,7 +115,7 @@ func neighborRes(p *peer, payload []byte) {
 			addrPart, err := strconv.Atoi(split[ipv4addr])
 			if err != nil {
 				packet = BuildPacket(NEIGHBOR_RES, nil)
-				sendData(p,packet)
+				sendData(p, packet)
 				return
 			}
 			payload[index] = byte(addrPart)
@@ -124,5 +124,5 @@ func neighborRes(p *peer, payload []byte) {
 	}
 
 	packet = BuildPacket(NEIGHBOR_RES, payload)
-	sendData(p,packet)
+	sendData(p, packet)
 }

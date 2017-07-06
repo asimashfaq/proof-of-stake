@@ -2,13 +2,13 @@ package p2p
 
 import (
 	"errors"
+	"github.com/lisgie/bazo_miner/protocol"
 	"log"
 	"net"
 	"os"
 	"strconv"
-	"time"
 	"sync"
-	"github.com/lisgie/bazo_miner/protocol"
+	"time"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 
 var (
 	//LogFile    *os.File
-	logger *log.Logger
+	logger     *log.Logger
 	peers      map[*peer]bool
 	brdcstMsg  chan []byte
 	register   chan *peer
@@ -39,15 +39,14 @@ type TxInfo struct {
 type peer struct {
 	conn net.Conn
 	ch   chan []byte
-	l sync.Mutex
+	l    sync.Mutex
 }
 
 //4 channels for communication with miner, blocks in/out and txs in/out
 func Init(port string) error {
 
 	LogFile, _ := os.OpenFile("log/p2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
-	logger = log.New(LogFile,"",log.LstdFlags)
-
+	logger = log.New(LogFile, "", log.LstdFlags)
 
 	TxsIn = make(chan TxInfo, TX_BUFFER)
 	BlockIn = make(chan []byte)
@@ -132,7 +131,7 @@ func initiateNewMinerConnection(ip string) (*peer, error) {
 	var conn net.Conn
 
 	conn, err := net.Dial("tcp", ip+":"+strconv.Itoa(PORT))
-	p := &peer{conn,nil,sync.Mutex{}}
+	p := &peer{conn, nil, sync.Mutex{}}
 
 	if err != nil {
 		return nil, err
@@ -163,7 +162,7 @@ func listener(port string) {
 			logger.Printf("%v\n", err)
 			continue
 		}
-		p := &peer{conn,nil,sync.Mutex{}}
+		p := &peer{conn, nil, sync.Mutex{}}
 		go handleNewConn(p)
 	}
 }
@@ -190,7 +189,7 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 
 	logger.Printf("Received request from %v with following header:\n%v", p.conn.RemoteAddr().String(), header)
 	switch header.TypeID {
-		//BROADCASTING
+	//BROADCASTING
 	case FUNDSTX_BRDCST:
 		forwardTxToMiner(p, payload, FUNDSTX_BRDCST)
 	case ACCTX_BRDCST:
@@ -287,6 +286,6 @@ func minerConn(p *peer) {
 func peerWriter(p *peer) {
 	for msg := range p.ch {
 		logger.Printf("Sending payload to %v\n", p.conn.RemoteAddr().String())
-		sendData(p,msg)
+		sendData(p, msg)
 	}
 }

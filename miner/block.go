@@ -5,11 +5,11 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/lisgie/bazo_miner/p2p"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"golang.org/x/crypto/sha3"
 	"time"
-	"github.com/lisgie/bazo_miner/p2p"
 )
 
 //acts as a temporary datastructure to fetch the payload of all transactions
@@ -287,7 +287,7 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 	for cnt := 0; cnt < 3; cnt++ {
 		err = <-errChan
 		if err != nil {
-			return nil,nil,nil,err
+			return nil, nil, nil, err
 		}
 	}
 
@@ -338,7 +338,7 @@ func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan
 		if tx != nil {
 			accTx = tx.(*protocol.AccTx)
 		} else {
-			err := p2p.TxReq(txHash,p2p.ACCTX_REQ)
+			err := p2p.TxReq(txHash, p2p.ACCTX_REQ)
 			if err != nil {
 				errChan <- errors.New(fmt.Sprintf("AccTx could not be read: %v", err))
 				return
@@ -348,7 +348,7 @@ func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan
 			select {
 			case accTx = <-p2p.AccTxChan:
 				//limit the waiting time to 30 seconds
-			case <-time.After(TXFETCH_TIMEOUT*time.Second):
+			case <-time.After(TXFETCH_TIMEOUT * time.Second):
 				errChan <- errors.New("AccTx fetch timed out.")
 			}
 		}
@@ -358,7 +358,7 @@ func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan
 		}
 		accTxSlice[cnt] = accTx
 	}
-	errChan<-nil
+	errChan <- nil
 }
 
 func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, errChan chan error) {
@@ -376,7 +376,7 @@ func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, e
 		if tx != nil {
 			fundsTx = tx.(*protocol.FundsTx)
 		} else {
-			err := p2p.TxReq(txHash,p2p.FUNDSTX_REQ)
+			err := p2p.TxReq(txHash, p2p.FUNDSTX_REQ)
 			if err != nil {
 				errChan <- errors.New(fmt.Sprintf("FundsTx could not be read: %v", err))
 				return
@@ -385,7 +385,7 @@ func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, e
 			//blocking wait
 			select {
 			case fundsTx = <-p2p.FundsTxChan:
-			case <-time.After(TXFETCH_TIMEOUT*time.Second):
+			case <-time.After(TXFETCH_TIMEOUT * time.Second):
 				errChan <- errors.New("FundsTx fetch timed out.")
 				return
 			}
@@ -416,7 +416,7 @@ func fetchConfigTxData(block *protocol.Block, configTxSlice []*protocol.ConfigTx
 		if tx != nil {
 			configTx = tx.(*protocol.ConfigTx)
 		} else {
-			err := p2p.TxReq(txHash,p2p.CONFIGTX_REQ)
+			err := p2p.TxReq(txHash, p2p.CONFIGTX_REQ)
 			if err != nil {
 				errChan <- errors.New(fmt.Sprintf("ConfigTx could not be read: %v", err))
 				return
@@ -426,7 +426,7 @@ func fetchConfigTxData(block *protocol.Block, configTxSlice []*protocol.ConfigTx
 			select {
 			case configTx = <-p2p.ConfigTxChan:
 				//limit the waiting time to 30 seconds
-			case <-time.After(TXFETCH_TIMEOUT*time.Second):
+			case <-time.After(TXFETCH_TIMEOUT * time.Second):
 				errChan <- errors.New("ConfigTx fetch timed out.")
 				return
 			}

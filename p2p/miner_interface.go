@@ -14,10 +14,10 @@ var (
 	BlockOut chan []byte
 
 	//Data requested by miner, to allow parallelism, we have a chan for every tx type
-	FundsTxChan chan *protocol.FundsTx
-	AccTxChan chan *protocol.AccTx
+	FundsTxChan  chan *protocol.FundsTx
+	AccTxChan    chan *protocol.AccTx
 	ConfigTxChan chan *protocol.ConfigTx
- 	BlockReqChan chan []byte
+	BlockReqChan chan []byte
 )
 
 //this is for blocks and txs that the miner successfully validated
@@ -61,25 +61,25 @@ func forwardTxReqToMiner(p *peer, payload []byte, txType uint8) {
 		if fundsTx == nil {
 			return
 		}
-		FundsTxChan<-fundsTx
+		FundsTxChan <- fundsTx
 	case ACCTX_RES:
 		var accTx *protocol.AccTx
 		accTx = accTx.Decode(payload)
 		if accTx == nil {
 			return
 		}
-		AccTxChan<-accTx
+		AccTxChan <- accTx
 	case CONFIGTX_RES:
 		var configTx *protocol.ConfigTx
 		configTx = configTx.Decode(payload)
-		if configTx == nil{
+		if configTx == nil {
 			return
 		}
-		ConfigTxChan<-configTx
+		ConfigTxChan <- configTx
 	}
 }
 
 func forwardBlockReqToMiner(p *peer, payload []byte) {
 	logger.Printf("Received the response to a block request from %v.\n", p.conn.RemoteAddr().String())
-	BlockReqChan<-payload
+	BlockReqChan <- payload
 }

@@ -98,7 +98,7 @@ func TestReadWriteDeleteBlock(t *testing.T) {
 	//this shouldn't panic
 	DeleteOpenBlock([32]byte{'0'})
 
-	b,b2,b3 := new(protocol.Block),new(protocol.Block),new(protocol.Block)
+	b, b2, b3 := new(protocol.Block), new(protocol.Block), new(protocol.Block)
 	b.Hash = [32]byte{'0'}
 	b2.Hash = [32]byte{'1'}
 	b3.Hash = [32]byte{'2'}
@@ -128,6 +128,6 @@ func TestReadWriteDeleteBlock(t *testing.T) {
 		ReadClosedBlock(b.Hash) == nil ||
 		ReadClosedBlock(b2.Hash) == nil ||
 		ReadClosedBlock(b3.Hash) == nil {
-			t.Error("Failed to write block to kv storage.")
-		}
+		t.Error("Failed to write block to kv storage.")
+	}
 }

@@ -13,7 +13,7 @@ func BlockReq(hash [32]byte) error {
 		return errors.New("Couldn't get a connection, request not transmitted.")
 	}
 
-	packet := BuildPacket(BLOCK_REQ,hash[:])
+	packet := BuildPacket(BLOCK_REQ, hash[:])
 	sendData(p, packet)
 	return nil
 }
@@ -25,7 +25,7 @@ func TxReq(hash [32]byte, reqType uint8) error {
 		return errors.New("Couldn't get a connection, request not transmitted.")
 	}
 
-	packet := BuildPacket(reqType,hash[:])
+	packet := BuildPacket(reqType, hash[:])
 	sendData(p, packet)
 
 	fmt.Println("Sent transaction request packet.")

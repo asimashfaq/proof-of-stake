@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
+	"log"
 	"math/big"
 	"os"
 	"sync"
 	"time"
-	"log"
 )
 
 var logger *log.Logger
@@ -31,7 +31,7 @@ func Init() {
 	testing_setup()
 
 	LogFile, _ := os.OpenFile("log/miner "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
-	logger = log.New(LogFile,"",log.LstdFlags)
+	logger = log.New(LogFile, "", log.LstdFlags)
 
 	//var tmpTimestamp []int64
 	parameterSlice = append(parameterSlice, parameters{

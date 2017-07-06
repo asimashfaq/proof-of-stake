@@ -9,6 +9,5 @@ func neighborReq() {
 	}
 
 	packet := BuildPacket(NEIGHBOR_REQ, nil)
-	sendData(p,packet)
+	sendData(p, packet)
 }
-
