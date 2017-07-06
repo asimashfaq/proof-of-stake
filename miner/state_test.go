@@ -67,8 +67,8 @@ func TestFundsTxStateChange(t *testing.T) {
 	}
 
 	balBeforeRew := minerAcc.Balance
-	collectBlockReward(BLOCK_REWARD, minerAccHash)
-	if minerAcc.Balance != balBeforeRew+BLOCK_REWARD {
+	collectBlockReward(activeParameters.block_reward, minerAccHash)
+	if minerAcc.Balance != balBeforeRew+activeParameters.block_reward {
 		t.Error("Block reward collection failed!")
 	}
 }
@@ -187,11 +187,11 @@ func TestConfigTxStateChange(t *testing.T) {
 	configs2 = append(configs2, tx5)
 
 	configStateChange(configs2, [32]byte{})
-	if BLOCK_SIZE != 1000 ||
-		DIFF_INTERVAL != 2000 ||
-		FEE_MINIMUM != 3000 ||
-		BLOCK_INTERVAL != 4000 ||
-		BLOCK_REWARD != 5000 {
+	if activeParameters.block_size != 1000 ||
+		activeParameters.diff_interval != 2000 ||
+		activeParameters.fee_minimum != 3000 ||
+		activeParameters.block_interval != 4000 ||
+		activeParameters.block_reward != 5000 {
 		t.Error("Config StateChanged didn't set the correct parameters!")
 	}
 }

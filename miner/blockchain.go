@@ -44,8 +44,8 @@ func Init() {
 	})
 	activeParameters = &parameterSlice[0]
 
-	localBlockCount = 0
-	globalBlockCount = 0
+	localBlockCount = -1
+	globalBlockCount = -1
 	genesis := newBlock([32]byte{})
 	collectStatistics(genesis)
 	storage.WriteClosedBlock(genesis)

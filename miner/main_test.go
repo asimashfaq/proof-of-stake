@@ -111,17 +111,10 @@ func cleanAndPrepare() {
 
 	lastBlock = nil
 
-	localBlockCount = 0
-	globalBlockCount = 0
-	genesis := newBlock([32]byte{})
-	collectStatistics(genesis)
-	storage.WriteClosedBlock(genesis)
+	targetTime = new(timerange)
+	target = append(target, 10)
 
 	var tmpSlice []parameters
-	var tmpTimestamp []int64
-
-	timestamp = tmpTimestamp
-
 	tmpSlice = append(tmpSlice, parameters{
 		[32]byte{},
 		1,
@@ -132,6 +125,16 @@ func cleanAndPrepare() {
 	})
 	parameterSlice = tmpSlice
 	activeParameters = &parameterSlice[0]
+
+	localBlockCount = -1
+	globalBlockCount = -1
+	genesis := newBlock([32]byte{})
+	collectStatistics(genesis)
+	storage.WriteClosedBlock(genesis)
+
+
+
+
 
 	addTestingAccounts()
 	addRootAccounts()

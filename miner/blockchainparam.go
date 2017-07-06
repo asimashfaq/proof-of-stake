@@ -15,11 +15,11 @@ var (
 	//BLOCK_REWARD uint64
 
 	lastBlock        *protocol.Block
-	globalBlockCount uint64
-	localBlockCount  uint64
+	globalBlockCount int64
+	localBlockCount  int64
 
 	target     []uint8
-	targetTime timerange
+	targetTime *timerange
 )
 
 const (
@@ -32,6 +32,8 @@ const (
 type parameters struct {
 	blockHash [32]byte
 	//parameter
+	//using int64 instead of uint64 for compatability with other programming langues
+	//and also with time.Now().Unix() which is in int64
 	fee_minimum    uint64
 	block_size     uint64
 	diff_interval  uint64
@@ -63,24 +65,19 @@ func (param parameters) String() string {
 }
 
 func collectStatistics(b *protocol.Block) {
-	//we need to make sure that we have the longest chain
-	//long is defined as the added difficulty from the genesis block
-
 	//Careful, this might lead to problems when run on 32-bit systems!, len(...) results an int, whose size
 	// /depends on the underlying architecture
-	if uint64(len(timestamp)) <= localBlockCount {
-		newTimeStamp := make([]int64, 2*(len(timestamp)+1))
-		copy(newTimeStamp, timestamp)
-		timestamp = newTimeStamp
-	}
 
 	globalBlockCount++
 	localBlockCount++
 
-	if localBlockCount == activeParameters.diff_interval {
+	if localBlockCount == int64(activeParameters.diff_interval) {
 		targetTime.last = b.Timestamp
+		//pre-alloation (
 		target = append(target, calculateNewDifficulty(targetTime))
 		localBlockCount = 0
+		targetTime = new(timerange)
+		targetTime.first = b.Timestamp
 	}
 
 	lastBlock = b
@@ -91,19 +88,17 @@ func collectStatisticsRollback(b *protocol.Block) {
 	globalBlockCount--
 
 	if localBlockCount == 0 {
-		localBlockCount = activeParameters.diff_interval
-		//calculateNewDifficulty()
+		//localBlockCount = activeParameters.diff_interval-1
+
 	} else {
 		localBlockCount--
 	}
-
-	timestamp[int(localBlockCount)] = 0
 
 	newLastBlock := storage.ReadClosedBlock(b.PrevHash)
 	lastBlock = newLastBlock
 }
 
-func calculateNewDifficulty(t timerange) uint8 {
+func calculateNewDifficulty(t *timerange) uint8 {
 
 	diff_now := t.last - t.first
 	diff_wanted := activeParameters.block_interval * (activeParameters.diff_interval)
@@ -113,4 +108,6 @@ func calculateNewDifficulty(t timerange) uint8 {
 	return uint8(target_change * float32(target[len(target)-1]))
 }
 
-func getDifficulty() uint8 { return target[len(target)-1] }
+func getDifficulty() uint8 {
+	return target[len(target)-1]
+}

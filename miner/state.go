@@ -110,6 +110,10 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 //we accept config slices with unknown id, but don't act on the payload
 func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 
+	var newParameters parameters
+	//initialize it to state right now (before validating config txs)
+	newParameters = *activeParameters
+
 	if len(configTxSlice) == 0 {
 		return
 	}
@@ -118,27 +122,27 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 		switch tx.Id {
 		case protocol.FEE_MINIMUM_ID:
 			if parameterBoundsChecking(protocol.FEE_MINIMUM_ID, tx.Payload) {
-				FEE_MINIMUM = tx.Payload
+				newParameters.fee_minimum = tx.Payload
 				change = true
 			}
 		case protocol.BLOCK_SIZE_ID:
 			if parameterBoundsChecking(protocol.BLOCK_SIZE_ID, tx.Payload) {
-				BLOCK_SIZE = tx.Payload
+				newParameters.block_size = tx.Payload
 				change = true
 			}
 		case protocol.DIFF_INTERVAL_ID:
 			if parameterBoundsChecking(protocol.DIFF_INTERVAL_ID, tx.Payload) {
-				DIFF_INTERVAL = tx.Payload
+				newParameters.diff_interval = tx.Payload
 				change = true
 			}
 		case protocol.BLOCK_INTERVAL_ID:
 			if parameterBoundsChecking(protocol.BLOCK_INTERVAL_ID, tx.Payload) {
-				BLOCK_INTERVAL = tx.Payload
+				newParameters.block_interval = tx.Payload
 				change = true
 			}
 		case protocol.BLOCK_REWARD_ID:
 			if parameterBoundsChecking(protocol.BLOCK_REWARD_ID, tx.Payload) {
-				BLOCK_REWARD = tx.Payload
+				newParameters.block_reward = tx.Payload
 				change = true
 			}
 		}
@@ -146,14 +150,7 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 
 	//only add a new parameter struct if something meaningful actually changed
 	if change {
-		parameterSlice = append(parameterSlice, parameters{
-			blockHash,
-			FEE_MINIMUM,
-			BLOCK_SIZE,
-			DIFF_INTERVAL,
-			BLOCK_INTERVAL,
-			BLOCK_REWARD,
-		})
+		parameterSlice = append(parameterSlice, newParameters)
 		activeParameters = &parameterSlice[len(parameterSlice)-1]
 	}
 }

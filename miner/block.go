@@ -35,8 +35,8 @@ func newBlock(prevHash [32]byte) *protocol.Block {
 func addTx(b *protocol.Block, tx protocol.Transaction) error {
 	//verifies correctness for the specific transaction
 	//i'd actually like to use !(&tx).verify to pass by pointer, but golang doesn't allow this
-	if tx.TxFee() < FEE_MINIMUM {
-		logger.Printf("Transaction fee too low: %v (minimum is: %v)\n", tx.TxFee(), FEE_MINIMUM)
+	if tx.TxFee() < activeParameters.fee_minimum {
+		logger.Printf("Transaction fee too low: %v (minimum is: %v)\n", tx.TxFee(), activeParameters.fee_minimum)
 		return errors.New("Transaction rejected because fee is below minimal fee threshold.")
 	}
 
@@ -77,8 +77,8 @@ func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 		return errors.New("This transaction was already included in a previous block.")
 	}
 
-	if tx.Fee < FEE_MINIMUM {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
+	if tx.Fee < activeParameters.fee_minimum {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, activeParameters.fee_minimum)
 		return errors.New(err)
 	}
 
@@ -101,8 +101,8 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 		return errors.New("This transaction was already included in a previous Block.")
 	}
 
-	if tx.Fee < FEE_MINIMUM {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
+	if tx.Fee < activeParameters.fee_minimum {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, activeParameters.fee_minimum)
 		return errors.New(err)
 	}
 
@@ -169,8 +169,8 @@ func addConfigTx(b *protocol.Block, tx *protocol.ConfigTx) error {
 		return errors.New("This transaction was already included in a previous block.")
 	}
 
-	if tx.Fee < FEE_MINIMUM {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, FEE_MINIMUM)
+	if tx.Fee < activeParameters.fee_minimum {
+		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, activeParameters.fee_minimum)
 		return errors.New(err)
 	}
 
