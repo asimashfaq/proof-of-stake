@@ -150,6 +150,7 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 
 	//only add a new parameter struct if something meaningful actually changed
 	if change {
+		newParameters.blockHash = blockHash
 		parameterSlice = append(parameterSlice, newParameters)
 		activeParameters = &parameterSlice[len(parameterSlice)-1]
 	}
