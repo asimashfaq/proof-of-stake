@@ -36,7 +36,7 @@ func proofOfWork(diff uint8, partialHash [32]byte) (*big.Int, error) {
 	for ; ; cnt.Add(cnt, oneIncr) {
 
 		//CPU IS BUUUUUUUUUUUUUUURNING otherwise
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(time.Millisecond)
 
 		if startedWith != lastBlock.Hash {
 			return nil, errors.New("Abort mining, another block has been successfully validated in the meantime")

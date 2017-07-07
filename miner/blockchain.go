@@ -41,6 +41,7 @@ func Init() {
 		2016,
 		60,
 		0,
+		10,
 	})
 	activeParameters = &parameterSlice[0]
 
@@ -51,9 +52,6 @@ func Init() {
 	storage.WriteClosedBlock(genesis)
 
 	logger.Println("Starting system, initializing state map")
-	//genesisBlock := newBlock([32]byte{})
-	//collectStatistics(genesisBlock)
-	//storage.WriteBlock(genesisBlock)
 
 	go incomingData()
 	mining()

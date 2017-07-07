@@ -134,28 +134,26 @@ func parameterBoundsChecking(id uint8, payload uint64) bool {
 		if payload >= protocol.MIN_BLOCK_SIZE && payload <= protocol.MAX_BLOCK_SIZE {
 			return true
 		}
-		return false
 	case protocol.DIFF_INTERVAL_ID:
 		if payload >= protocol.MIN_DIFF_INTERVAL && payload <= protocol.MAX_DIFF_INTERVAL {
 			return true
 		}
-		return false
 	case protocol.FEE_MINIMUM_ID:
 		if payload >= protocol.MIN_FEE_MINIMUM && payload <= protocol.MAX_FEE_MINIMUM {
 			return true
 		}
-		return false
 	case protocol.BLOCK_INTERVAL_ID:
 		if payload >= protocol.MIN_BLOCK_INTERVAL && payload <= protocol.MAX_BLOCK_INTERVAL {
 			return true
 		}
-		return false
 	case protocol.BLOCK_REWARD_ID:
 		if payload >= protocol.MIN_BLOCK_REWARD && payload <= protocol.MAX_BLOCK_REWARD {
 			return true
 		}
-		return false
-	default:
-		return false
+	case protocol.TARGET_ID:
+		if payload >= protocol.MIN_TARGET && payload <= protocol.MAX_TARGET {
+			return true
+		}
 	}
+	return false
 }

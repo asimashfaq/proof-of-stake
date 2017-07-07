@@ -39,6 +39,11 @@ type parameters struct {
 	diff_interval  uint64
 	block_interval uint64
 	block_reward   uint64
+	target_id uint64
+
+	//whenever we rollback, we need to revert to that value
+	localBlockCountSnapshot uint64
+	timerangeSnapshot timerange
 }
 
 type timerange struct {
@@ -71,10 +76,20 @@ func collectStatistics(b *protocol.Block) {
 	globalBlockCount++
 	localBlockCount++
 
+	//whenever a system config change happens, we restart counting (even though it's not related to timestamping,
+	//acts as "checkpointing" in some sense
+	if activeParameters.blockHash == b.Hash {
+		fmt.Printf("%v\n", b)
+		localBlockCount = 0
+		targetTime = new(timerange)
+		targetTime.first = b.Timestamp
+	}
+
 	if localBlockCount == int64(activeParameters.diff_interval) {
 		targetTime.last = b.Timestamp
 		//pre-alloation (
 		target = append(target, calculateNewDifficulty(targetTime))
+		logger.Printf("Target changed, new target:")
 		localBlockCount = 0
 		targetTime = new(timerange)
 		targetTime.first = b.Timestamp
@@ -103,9 +118,27 @@ func calculateNewDifficulty(t *timerange) uint8 {
 	diff_now := t.last - t.first
 	diff_wanted := activeParameters.block_interval * (activeParameters.diff_interval)
 
-	target_change := float32(diff_wanted) / float32(diff_now)
+	diff_ratio := float32(diff_wanted) / float32(diff_now)
 
-	return uint8(target_change * float32(target[len(target)-1]))
+	//the +-0.5 is basically the "round" function
+	var target_change float32
+	if diff_ratio >= 1 {
+		target_change = diff_ratio
+		target_change += 0.5
+	} else {
+		target_change = -(1/diff_ratio)
+		target_change -= 0.5
+	}
+
+	//substitutes the "round" function
+	fmt.Printf("diff_now = %v, diff_wanted = %v, diff_ratio = %v, target_change = %v\n", diff_now, diff_wanted, diff_ratio, target_change)
+
+	//sanity check
+	if target_change >= 4 { //make it at least 4 times as hard or easy, I think Bitcoin has something similar
+		target_change = 4
+	}
+
+	return uint8(target_change + float32(target[len(target)-1]))
 }
 
 func getDifficulty() uint8 {

@@ -123,6 +123,7 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 		case protocol.FEE_MINIMUM_ID:
 			if parameterBoundsChecking(protocol.FEE_MINIMUM_ID, tx.Payload) {
 				newParameters.fee_minimum = tx.Payload
+				//minor change, changes a runtime parameter, no further adaptations
 				change = true
 			}
 		case protocol.BLOCK_SIZE_ID:
@@ -130,6 +131,14 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 				newParameters.block_size = tx.Payload
 				change = true
 			}
+		case protocol.BLOCK_REWARD_ID:
+			if parameterBoundsChecking(protocol.BLOCK_REWARD_ID, tx.Payload) {
+				newParameters.block_reward = tx.Payload
+				change = true
+			}
+
+			//the following parameter changes all influence the timestamp process
+			//we therefore need to reset the difficulty calculation
 		case protocol.DIFF_INTERVAL_ID:
 			if parameterBoundsChecking(protocol.DIFF_INTERVAL_ID, tx.Payload) {
 				newParameters.diff_interval = tx.Payload
@@ -140,9 +149,9 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 				newParameters.block_interval = tx.Payload
 				change = true
 			}
-		case protocol.BLOCK_REWARD_ID:
-			if parameterBoundsChecking(protocol.BLOCK_REWARD_ID, tx.Payload) {
-				newParameters.block_reward = tx.Payload
+		case protocol.TARGET_ID:
+			if parameterBoundsChecking(protocol.TARGET_ID, tx.Payload) {
+				newParameters.target_id = tx.Payload
 				change = true
 			}
 		}
@@ -151,9 +160,20 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 	//only add a new parameter struct if something meaningful actually changed
 	if change {
 		newParameters.blockHash = blockHash
+
+		//TODO: this is ugly
+		//localBlockCount is int64, because we want to start at -1, so the genesis block is exactly block nr. 0
+		newParameters.localBlockCountSnapshot = uint64(localBlockCount)
+		newParameters.timerangeSnapshot = *targetTime
+
+		//target itself needs to be saved as well
+
 		parameterSlice = append(parameterSlice, newParameters)
 		activeParameters = &parameterSlice[len(parameterSlice)-1]
 	}
+
+	//some parameters require more changes than just updating a runtime variable
+
 }
 
 func collectTxFees(accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, minerHash [32]byte) error {

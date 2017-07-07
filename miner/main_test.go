@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 )
 
 var PrivKeyA, PrivKeyB, MinerPrivKey ecdsa.PrivateKey
@@ -129,12 +130,9 @@ func cleanAndPrepare() {
 	localBlockCount = -1
 	globalBlockCount = -1
 	genesis := newBlock([32]byte{})
+	genesis.Timestamp = time.Now().Unix()
 	collectStatistics(genesis)
 	storage.WriteClosedBlock(genesis)
-
-
-
-
 
 	addTestingAccounts()
 	addRootAccounts()
