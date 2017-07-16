@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+//In-memory, k/v storage is tested with the test below
 func TestReadWriteDeleteTx(t *testing.T) {
 
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
@@ -18,7 +19,7 @@ func TestReadWriteDeleteTx(t *testing.T) {
 	var hashAccSlice []*protocol.AccTx
 	var hashConfigSlice []*protocol.ConfigTx
 
-	testsize := 100
+	testsize := 1000
 
 	loopMax := testsize
 	for i := 0; i < loopMax; i++ {

@@ -120,6 +120,9 @@ func calculateNewDifficulty(t *timerange) uint8 {
 
 	diff_ratio := float32(diff_wanted) / float32(diff_now)
 
+	//TODO: Careful, if the difference is diff_ratio is 2, we need to add (2-1) zeros, please change that as well
+	//TODO: Another problem: adding 3 zeros makes it 2*2*2 = 8 times as hard, not 3 times as hard, consider the factor
+
 	//the +-0.5 is basically the "round" function
 	var target_change float32
 	if diff_ratio >= 1 {

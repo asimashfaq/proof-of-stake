@@ -25,7 +25,9 @@ func DeleteClosedBlock(hash [32]byte) {
 
 func DeleteOpenTx(transaction protocol.Transaction) {
 
-	var bucket string
+	delete(txMemPool, transaction.Hash())
+
+	/*var bucket string
 	switch transaction.(type) {
 	case *protocol.FundsTx:
 		bucket = "openfunds"
@@ -41,7 +43,7 @@ func DeleteOpenTx(transaction protocol.Transaction) {
 		b := tx.Bucket([]byte(bucket))
 		err := b.Delete(hash[:])
 		return err
-	})
+	})*/
 }
 
 func DeleteClosedTx(transaction protocol.Transaction) {
@@ -82,7 +84,7 @@ func DeleteAll() {
 		})
 		return nil
 	})
-	db.Update(func(tx *bolt.Tx) error {
+	/*db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openfunds"))
 		b.ForEach(func(k, v []byte) error {
 			b.Delete(k)
@@ -105,7 +107,7 @@ func DeleteAll() {
 			return nil
 		})
 		return nil
-	})
+	})*/
 	db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("closedfunds"))
 		b.ForEach(func(k, v []byte) error {

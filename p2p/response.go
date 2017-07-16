@@ -2,11 +2,11 @@ package p2p
 
 import (
 	"encoding/binary"
-	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"strconv"
 	"strings"
 	"time"
+	"github.com/lisgie/bazo_miner/protocol"
 )
 
 func txRes(p *peer, payload []byte, txKind uint8) {

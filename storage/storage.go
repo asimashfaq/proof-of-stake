@@ -14,6 +14,7 @@ var (
 	logger   *log.Logger
 	State    map[[32]byte]*protocol.Account
 	RootKeys map[[32]byte]*protocol.Account
+	txMemPool map[[32]byte]protocol.Transaction
 )
 
 func Init(dbname string) {
@@ -23,6 +24,7 @@ func Init(dbname string) {
 
 	State = make(map[[32]byte]*protocol.Account)
 	RootKeys = make(map[[32]byte]*protocol.Account)
+	txMemPool = make(map[[32]byte]protocol.Transaction)
 
 	var err error
 	db, err = bolt.Open(dbname, 0600, nil)
@@ -44,7 +46,7 @@ func Init(dbname string) {
 		}
 		return nil
 	})
-	db.Update(func(tx *bolt.Tx) error {
+	/*db.Update(func(tx *bolt.Tx) error {
 		_, err = tx.CreateBucket([]byte("openfunds"))
 		if err != nil {
 			return fmt.Errorf("Create bucket: %s", err)
@@ -64,7 +66,7 @@ func Init(dbname string) {
 			return fmt.Errorf("Create bucket: %s", err)
 		}
 		return nil
-	})
+	})*/
 	db.Update(func(tx *bolt.Tx) error {
 		_, err = tx.CreateBucket([]byte("closedfunds"))
 		if err != nil {

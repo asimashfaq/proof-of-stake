@@ -9,6 +9,9 @@ import (
 	"log"
 )
 
+//TODO: Add TxCnt such that if two times (might be a significant amount of time apart) the same configTx
+//is broadcast, we don't run into problems
+
 const (
 	CONFIGTX_SIZE = 82
 

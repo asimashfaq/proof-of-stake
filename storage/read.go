@@ -39,7 +39,9 @@ func ReadClosedBlock(hash [32]byte) (block *protocol.Block) {
 
 func ReadOpenTx(hash [32]byte) (transaction protocol.Transaction) {
 
-	var encodedTx []byte
+	return txMemPool[hash]
+
+	/*var encodedTx []byte
 	var fundstx *protocol.FundsTx
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openfunds"))
@@ -69,13 +71,20 @@ func ReadOpenTx(hash [32]byte) (transaction protocol.Transaction) {
 	if encodedTx != nil {
 		return configtx.Decode(encodedTx)
 	}
-	return nil
+	return nil*/
 }
 
 //needed for the miner to prepare a new block
 func ReadAllOpenTxs() (allOpenTxs []protocol.Transaction) {
 
-	var fundstx *protocol.FundsTx
+	for key := range txMemPool {
+		allOpenTxs = append(allOpenTxs, txMemPool[key])
+	}
+
+	return
+
+
+	/*var fundstx *protocol.FundsTx
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openfunds"))
 		b.ForEach(func(k, v []byte) error {
@@ -105,7 +114,7 @@ func ReadAllOpenTxs() (allOpenTxs []protocol.Transaction) {
 		return nil
 	})
 
-	return allOpenTxs
+	return allOpenTxs*/
 }
 
 func ReadClosedTx(hash [32]byte) (transaction protocol.Transaction) {
