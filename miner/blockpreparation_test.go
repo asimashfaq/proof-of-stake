@@ -50,7 +50,9 @@ func TestPrepareAndSortTxs(t *testing.T) {
 	}
 
 	b := newBlock([32]byte{})
+	//fmt.Printf("%v\n", b)
 	prepareBlock(b)
+	//fmt.Printf("%v\n", b)
 	finalizeBlock(b)
 
 	//we could also use sort.IsSorted(...) bool, but manual check makes sure our sort interface is correct

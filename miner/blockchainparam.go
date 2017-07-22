@@ -42,8 +42,6 @@ type parameters struct {
 	target_id uint64
 
 	//whenever we rollback, we need to revert to that value
-	localBlockCountSnapshot uint64
-	timerangeSnapshot timerange
 }
 
 type timerange struct {
@@ -79,7 +77,6 @@ func collectStatistics(b *protocol.Block) {
 	//whenever a system config change happens, we restart counting (even though it's not related to timestamping,
 	//acts as "checkpointing" in some sense
 	if activeParameters.blockHash == b.Hash {
-		fmt.Printf("%v\n", b)
 		localBlockCount = 0
 		targetTime = new(timerange)
 		targetTime.first = b.Timestamp

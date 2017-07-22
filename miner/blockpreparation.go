@@ -13,12 +13,12 @@ func prepareBlock(block *protocol.Block) {
 	//empty mempool (opentxs)
 	opentxs := storage.ReadAllOpenTxs()
 
+
 	//this copy is strange, but seems to be necessary?
 	//shouldn't be too bad because no deep copy
 	var tmpCopy openTxs
 	tmpCopy = opentxs
 	sort.Sort(tmpCopy)
-
 	for _, tx := range opentxs {
 		err := addTx(block, tx)
 		if err != nil {
@@ -41,9 +41,12 @@ func (f openTxs) Less(i, j int) bool {
 	//why can we only do that with switch, and not e.g., if tx.(type) == ..?
 	switch f[i].(type) {
 	case *protocol.AccTx:
-		return false
+		//We only want to sort a subset of all transactions, namely all fundstxs.
+		//However, to successfully do that we have to place all other txs at the beginning
+		//The order between accTxs and configTxs doesn't matter
+		return true
 	case *protocol.ConfigTx:
-		return false
+		return true
 	}
 
 	switch f[j].(type) {
@@ -52,5 +55,6 @@ func (f openTxs) Less(i, j int) bool {
 	case *protocol.ConfigTx:
 		return false
 	}
+
 	return f[i].(*protocol.FundsTx).TxCnt < f[j].(*protocol.FundsTx).TxCnt
 }

@@ -68,6 +68,12 @@ func DeleteClosedTx(transaction protocol.Transaction) {
 
 func DeleteAll() {
 
+	//Delete in-memory storage
+	for key := range txMemPool {
+		delete(txMemPool,key)
+	}
+
+	//Delete disk-based storage
 	db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openblocks"))
 		b.ForEach(func(k, v []byte) error {
@@ -84,30 +90,6 @@ func DeleteAll() {
 		})
 		return nil
 	})
-	/*db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("openfunds"))
-		b.ForEach(func(k, v []byte) error {
-			b.Delete(k)
-			return nil
-		})
-		return nil
-	})
-	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("openaccs"))
-		b.ForEach(func(k, v []byte) error {
-			b.Delete(k)
-			return nil
-		})
-		return nil
-	})
-	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("openconfigs"))
-		b.ForEach(func(k, v []byte) error {
-			b.Delete(k)
-			return nil
-		})
-		return nil
-	})*/
 	db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("closedfunds"))
 		b.ForEach(func(k, v []byte) error {

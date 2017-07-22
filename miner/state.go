@@ -161,13 +161,6 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 	if change {
 		newParameters.blockHash = blockHash
 
-		//TODO: this is ugly
-		//localBlockCount is int64, because we want to start at -1, so the genesis block is exactly block nr. 0
-		newParameters.localBlockCountSnapshot = uint64(localBlockCount)
-		newParameters.timerangeSnapshot = *targetTime
-
-		//target itself needs to be saved as well
-
 		parameterSlice = append(parameterSlice, newParameters)
 		activeParameters = &parameterSlice[len(parameterSlice)-1]
 	}

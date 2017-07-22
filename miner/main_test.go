@@ -123,6 +123,7 @@ func cleanAndPrepare() {
 		2016,
 		60,
 		0,
+		12,
 	})
 	parameterSlice = tmpSlice
 	activeParameters = &parameterSlice[0]
