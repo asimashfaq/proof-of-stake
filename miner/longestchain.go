@@ -54,6 +54,8 @@ func getNewChain(newBlock *protocol.Block) (ancestor *protocol.Block, newChain [
 				newChain[i], newChain[j] = newChain[j], newChain[i]
 			}
 
+
+
 			return potentialAncestor, newChain
 		}
 

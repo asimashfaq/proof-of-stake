@@ -13,7 +13,6 @@ func prepareBlock(block *protocol.Block) {
 	//empty mempool (opentxs)
 	opentxs := storage.ReadAllOpenTxs()
 
-
 	//this copy is strange, but seems to be necessary?
 	//shouldn't be too bad because no deep copy
 	var tmpCopy openTxs

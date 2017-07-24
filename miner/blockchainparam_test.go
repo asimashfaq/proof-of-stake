@@ -6,6 +6,63 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 )
 
+//This test function tests whether target calculation responds to block rollbacks
+func TestTargetHistory(t *testing.T) {
+
+	cleanAndPrepare()
+
+	activeParameters.diff_interval = 5
+	activeParameters.block_interval = 5
+
+	//Build 5 blocks, this results in a targets update and a targetTime update
+	//with timerange.first = 0 because of the genesis block
+	var blocks []*protocol.Block
+	var tmpBlock *protocol.Block
+	tmpBlock = new(protocol.Block)
+	for cnt := 0; cnt < 10; cnt++ {
+		tmpBlock = newBlock(tmpBlock.Hash)
+		finalizeBlock(tmpBlock)
+		validateBlock(tmpBlock)
+		blocks = append(blocks, tmpBlock)
+	}
+
+	//temporarily save the last target time to test after rollback
+	tmpTimeRange := timerange{
+		targetTimes[len(targetTimes)-1].first,
+		targetTimes[len(targetTimes)-1].last,
+	}
+
+	//Make sure the arrays get expanded and contracted when they should
+	var targetSize, targetTimesSize int
+
+	targetSize = len(target)
+	targetTimesSize = len(targetTimes)
+
+	//this rollback causes the previous target and timerange to get active again
+	validateBlockRollback(blocks[len(blocks)-1])
+	blocks = blocks[:len(blocks)-1]
+
+	if targetSize == len(target) || targetTimesSize == len(targetTimes) {
+		t.Error("Arrays for target change have not been updated.\n")
+	}
+
+	//The previous timerange needs the first value to be set and the the last value set to zero
+	if currentTargetTime.last != 0 || currentTargetTime.first != tmpTimeRange.first{
+		t.Error("Target time rollback failed.\n")
+	}
+
+	targetSize = len(target)
+	targetTimesSize = len(targetTimes)
+
+	tmpBlock = newBlock(blocks[len(blocks)-1].Hash)
+	finalizeBlock(tmpBlock)
+	validateBlock(tmpBlock)
+
+	if targetSize == len(target) || targetTimesSize == len(targetTimes) {
+		t.Error("Arrays for target change have not been updated.\n")
+	}
+}
+
 //recognition of longer paths, common ancestor etc.
 func TestTimestamps(t *testing.T) {
 
@@ -53,10 +110,27 @@ func TestTimestamps(t *testing.T) {
 			globalBlockCount,
 			localBlockCount,
 			target,
-			targetTime)
+			currentTargetTime)
 	}
 }
 
-func TestDifficulty(t *testing.T) {
+func TestCalculateNewDifficulty(t *testing.T) {
 
+	cleanAndPrepare()
+
+	//set new system parameters
+	target[len(target)-1] = 10
+	activeParameters.block_interval = 10
+	activeParameters.diff_interval = 10
+	time := timerange{0, 100}
+
+	if calculateNewDifficulty(&time) != 10 {
+		t.Errorf("Difficulty should: %v, difficulty is: %v\n", 10, calculateNewDifficulty(&time))
+	}
+
+	//test for illegal values
+	time = timerange{100,99}
+	if calculateNewDifficulty(&time) != 10 {
+		t.Errorf("Difficult should: %v, difficulty is: %v\n", 10, calculateNewDifficulty(&time))
+	}
 }

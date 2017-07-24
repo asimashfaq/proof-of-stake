@@ -12,7 +12,6 @@ import (
 	"math/big"
 	"os"
 	"testing"
-	"time"
 )
 
 var PrivKeyA, PrivKeyB, MinerPrivKey ecdsa.PrivateKey
@@ -112,8 +111,8 @@ func cleanAndPrepare() {
 
 	lastBlock = nil
 
-	targetTime = new(timerange)
-	target = append(target, 10)
+	currentTargetTime = new(timerange)
+	target = append(target, 11)
 
 	var tmpSlice []parameters
 	tmpSlice = append(tmpSlice, parameters{
@@ -131,7 +130,6 @@ func cleanAndPrepare() {
 	localBlockCount = -1
 	globalBlockCount = -1
 	genesis := newBlock([32]byte{})
-	genesis.Timestamp = time.Now().Unix()
 	collectStatistics(genesis)
 	storage.WriteClosedBlock(genesis)
 
