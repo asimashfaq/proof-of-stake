@@ -68,8 +68,6 @@ func (param parameters) String() string {
 }
 
 func collectStatistics(b *protocol.Block) {
-	//Careful, this might lead to problems when run on 32-bit systems!, len(...) results an int, whose size
-	// /depends on the underlying architecture
 
 	globalBlockCount++
 	localBlockCount++
@@ -80,9 +78,9 @@ func collectStatistics(b *protocol.Block) {
 
 	//For now, just change everything in case of a parameter change
 	if activeParameters.blockHash == b.Hash {
-		localBlockCount = 0
-		currentTargetTime = new(timerange)
-		currentTargetTime.first = b.Timestamp
+		//localBlockCount = 0
+		//currentTargetTime = new(timerange)
+		//currentTargetTime.first = b.Timestamp
 	}
 
 	if localBlockCount == int64(activeParameters.diff_interval) {
@@ -116,12 +114,17 @@ func collectStatisticsRollback(b *protocol.Block) {
 
 	globalBlockCount--
 
-	if localBlockCount == 0 {
+	//never rollback the genesis blocks
+	if localBlockCount == 0 && globalBlockCount != 0 {
 		localBlockCount = int64(activeParameters.diff_interval)-1
 		//target rollback
+		fmt.Printf("Before: %v\n", target)
 		target = target[:len(target)-1]
+		fmt.Printf("After: %v\n", target)
 		currentTargetTime.first = targetTimes[len(targetTimes)-1].first
+		fmt.Printf("Before: %v\n", targetTimes)
 		targetTimes = targetTimes[:len(targetTimes)-1]
+		fmt.Printf("After: %v\n", targetTimes)
 	} else {
 		localBlockCount--
 	}
@@ -158,10 +161,11 @@ func calculateNewDifficulty(t *timerange) uint8 {
 		target_change = -3
 	}
 
+	//Rounding down (for positive values) and runding up (for negative values)
+	target_change_rounded := uint8(target_change)
+
 	//substitutes the "round" function
-	fmt.Printf("First: %v, last: %v\n", t.first, t.last)
-	fmt.Printf("diff_now = %v, diff_wanted = %v, diff_ratio = %v, target_change = %v\n", diff_now, diff_wanted, diff_ratio, target_change)
-	return uint8(target_change + float64(target[len(target)-1]))
+	return target_change_rounded + target[len(target)-1]
 }
 
 func getDifficulty() uint8 {

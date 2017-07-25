@@ -133,4 +133,28 @@ func TestCalculateNewDifficulty(t *testing.T) {
 	if calculateNewDifficulty(&time) != 10 {
 		t.Errorf("Difficult should: %v, difficulty is: %v\n", 10, calculateNewDifficulty(&time))
 	}
+
+	//should: 100, is: 900, target should be -3
+	time = timerange{100, 1000}
+	if calculateNewDifficulty(&time) != getDifficulty()-3 {
+		t.Errorf("Difficulty should: %v, difficulty is: %v\n", 7, calculateNewDifficulty(&time))
+	}
+
+	//should: 100, is: 500, log2(0.2) = -2.3 -> target -= 2
+	time = timerange{100, 600}
+	if calculateNewDifficulty(&time) != getDifficulty()-2 {
+		t.Errorf("Difficulty should: %v, difficulty is: %v\n", 8, calculateNewDifficulty(&time))
+	}
+
+	//should: 100, is: 1, log2(100) > 3 -> target_change = 3
+	time = timerange{1000,1001}
+	if calculateNewDifficulty(&time) != getDifficulty()+3 {
+		t.Errorf("Difficulty should: %v, difficulty is: %v\n", 13, calculateNewDifficulty(&time))
+	}
+
+	//should: 100, is: 50, log2(2) = 1
+	time = timerange{100, 150}
+	if calculateNewDifficulty(&time) != getDifficulty()+1 {
+		t.Errorf("Difficulty should: %v, difficulty is: %v\n", 11, calculateNewDifficulty(&time))
+	}
 }

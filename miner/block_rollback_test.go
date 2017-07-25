@@ -50,25 +50,15 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	//create 4 blocks after genesis, rollback 3
 	cleanAndPrepare()
 
-	stategenesis := make(map[[64]byte]protocol.Account)
 	stateb := make(map[[64]byte]protocol.Account)
 	stateb2 := make(map[[64]byte]protocol.Account)
 	stateb3 := make(map[[64]byte]protocol.Account)
 	tmpState := make(map[[64]byte]protocol.Account)
 
 	//system parameters
-	var paramgenesis []parameters
 	var paramb []parameters
 	var paramb2 []parameters
 	var paramb3 []parameters
-
-	//no deep copy, becasue we use []*Account
-	for _, acc := range storage.State {
-		stategenesis[acc.Address] = *acc
-	}
-
-	paramgenesis = make([]parameters, len(parameterSlice))
-	copy(paramgenesis, parameterSlice)
 
 	b := newBlock([32]byte{})
 	createBlockWithTxs(b)
@@ -166,9 +156,6 @@ func TestMultipleBlocksRollback(t *testing.T) {
 	}
 	for _, acc := range storage.State {
 		tmpState[acc.Address] = *acc
-	}
-	if !reflect.DeepEqual(tmpState, stategenesis) || !reflect.DeepEqual(paramgenesis, parameterSlice) {
-		t.Error("Block rollback failed.")
 	}
 
 	for k := range tmpState {
