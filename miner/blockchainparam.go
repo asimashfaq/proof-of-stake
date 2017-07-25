@@ -8,13 +8,6 @@ import (
 )
 
 var (
-	//this are "constants" that can be changed with config transactions
-	//FEE_MINIMUM uint64
-	//BLOCK_SIZE uint64
-	//DIFF_INTERVAL uint64
-	//BLOCK_INTERVAL uint64
-	//BLOCK_REWARD uint64
-
 	lastBlock        *protocol.Block
 	globalBlockCount int64
 	localBlockCount  int64

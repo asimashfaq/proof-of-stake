@@ -33,16 +33,20 @@ func newBlock(prevHash [32]byte) *protocol.Block {
 // is used for every instead of manipulating the global state
 //because we the work might get interrupted by receiving a protocol.Block
 func addTx(b *protocol.Block, tx protocol.Transaction) error {
-	//verifies correctness for the specific transaction
-	//i'd actually like to use !(&tx).verify to pass by pointer, but golang doesn't allow this
 	if tx.TxFee() < activeParameters.fee_minimum {
 		logger.Printf("Transaction fee too low: %v (minimum is: %v)\n", tx.TxFee(), activeParameters.fee_minimum)
-		return errors.New("Transaction rejected because fee is below minimal fee threshold.")
+		err := fmt.Sprintf("Transaction fee too low: %v (minimum is: %v)\n", tx.TxFee(), activeParameters.fee_minimum)
+		return errors.New(err)
 	}
 
 	if !verify(tx) {
 		logger.Printf("Transaction could not be verified: %v\n", tx)
 		return errors.New("Transaction could not be verified.")
+	}
+
+	//check whether this the tx is already in closed storage
+	if storage.ReadClosedTx(tx.Hash()) != nil {
+		return errors.New("This transaction was already included in a previous block.")
 	}
 
 	switch tx.(type) {
@@ -73,15 +77,6 @@ func addTx(b *protocol.Block, tx protocol.Transaction) error {
 
 func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 
-	if storage.ReadClosedTx(tx.Hash()) != nil {
-		return errors.New("This transaction was already included in a previous block.")
-	}
-
-	if tx.Fee < activeParameters.fee_minimum {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, activeParameters.fee_minimum)
-		return errors.New(err)
-	}
-
 	//at this point the tx has already been verified
 	accHash := sha3.Sum256(tx.PubKey[:])
 	if _, exists := storage.State[accHash]; exists {
@@ -95,16 +90,6 @@ func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 }
 
 func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
-
-	//I think we don't have to check for nil here as well, since this was already implicitly done with addTx(...)
-	if storage.ReadClosedTx(tx.Hash()) != nil {
-		return errors.New("This transaction was already included in a previous Block.")
-	}
-
-	if tx.Fee < activeParameters.fee_minimum {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, activeParameters.fee_minimum)
-		return errors.New(err)
-	}
 
 	//checking if the sender account is already in the local state copy
 	if _, exists := b.StateCopy[tx.From]; !exists {
@@ -164,15 +149,6 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 }
 
 func addConfigTx(b *protocol.Block, tx *protocol.ConfigTx) error {
-
-	if storage.ReadClosedTx(tx.Hash()) != nil {
-		return errors.New("This transaction was already included in a previous block.")
-	}
-
-	if tx.Fee < activeParameters.fee_minimum {
-		err := fmt.Sprintf("Fee (%v) below accepted threshold (%v)\n", tx.Fee, activeParameters.fee_minimum)
-		return errors.New(err)
-	}
 
 	b.ConfigTxData = append(b.ConfigTxData, tx.Hash())
 	storage.WriteOpenTx(tx)
@@ -271,6 +247,27 @@ func validateBlock(b *protocol.Block) error {
 }
 
 func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, err error) {
+
+	//duplicates are not allowed, use hasmap to easily check for duplicates
+	duplicates := make(map[[32]byte]bool)
+	for _,txHash := range block.AccTxData {
+		if _,exists := duplicates[txHash]; exists {
+			return nil, nil, nil, errors.New("Duplicate Transaction Hash detected.")
+		}
+		duplicates[txHash] = true
+	}
+	for _,txHash := range block.FundsTxData {
+		if _,exists := duplicates[txHash]; exists {
+			return nil, nil, nil, errors.New("Duplicate Transaction Hash detected.")
+		}
+		duplicates[txHash] = true
+	}
+	for _,txHash := range block.ConfigTxData {
+		if _,exists := duplicates[txHash]; exists {
+			return nil, nil, nil, errors.New("Duplicate Transaction Hash detected.")
+		}
+		duplicates[txHash] = true
+	}
 
 	//parallel transaction data fetch
 	errChan := make(chan error, 3)

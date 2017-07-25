@@ -43,6 +43,28 @@ func TestBlock(t *testing.T) {
 	}
 }
 
+func TestBlockTxDuplicates(t *testing.T) {
+
+	cleanAndPrepare()
+	b := newBlock([32]byte{})
+	createBlockWithTxs(b)
+
+	finalizeBlock(b)
+
+	//This is a normal block validation, should pass
+	if err := validateBlock(b); err != nil {
+		t.Errorf("Block validation failed.\n")
+	}
+
+	//Rollback the block and add a duplicate
+	validateBlockRollback(b)
+	b.FundsTxData = append(b.FundsTxData, b.FundsTxData[0])
+	finalizeBlock(b)
+	if err := validateBlock(b); err == nil {
+		t.Errorf("Duplicate Tx not detected.\n")
+	}
+}
+
 func TestMultipleBlocks(t *testing.T) {
 
 	cleanAndPrepare()
