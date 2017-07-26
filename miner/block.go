@@ -250,20 +250,20 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 
 	//duplicates are not allowed, use hasmap to easily check for duplicates
 	duplicates := make(map[[32]byte]bool)
-	for _,txHash := range block.AccTxData {
-		if _,exists := duplicates[txHash]; exists {
+	for _, txHash := range block.AccTxData {
+		if _, exists := duplicates[txHash]; exists {
 			return nil, nil, nil, errors.New("Duplicate Transaction Hash detected.")
 		}
 		duplicates[txHash] = true
 	}
-	for _,txHash := range block.FundsTxData {
-		if _,exists := duplicates[txHash]; exists {
+	for _, txHash := range block.FundsTxData {
+		if _, exists := duplicates[txHash]; exists {
 			return nil, nil, nil, errors.New("Duplicate Transaction Hash detected.")
 		}
 		duplicates[txHash] = true
 	}
-	for _,txHash := range block.ConfigTxData {
-		if _,exists := duplicates[txHash]; exists {
+	for _, txHash := range block.ConfigTxData {
+		if _, exists := duplicates[txHash]; exists {
 			return nil, nil, nil, errors.New("Duplicate Transaction Hash detected.")
 		}
 		duplicates[txHash] = true

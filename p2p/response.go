@@ -1,12 +1,13 @@
 package p2p
 
 import (
+	"bytes"
 	"encoding/binary"
+	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"strconv"
 	"strings"
 	"time"
-	"github.com/lisgie/bazo_miner/protocol"
 )
 
 func txRes(p *peer, payload []byte, txKind uint8) {
@@ -104,25 +105,45 @@ func neighborRes(p *peer, payload []byte) {
 	//in the future following structure is possible:
 	//1) nr of ipv4 addresses, 2) nr of ipv6 addresses, followed by list of both
 	var packet []byte
+	var ipportList []string
 
-	payload = make([]byte, len(peers)*4) //4 = size of ipv4 address
-	index := 0
 	for p := range peers {
-		discardPort := strings.Split(p.conn.RemoteAddr().String(), ":")
-		split := strings.Split(discardPort[0], ".")
+		ipportList = append(ipportList, p.conn.RemoteAddr().String())
+	}
+
+	packet = BuildPacket(NEIGHBOR_RES, _neighborRes(ipportList))
+	sendData(p, packet)
+}
+
+//Decouple functionality to facilitate testing
+func _neighborRes(ipportList []string) (payload []byte) {
+
+	payload = make([]byte, len(ipportList)*6) //6 = size of ipv4 address + port
+	index := 0
+	for _, ipportIter := range ipportList {
+		ipport := strings.Split(ipportIter, ":")
+		split := strings.Split(ipport[0], ".")
+
 		//serializing ip addresses
 		for ipv4addr := 0; ipv4addr < 4; ipv4addr++ {
 			addrPart, err := strconv.Atoi(split[ipv4addr])
 			if err != nil {
-				packet = BuildPacket(NEIGHBOR_RES, nil)
-				sendData(p, packet)
-				return
+				return nil
 			}
 			payload[index] = byte(addrPart)
 			index++
 		}
+
+		port, _ := strconv.ParseUint(ipport[1], 10, 16)
+
+		//serialize port number
+		var buf bytes.Buffer
+		binary.Write(&buf, binary.BigEndian, port)
+		payload[index] = buf.Bytes()[len(buf.Bytes())-2]
+		index++
+		payload[index] = buf.Bytes()[len(buf.Bytes())-1]
+		index++
 	}
 
-	packet = BuildPacket(NEIGHBOR_RES, payload)
-	sendData(p, packet)
+	return payload
 }

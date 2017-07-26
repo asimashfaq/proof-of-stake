@@ -6,8 +6,6 @@ import (
 
 func TestCheckDuplicates(t *testing.T) {
 
-	Init()
-
 	/*	activePeers["1.1.1.1:8000"] = new(peer)
 		activePeers["1.1.1.2:8000"] = new(peer)
 		activePeers["1.1.1.3:8000"] = new(peer)

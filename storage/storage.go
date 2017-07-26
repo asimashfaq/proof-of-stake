@@ -10,10 +10,10 @@ import (
 )
 
 var (
-	db       *bolt.DB
-	logger   *log.Logger
-	State    map[[32]byte]*protocol.Account
-	RootKeys map[[32]byte]*protocol.Account
+	db        *bolt.DB
+	logger    *log.Logger
+	State     map[[32]byte]*protocol.Account
+	RootKeys  map[[32]byte]*protocol.Account
 	txMemPool map[[32]byte]protocol.Transaction
 )
 

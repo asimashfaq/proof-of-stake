@@ -6,22 +6,24 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 )
 
 const (
-	PORT             = 8000
 	MIN_MINERS       = 10
 	MAX_MINERS       = 20
 	TX_BUFFER        = 10
-	BOOTSTRAP_SERVER = "127.0.0.1"
+	BOOTSTRAP_SERVER = "127.0.0.1:8000"
 	IPV4ADDR         = 4
+	PORT_SIZE        = 2
 )
 
 var (
-	//LogFile    *os.File
+	//List of ip addresses. A connection to a subset of the list will be established as soon as the network health
+	//monitor triggers.
+	iplistChan chan string
+
 	logger     *log.Logger
 	peers      map[*peer]bool
 	brdcstMsg  chan []byte
@@ -66,11 +68,9 @@ func Init(port string) error {
 
 	go broadcastService()
 	go receiveDataFromMiner()
-	//go checkHealth()
 
 	//after this call, there are some peers connected
-
-	//just to test on localhost
+	// just to test on localhost
 	if port != "8000" {
 		logger.Print("Start mining as a non-bootstrap node.")
 		err := bootstrap()
@@ -95,42 +95,15 @@ func bootstrap() error {
 		return err
 	}
 	go minerConn(p)
-
-	//once connected to the bootstrap, get his neighbors as well
-
-	/*fmt.Printf("#%v\n", iplist)
-	if iplist == nil {
-		return nil
-	}
-
-	//parse the incoming ipv4 addresses
-	fmt.Printf("%v\n", iplist)
-	index := 0
-	for cnt := 0; cnt < len(iplist)/IPV4ADDR; cnt++ {
-		var addr string
-		for singleAddr := 0; singleAddr < IPV4ADDR; singleAddr++ {
-			tmp := int(iplist[singleAddr])
-			addr += strconv.Itoa(tmp)
-			addr += "."
-		}
-		//remove the trailing dot
-		conn, err := initiateNewMinerConnection(addr[0 : len(addr)-1])
-		if err != nil {
-			logger.Printf("Connection to miner addr %v could not be established.\n", addr[0:len(addr)-1])
-			continue
-		}
-		go minerConn(conn)
-		index += IPV4ADDR
-	}*/
-
+	go checkHealth()
 	return nil
 }
 
-func initiateNewMinerConnection(ip string) (*peer, error) {
+func initiateNewMinerConnection(ipport string) (*peer, error) {
 
 	var conn net.Conn
 
-	conn, err := net.Dial("tcp", ip+":"+strconv.Itoa(PORT))
+	conn, err := net.Dial("tcp", ipport)
 	p := &peer{conn, nil, sync.Mutex{}}
 
 	if err != nil {
@@ -199,7 +172,7 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 	case BLOCK_BRDCST:
 		forwardBlockToMiner(p, payload)
 
-		//Miner Requests
+	//Miner Requests
 	case FUNDSTX_REQ:
 		txRes(p, payload, FUNDSTX_REQ)
 	case ACCTX_REQ:
@@ -215,8 +188,9 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 	case NEIGHBOR_REQ:
 		neighborRes(p, payload)
 
-		//Miner Responses
+	//Miner Responses
 	case NEIGHBOR_RES:
+		processNeighborRes(p, payload)
 	case BLOCK_RES:
 		forwardBlockReqToMiner(p, payload)
 	case FUNDSTX_RES:
@@ -250,14 +224,28 @@ func broadcastService() {
 //single goroutine that makes sure that system is well connected
 func checkHealth() {
 
-	for {
+	/*for {
 		if len(peers) >= MIN_MINERS {
-			time.Sleep(10 * time.Second)
+			time.Sleep(time.Minute)
 			continue
 		}
-		//initiate new connection if not enough
-		//and call go outgoingConn(conn)
-	}
+
+		if len(iplist) == 0 {
+			neighborReq()
+			time.Sleep(30*time.Second)
+		}
+
+		select {
+		case ipaddr := <-iplist:
+			p, err := initiateNewMinerConnection(ipaddr)
+			if err != nil {
+				logger.Printf("Failed to initiate connection with IP address: %v\n", ipaddr)
+				continue
+			}
+			go minerConn(p)
+		case <-time.After(30*time.Second):
+		}
+	}*/
 }
 
 func minerConn(p *peer) {

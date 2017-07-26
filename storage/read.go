@@ -83,7 +83,6 @@ func ReadAllOpenTxs() (allOpenTxs []protocol.Transaction) {
 
 	return
 
-
 	/*var fundstx *protocol.FundsTx
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openfunds"))

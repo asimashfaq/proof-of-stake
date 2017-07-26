@@ -12,7 +12,7 @@ var (
 	globalBlockCount int64
 	localBlockCount  int64
 
-	target     []uint8
+	target            []uint8
 	currentTargetTime *timerange
 )
 
@@ -31,7 +31,6 @@ type parameters struct {
 	diff_interval  uint64
 	block_interval uint64
 	block_reward   uint64
-	target_id uint64
 }
 
 type timerange struct {
@@ -109,7 +108,7 @@ func collectStatisticsRollback(b *protocol.Block) {
 
 	//never rollback the genesis blocks
 	if localBlockCount == 0 && globalBlockCount != 0 {
-		localBlockCount = int64(activeParameters.diff_interval)-1
+		localBlockCount = int64(activeParameters.diff_interval) - 1
 		//target rollback
 		fmt.Printf("Before: %v\n", target)
 		target = target[:len(target)-1]

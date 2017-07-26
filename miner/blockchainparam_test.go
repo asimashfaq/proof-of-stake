@@ -1,9 +1,9 @@
 package miner
 
 import (
-	"testing"
 	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
+	"testing"
 )
 
 //This test function tests whether target calculation responds to block rollbacks
@@ -47,7 +47,7 @@ func TestTargetHistory(t *testing.T) {
 	}
 
 	//The previous timerange needs the first value to be set and the the last value set to zero
-	if currentTargetTime.last != 0 || currentTargetTime.first != tmpTimeRange.first{
+	if currentTargetTime.last != 0 || currentTargetTime.first != tmpTimeRange.first {
 		t.Error("Target time rollback failed.\n")
 	}
 
@@ -77,8 +77,8 @@ func TestTimestamps(t *testing.T) {
 		b := newBlock(prevHash)
 
 		if cnt == 8 {
-			tx,err := protocol.ConstrConfigTx(0, protocol.DIFF_INTERVAL_ID, 20,2,&RootPrivKey)
-			tx2,err2 := protocol.ConstrConfigTx(0, protocol.BLOCK_INTERVAL_ID, 60, 2, &RootPrivKey)
+			tx, err := protocol.ConstrConfigTx(0, protocol.DIFF_INTERVAL_ID, 20, 2, &RootPrivKey)
+			tx2, err2 := protocol.ConstrConfigTx(0, protocol.BLOCK_INTERVAL_ID, 60, 2, &RootPrivKey)
 			if err != nil || err2 != nil {
 				t.Errorf("Creating config txs failed: %v, %v\n", err, err2)
 			}
@@ -129,7 +129,7 @@ func TestCalculateNewDifficulty(t *testing.T) {
 	}
 
 	//test for illegal values
-	time = timerange{100,99}
+	time = timerange{100, 99}
 	if calculateNewDifficulty(&time) != 10 {
 		t.Errorf("Difficult should: %v, difficulty is: %v\n", 10, calculateNewDifficulty(&time))
 	}
@@ -147,7 +147,7 @@ func TestCalculateNewDifficulty(t *testing.T) {
 	}
 
 	//should: 100, is: 1, log2(100) > 3 -> target_change = 3
-	time = timerange{1000,1001}
+	time = timerange{1000, 1001}
 	if calculateNewDifficulty(&time) != getDifficulty()+3 {
 		t.Errorf("Difficulty should: %v, difficulty is: %v\n", 13, calculateNewDifficulty(&time))
 	}

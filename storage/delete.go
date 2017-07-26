@@ -70,7 +70,7 @@ func DeleteAll() {
 
 	//Delete in-memory storage
 	for key := range txMemPool {
-		delete(txMemPool,key)
+		delete(txMemPool, key)
 	}
 
 	//Delete disk-based storage

@@ -149,13 +149,6 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 				newParameters.block_interval = tx.Payload
 				change = true
 			}
-		case protocol.TARGET_ID:
-			if parameterBoundsChecking(protocol.TARGET_ID, tx.Payload) {
-				newParameters.target_id = tx.Payload
-				change = true
-				//set the new target to the target slice
-				target = append(target, uint8(tx.Payload))
-			}
 		}
 	}
 
