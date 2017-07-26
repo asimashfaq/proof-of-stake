@@ -100,11 +100,10 @@ func pongRes(p *peer, payload []byte) {
 	//IP is optional, if no IP supplied, the sender addresse is taken. Port is necessary to listen to
 
 	//IP:PORT
-	ipport := _pongRes(payload, p.conn.RemoteAddr().String())
+	port := _pongRes(payload)
 
-	if ipport != "" {
-		//non-blocking because it's a buffere channel
-		iplistChan <- ipport
+	if port != "" {
+		p.listenerPort = port
 	} else {
 		p.conn.Close()
 		return
@@ -121,21 +120,9 @@ func pongRes(p *peer, payload []byte) {
 }
 
 //Decouple the function for testing
-func _pongRes(payload []byte, ipport string) string {
-	if len(payload) == IPV4ADDR+PORT_SIZE {
-		var ipport string
-		for cnt := 0; cnt < IPV4ADDR; cnt++ {
-			tmp := int(payload[cnt])
-			ipport += strconv.Itoa(tmp)
-			ipport += "."
-		}
-		//remove trailing dot
-		ipport = ipport[:len(ipport)-1]
-		return ipport+":"+strconv.Itoa(int(binary.BigEndian.Uint16(payload[IPV4ADDR:IPV4ADDR+PORT_SIZE])))
-	} else if len(payload) == PORT_SIZE {
-		//Extract the port from which the connection originated
-		ip := strings.Split(ipport, ":")
-		return ip[0] + ":" + strconv.Itoa(int(binary.BigEndian.Uint16(payload[0:PORT_SIZE])))
+func _pongRes(payload []byte) string {
+	if len(payload) == PORT_SIZE {
+		return strconv.Itoa(int(binary.BigEndian.Uint16(payload[0:PORT_SIZE])))
 	} else {
 		return ""
 	}
@@ -148,10 +135,11 @@ func neighborRes(p *peer) {
 	var packet []byte
 	var ipportList []string
 
-
-
 	for p := range peers {
-		ipportList = append(ipportList, p.conn.RemoteAddr().String())
+		//Extract and discard the port to which this miner is connected and
+		//append the listener port of this particular miner
+		ip := strings.Split(p.conn.RemoteAddr().String(),":")
+		ipportList = append(ipportList, ip[0]+":"+p.listenerPort)
 	}
 
 	packet = BuildPacket(NEIGHBOR_RES, _neighborRes(ipportList))

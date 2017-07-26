@@ -41,12 +41,14 @@ type TxInfo struct {
 	Payload []byte
 }
 
+//The reason we use an additional listener port is because the port the miner connected to this peer
+//is not the same as the one it listens to for new connections. When we are queried for neighbors
+//we send the IP address in p.conn.RemotAddr() with the listenerPort
 type peer struct {
 	conn net.Conn
 	ch   chan []byte
-	//TODO
-	listenerPort string
 	l    sync.Mutex
+	listenerPort string
 }
 
 func Init(port string) error {
@@ -118,7 +120,7 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	var conn net.Conn
 
 	conn, err := net.Dial("tcp", ipport)
-	p := &peer{conn, nil, sync.Mutex{}}
+	p := &peer{conn, nil, sync.Mutex{}, ""}
 
 	if err != nil {
 		return nil, err
@@ -151,7 +153,7 @@ func listener(localPort string) {
 			logger.Printf("%v\n", err)
 			continue
 		}
-		p := &peer{conn, nil, sync.Mutex{}}
+		p := &peer{conn, nil, sync.Mutex{}, ""}
 		go handleNewConn(p)
 	}
 }

@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"encoding/binary"
-	"fmt"
 	"strconv"
 	"testing"
 )
@@ -16,7 +15,6 @@ func Test_NeighborRes(t *testing.T) {
 	}
 
 	payload := _neighborRes(ipportList)
-	fmt.Printf("%v\n", payload)
 
 	//Check for correct deserialization
 	index := 0
@@ -42,23 +40,23 @@ func Test_PongRes(t *testing.T) {
 
 	//This corresponds to the IP:Port 8.8.8.8:8000
 	ipport := []byte{
-		8, 8, 8, 8, 31, 64,
+		31, 64,
 	}
 
 	//The IP address from the sender is 9.9.9.9:8000
-	ipportRet := _pongRes(ipport, "9.9.9.9:8000")
+	ipportRet := _pongRes(ipport)
 
 	//A remote miner has the opportunity to send an additional IP:Port if he wishes to receive connection on this tuple
-	if ipportRet != "8.8.8.8:8000" {
-		t.Errorf("Failed to extract IP:Port: (%v) vs. (%v)\n", "8.8.8.8:8000", ipportRet)
+	if ipportRet != "8000" {
+		t.Errorf("Failed to extract IP:Port: (%v) vs. (%v)\n", "8000", ipportRet)
 	}
 
 	ipport = []byte{
 		31, 64,
 	}
 
-	ipportRet = _pongRes(ipport, "9.9.9.9:8000")
-	if ipportRet != "9.9.9.9:8000" {
-		t.Errorf("Failed to extract IP:Port: (%v) vs. (%v)\n", "9.9.9.9:8000", ipportRet)
+	ipportRet = _pongRes(ipport)
+	if ipportRet != "8000" {
+		t.Errorf("Failed to extract IP:Port: (%v) vs. (%v)\n", "8000", ipportRet)
 	}
 }
