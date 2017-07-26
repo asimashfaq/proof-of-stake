@@ -44,6 +44,8 @@ type TxInfo struct {
 type peer struct {
 	conn net.Conn
 	ch   chan []byte
+	//TODO
+	listenerPort string
 	l    sync.Mutex
 }
 
@@ -105,8 +107,9 @@ func bootstrap() error {
 		logger.Printf("%v\n", err)
 		return err
 	}
+
 	go minerConn(p)
-	go checkHealth()
+	go checkHealthService()
 	return nil
 }
 
@@ -165,94 +168,6 @@ func handleNewConn(p *peer) {
 	processIncomingMsg(p, header, payload)
 }
 
-func processIncomingMsg(p *peer, header *Header, payload []byte) {
-
-	logger.Printf("Received request from %v with following header:\n%v", p.conn.RemoteAddr().String(), header)
-	switch header.TypeID {
-	//BROADCASTING
-	case FUNDSTX_BRDCST:
-		forwardTxToMiner(p, payload, FUNDSTX_BRDCST)
-	case ACCTX_BRDCST:
-		forwardTxToMiner(p, payload, ACCTX_BRDCST)
-	case CONFIGTX_BRDCST:
-		forwardTxToMiner(p, payload, CONFIGTX_BRDCST)
-	case BLOCK_BRDCST:
-		forwardBlockToMiner(p, payload)
-
-	//Miner Requests
-	case FUNDSTX_REQ:
-		txRes(p, payload, FUNDSTX_REQ)
-	case ACCTX_REQ:
-		txRes(p, payload, ACCTX_REQ)
-	case CONFIGTX_REQ:
-		txRes(p, payload, CONFIGTX_REQ)
-	case BLOCK_REQ:
-		blockRes(p, payload)
-	case ACC_REQ:
-		accRes(p, payload)
-	case MINER_PING:
-		pongRes(p, payload)
-	case NEIGHBOR_REQ:
-		neighborRes(p, payload)
-
-	//Miner Responses
-	case NEIGHBOR_RES:
-		processNeighborRes(p, payload)
-	case BLOCK_RES:
-		forwardBlockReqToMiner(p, payload)
-	case FUNDSTX_RES:
-		forwardTxReqToMiner(p, payload, FUNDSTX_RES)
-	case ACCTX_RES:
-		forwardTxReqToMiner(p, payload, ACCTX_RES)
-	case CONFIGTX_RES:
-		forwardTxReqToMiner(p, payload, CONFIGTX_RES)
-	}
-}
-
-//this is not accessed concurrently, one single goroutine
-func broadcastService() {
-	logger.Print("Start broadcasting service.")
-	for {
-		select {
-		//broadcasting all messages
-		case msg := <-brdcstMsg:
-			for p := range peers {
-				p.ch <- msg
-			}
-		case p := <-register:
-			peers[p] = true
-		case p := <-disconnect:
-			delete(peers, p)
-			close(p.ch)
-		}
-	}
-}
-
-//single goroutine that makes sure the system is well connected
-func checkHealth() {
-
-	for {
-		time.Sleep(time.Minute)
-		if len(peers) >= MIN_MINERS {
-			continue
-		}
-
-		select {
-		case ipaddr := <-iplistChan:
-			logger.Printf("New IP rcvd through channel: %v\n", ipaddr)
-			p, err := initiateNewMinerConnection(ipaddr)
-			if err != nil {
-				logger.Printf("Failed to initiate connection with IP address: %v\n", ipaddr)
-				continue
-			}
-			go minerConn(p)
-		default:
-			neighborReq()
-			logger.Print("30 seconds passed and no address received.\n")
-		}
-	}
-}
-
 func minerConn(p *peer) {
 
 	logger.Printf("Adding a new miner: %v\n", p.conn.RemoteAddr().String())
@@ -275,10 +190,3 @@ func minerConn(p *peer) {
 	}
 }
 
-//will be our broadcast mechanism
-func peerWriter(p *peer) {
-	for msg := range p.ch {
-		logger.Printf("Sending payload to %v\n", p.conn.RemoteAddr().String())
-		sendData(p, msg)
-	}
-}

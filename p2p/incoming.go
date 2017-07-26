@@ -1,8 +1,6 @@
 package p2p
 
 import (
-	"bufio"
-	"encoding/binary"
 	"fmt"
 )
 
@@ -18,39 +16,48 @@ type Header struct {
 	TypeID uint8
 }
 
-func BuildPacket(typeID uint8, payload []byte) (packet []byte) {
+func processIncomingMsg(p *peer, header *Header, payload []byte) {
 
-	logger.Printf("Building new packet with type ID (%v) and packet length (%v).\n", typeID, len(payload))
-	var payloadLen [4]byte
-	packet = make([]byte, HEADER_LEN+len(payload))
-	binary.BigEndian.PutUint32(payloadLen[:], uint32(len(payload)))
-	copy(packet[0:4], payloadLen[:])
-	packet[4] = byte(typeID)
-	copy(packet[5:], payload)
-	return packet
-}
+	logger.Printf("Received request from %v with following header:\n%v", p.conn.RemoteAddr().String(), header)
+	switch header.TypeID {
+		//BROADCASTING
+	case FUNDSTX_BRDCST:
+		forwardTxToMiner(p, payload, FUNDSTX_BRDCST)
+	case ACCTX_BRDCST:
+		forwardTxToMiner(p, payload, ACCTX_BRDCST)
+	case CONFIGTX_BRDCST:
+		forwardTxToMiner(p, payload, CONFIGTX_BRDCST)
+	case BLOCK_BRDCST:
+		forwardBlockToMiner(p, payload)
 
-func ExtractHeader(reader *bufio.Reader) (*Header, error) {
-	//the first four bytes of any incoming messages is the length of the payload
-	//error catching after every read is necessary to avoid panicking
-	var headerArr [HEADER_LEN]byte
-	//reading byte by byte is surprisingly fast and works a lot better for concurrent connections
-	for i := range headerArr {
-		extr, err := reader.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		headerArr[i] = extr
+		//Miner Requests
+	case FUNDSTX_REQ:
+		txRes(p, payload, FUNDSTX_REQ)
+	case ACCTX_REQ:
+		txRes(p, payload, ACCTX_REQ)
+	case CONFIGTX_REQ:
+		txRes(p, payload, CONFIGTX_REQ)
+	case BLOCK_REQ:
+		blockRes(p, payload)
+	case ACC_REQ:
+		accRes(p, payload)
+	case MINER_PING:
+		pongRes(p, payload)
+	case NEIGHBOR_REQ:
+		neighborRes(p)
+
+		//Miner Responses
+	case NEIGHBOR_RES:
+		processNeighborRes(p, payload)
+	case BLOCK_RES:
+		forwardBlockReqToMiner(p, payload)
+	case FUNDSTX_RES:
+		forwardTxReqToMiner(p, payload, FUNDSTX_RES)
+	case ACCTX_RES:
+		forwardTxReqToMiner(p, payload, ACCTX_RES)
+	case CONFIGTX_RES:
+		forwardTxReqToMiner(p, payload, CONFIGTX_RES)
 	}
-
-	lenBuf := [4]byte{headerArr[0], headerArr[1], headerArr[2], headerArr[3]}
-
-	packetLen := binary.BigEndian.Uint32(lenBuf[:])
-
-	header := new(Header)
-	header.Len = packetLen
-	header.TypeID = uint8(headerArr[4])
-	return header, nil
 }
 
 func (header Header) String() string {

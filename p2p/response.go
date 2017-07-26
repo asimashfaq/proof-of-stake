@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"fmt"
 )
 
 func txRes(p *peer, payload []byte, txKind uint8) {
@@ -103,15 +102,18 @@ func pongRes(p *peer, payload []byte) {
 	//IP:PORT
 	ipport := _pongRes(payload, p.conn.RemoteAddr().String())
 
-	fmt.Printf("%v\n", ipport)
 	if ipport != "" {
-		//non-blocking because it's a buffered channel
+		//non-blocking because it's a buffere channel
 		iplistChan <- ipport
 	} else {
 		p.conn.Close()
 		return
 	}
-	fmt.Print("*")
+
+	//restrict amount of connected miners
+	if len(peers) >= MAX_MINERS {
+		return
+	}
 
 	go minerConn(p)
 	packet := BuildPacket(MINER_PONG, nil)
@@ -139,7 +141,7 @@ func _pongRes(payload []byte, ipport string) string {
 	}
 }
 
-func neighborRes(p *peer, payload []byte) {
+func neighborRes(p *peer) {
 	//only supporting ipv4 addresses for now, makes fixed-size structure easier
 	//in the future following structure is possible:
 	//1) nr of ipv4 addresses, 2) nr of ipv6 addresses, followed by list of both
