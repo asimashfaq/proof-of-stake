@@ -1,10 +1,10 @@
 package p2p
 
-//asynchronous call, don't wait for response
 func neighborReq() {
 
 	p := getRandomPeer()
 	if p == nil {
+		logger.Print("Could not fetch a random peer.\n")
 		return
 	}
 

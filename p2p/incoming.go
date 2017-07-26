@@ -20,6 +20,7 @@ type Header struct {
 
 func BuildPacket(typeID uint8, payload []byte) (packet []byte) {
 
+	logger.Printf("Building new packet with type ID (%v) and packet length (%v).\n", typeID, len(payload))
 	var payloadLen [4]byte
 	packet = make([]byte, HEADER_LEN+len(payload))
 	binary.BigEndian.PutUint32(payloadLen[:], uint32(len(payload)))

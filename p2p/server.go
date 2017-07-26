@@ -8,6 +8,8 @@ import (
 	"os"
 	"sync"
 	"time"
+	"encoding/binary"
+	"strconv"
 )
 
 const (
@@ -29,6 +31,7 @@ var (
 	brdcstMsg  chan []byte
 	register   chan *peer
 	disconnect chan *peer
+	localPort uint16
 )
 
 //we need to decode incoming transactions, therefore type is needed
@@ -44,7 +47,6 @@ type peer struct {
 	l    sync.Mutex
 }
 
-//4 channels for communication with miner, blocks in/out and txs in/out
 func Init(port string) error {
 
 	LogFile, _ := os.OpenFile("log/p2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
@@ -66,8 +68,17 @@ func Init(port string) error {
 	register = make(chan *peer)
 	disconnect = make(chan *peer)
 
+	iplistChan = make(chan string, MIN_MINERS)
+
 	go broadcastService()
 	go receiveDataFromMiner()
+
+	//set localPort global, this will be the listening port for incoming connection
+	parsedPort, err := strconv.Atoi(port)
+	if err != nil {
+		return errors.New("Failed to parse port given on the command line")
+	}
+	localPort = uint16(parsedPort)
 
 	//after this call, there are some peers connected
 	// just to test on localhost
@@ -81,7 +92,7 @@ func Init(port string) error {
 		logger.Print("Start mining as a bootstrap node.")
 	}
 
-	go listener(port)
+	go listener(strconv.Itoa(int(localPort)))
 	return nil
 }
 
@@ -110,9 +121,11 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 		return nil, err
 	}
 
-	packet := BuildPacket(MINER_PING, nil)
+	//We need to additionally send either IP:Port or Port in order to construct a valid first message
+	var port [2]byte
+	binary.BigEndian.PutUint16(port[:], localPort)
+	packet := BuildPacket(MINER_PING, port[:])
 	conn.Write(packet)
-
 	header, _, err := rcvData(p)
 	if err != nil || header.TypeID != MINER_PONG {
 		return nil, errors.New("Connecting to bootstrap server failed.")
@@ -121,9 +134,9 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	return p, nil
 }
 
-func listener(port string) {
+func listener(localPort string) {
 
-	listener, err := net.Listen("tcp", ":"+port)
+	listener, err := net.Listen("tcp", ":"+localPort)
 	if err != nil {
 		logger.Printf("%v\n", err)
 		return
@@ -150,12 +163,6 @@ func handleNewConn(p *peer) {
 	}
 
 	processIncomingMsg(p, header, payload)
-
-	if header.TypeID == MINER_PING {
-		go minerConn(p)
-	} else {
-		p.conn.Close()
-	}
 }
 
 func processIncomingMsg(p *peer, header *Header, payload []byte) {
@@ -221,31 +228,29 @@ func broadcastService() {
 	}
 }
 
-//single goroutine that makes sure that system is well connected
+//single goroutine that makes sure the system is well connected
 func checkHealth() {
 
-	/*for {
+	for {
+		time.Sleep(time.Minute)
 		if len(peers) >= MIN_MINERS {
-			time.Sleep(time.Minute)
 			continue
 		}
 
-		if len(iplist) == 0 {
-			neighborReq()
-			time.Sleep(30*time.Second)
-		}
-
 		select {
-		case ipaddr := <-iplist:
+		case ipaddr := <-iplistChan:
+			logger.Printf("New IP rcvd through channel: %v\n", ipaddr)
 			p, err := initiateNewMinerConnection(ipaddr)
 			if err != nil {
 				logger.Printf("Failed to initiate connection with IP address: %v\n", ipaddr)
 				continue
 			}
 			go minerConn(p)
-		case <-time.After(30*time.Second):
+		default:
+			neighborReq()
+			logger.Print("30 seconds passed and no address received.\n")
 		}
-	}*/
+	}
 }
 
 func minerConn(p *peer) {

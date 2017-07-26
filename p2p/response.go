@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"fmt"
 )
 
 func txRes(p *peer, payload []byte, txKind uint8) {
@@ -96,8 +97,46 @@ func timeRes(p *peer) {
 
 func pongRes(p *peer, payload []byte) {
 
+	//Miner Ping supplies its IP:Port
+	//IP is optional, if no IP supplied, the sender addresse is taken. Port is necessary to listen to
+
+	//IP:PORT
+	ipport := _pongRes(payload, p.conn.RemoteAddr().String())
+
+	fmt.Printf("%v\n", ipport)
+	if ipport != "" {
+		//non-blocking because it's a buffered channel
+		iplistChan <- ipport
+	} else {
+		p.conn.Close()
+		return
+	}
+	fmt.Print("*")
+
+	go minerConn(p)
 	packet := BuildPacket(MINER_PONG, nil)
 	sendData(p, packet)
+}
+
+//Decouple the function for testing
+func _pongRes(payload []byte, ipport string) string {
+	if len(payload) == IPV4ADDR+PORT_SIZE {
+		var ipport string
+		for cnt := 0; cnt < IPV4ADDR; cnt++ {
+			tmp := int(payload[cnt])
+			ipport += strconv.Itoa(tmp)
+			ipport += "."
+		}
+		//remove trailing dot
+		ipport = ipport[:len(ipport)-1]
+		return ipport+":"+strconv.Itoa(int(binary.BigEndian.Uint16(payload[IPV4ADDR:IPV4ADDR+PORT_SIZE])))
+	} else if len(payload) == PORT_SIZE {
+		//Extract the port from which the connection originated
+		ip := strings.Split(ipport, ":")
+		return ip[0] + ":" + strconv.Itoa(int(binary.BigEndian.Uint16(payload[0:PORT_SIZE])))
+	} else {
+		return ""
+	}
 }
 
 func neighborRes(p *peer, payload []byte) {
@@ -106,6 +145,8 @@ func neighborRes(p *peer, payload []byte) {
 	//1) nr of ipv4 addresses, 2) nr of ipv6 addresses, followed by list of both
 	var packet []byte
 	var ipportList []string
+
+
 
 	for p := range peers {
 		ipportList = append(ipportList, p.conn.RemoteAddr().String())
