@@ -37,14 +37,16 @@ func sendData(p *peer, payload []byte) {
 //get a random miner connection
 func getRandomPeer() *peer {
 
-	if len(peers) == 0 {
+	peers.peerMutex.Lock()
+	defer peers.peerMutex.Unlock()
+	if len(peers.peerConns) == 0 {
 		return nil
 	}
 
 	var peerSlice []*peer
 
-	pos := int(rand.Uint32()) % len(peers)
-	for tmpPeer := range peers {
+	pos := int(rand.Uint32()) % len(peers.peerConns)
+	for tmpPeer := range peers.peerConns {
 		peerSlice = append(peerSlice, tmpPeer)
 	}
 
@@ -52,15 +54,21 @@ func getRandomPeer() *peer {
 }
 
 //We have to prevent to connect to miners twice
-func exists(ipport string) bool {
+func peerExists(ipport string) bool {
 
 	//just reading, shouldn't be a race condition problem
-	for p := range peers {
+	peers.peerMutex.Lock()
+	defer peers.peerMutex.Unlock()
+	for p := range peers.peerConns {
 		if p.conn.RemoteAddr().String() == ipport {
 			return false
 		}
 	}
 	return false
+}
+
+func peerSelfConn(ipport string) bool {
+	return ipport == localConn
 }
 
 func BuildPacket(typeID uint8, payload []byte) (packet []byte) {

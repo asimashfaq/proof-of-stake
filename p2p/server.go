@@ -10,6 +10,8 @@ import (
 	"time"
 	"encoding/binary"
 	"strconv"
+	"strings"
+	"fmt"
 )
 
 const (
@@ -25,14 +27,15 @@ var (
 	//List of ip addresses. A connection to a subset of the list will be established as soon as the network health
 	//monitor triggers.
 	iplistChan chan string
-
+	peers peersStruct
 	logger     *log.Logger
-	peers      map[*peer]bool
 	brdcstMsg  chan []byte
 	register   chan *peer
 	disconnect chan *peer
-	localPort uint16
+	localConn string
 )
+
+
 
 //we need to decode incoming transactions, therefore type is needed
 //for outgoing transactions, the p2p package needs the information to build the proper header
@@ -41,18 +44,7 @@ type TxInfo struct {
 	Payload []byte
 }
 
-//The reason we use an additional listener port is because the port the miner connected to this peer
-//is not the same as the one it listens to for new connections. When we are queried for neighbors
-//we send the IP address in p.conn.RemotAddr() with the listenerPort
-type peer struct {
-	conn net.Conn
-	ch   chan []byte
-	l    sync.Mutex
-	listenerPort string
-}
-
-func Init(port string) error {
-
+func Init(connTuple string) error {
 	LogFile, _ := os.OpenFile("log/p2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	logger = log.New(LogFile, "", log.LstdFlags)
 
@@ -67,7 +59,7 @@ func Init(port string) error {
 	AccTxChan = make(chan *protocol.AccTx)
 	ConfigTxChan = make(chan *protocol.ConfigTx)
 
-	peers = make(map[*peer]bool)
+	peers.peerConns = make(map[*peer]bool)
 	brdcstMsg = make(chan []byte)
 	register = make(chan *peer)
 	disconnect = make(chan *peer)
@@ -78,15 +70,9 @@ func Init(port string) error {
 	go receiveDataFromMiner()
 
 	//set localPort global, this will be the listening port for incoming connection
-	parsedPort, err := strconv.Atoi(port)
-	if err != nil {
-		return errors.New("Failed to parse port given on the command line")
-	}
-	localPort = uint16(parsedPort)
-
-	//after this call, there are some peers connected
-	// just to test on localhost
-	if port != "8000" {
+	localConn = connTuple
+	ipport := strings.Split(connTuple,":")
+	if ipport[1] != "8000" {
 		logger.Print("Start mining as a non-bootstrap node.")
 		err := bootstrap()
 		if err != nil {
@@ -96,7 +82,7 @@ func Init(port string) error {
 		logger.Print("Start mining as a bootstrap node.")
 	}
 
-	go listener(strconv.Itoa(int(localPort)))
+	go listener(localConn)
 	return nil
 }
 
@@ -119,17 +105,32 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 
 	var conn net.Conn
 
+	//check if we already established a connection with that ip or if the ip belongs to us
+	if peerExists(ipport) {
+		return nil, errors.New(fmt.Sprintf("Connection with (%v) already established.\n", ipport))
+	}
+
+	if peerSelfConn(ipport) {
+		return nil, errors.New(fmt.Sprintf("Cannot self-connect (%v).\n", ipport))
+	}
+
 	conn, err := net.Dial("tcp", ipport)
-	p := &peer{conn, nil, sync.Mutex{}, ""}
+	p := &peer{conn, nil, sync.Mutex{}, strings.Split(ipport,":")[1]}
 
 	if err != nil {
 		return nil, err
 	}
 
-	//We need to additionally send either IP:Port or Port in order to construct a valid first message
-	var port [2]byte
-	binary.BigEndian.PutUint16(port[:], localPort)
-	packet := BuildPacket(MINER_PING, port[:])
+	//We need to additionally send our local listening port in order to construct a valid first message
+	//This will be the only time we need it so we don't save it
+	portBuf := make([]byte, PORT_SIZE)
+	localPort,err := strconv.Atoi(strings.Split(localConn,":")[1])
+	if err != nil {
+		return nil, errors.New("Could not initiate new miner connection.")
+	}
+	binary.BigEndian.PutUint16(portBuf[:],uint16(localPort))
+	fmt.Printf("%v, %v\n", len(portBuf), portBuf)
+	packet := BuildPacket(MINER_PING, portBuf)
 	conn.Write(packet)
 	header, _, err := rcvData(p)
 	if err != nil || header.TypeID != MINER_PONG {

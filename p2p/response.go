@@ -110,7 +110,9 @@ func pongRes(p *peer, payload []byte) {
 	}
 
 	//restrict amount of connected miners
-	if len(peers) >= MAX_MINERS {
+	peers.peerMutex.Lock()
+	defer peers.peerMutex.Unlock()
+	if len(peers.peerConns) >= MAX_MINERS {
 		return
 	}
 
@@ -135,7 +137,9 @@ func neighborRes(p *peer) {
 	var packet []byte
 	var ipportList []string
 
-	for p := range peers {
+	peers.peerMutex.Lock()
+	defer peers.peerMutex.Unlock()
+	for p := range peers.peerConns {
 		//Extract and discard the port to which this miner is connected and
 		//append the listener port of this particular miner
 		ip := strings.Split(p.conn.RemoteAddr().String(),":")

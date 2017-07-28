@@ -8,14 +8,18 @@ func broadcastService() {
 	for {
 		select {
 		//broadcasting all messages
+		//Mutex for peers structure need not be claimed here, because
+		//this is the only function that can actually add or reject connections (no race conditions
 		case msg := <-brdcstMsg:
-			for p := range peers {
+			for p := range peers.peerConns {
 				p.ch <- msg
 			}
 		case p := <-register:
-			peers[p] = true
+			peers.add(p)
+			//peers.peerConns[p] = true
 		case p := <-disconnect:
-			delete(peers, p)
+			peers.delete(p)
+			//delete(peers.peerConns, p)
 			close(p.ch)
 		}
 	}
@@ -36,7 +40,7 @@ func checkHealthService() {
 		//time.Sleep(time.Minute)
 		time.Sleep(10*time.Second)
 
-		if len(peers) >= MIN_MINERS {
+		if len(peers.peerConns) >= MIN_MINERS {
 			continue
 		}
 
