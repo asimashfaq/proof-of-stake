@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-	"fmt"
 )
 
 func TestAccTxSerialization(t *testing.T) {
@@ -14,7 +13,6 @@ func TestAccTxSerialization(t *testing.T) {
 	loopMax := int(rand.Uint32() % 10000)
 	for i := 1; i < loopMax; i++ {
 		tx, _ := ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
-		fmt.Printf("%x\n", tx.Hash())
 		data := tx.Encode()
 		var decodedTx *AccTx
 		decodedTx = decodedTx.Decode(data)

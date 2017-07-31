@@ -4,7 +4,6 @@ import "time"
 
 //this is not accessed concurrently, one single goroutine
 func broadcastService() {
-	logger.Print("Start broadcasting service.")
 	for {
 		select {
 		//broadcasting all messages
@@ -26,9 +25,8 @@ func broadcastService() {
 }
 
 //Belongs to the broadcast service
-func peerWriter(p *peer) {
+func peerBroadcast(p *peer) {
 	for msg := range p.ch {
-		logger.Printf("Sending payload to %v\n", p.conn.RemoteAddr().String())
 		sendData(p, msg)
 	}
 }
@@ -38,23 +36,26 @@ func checkHealthService() {
 
 	for {
 		//time.Sleep(time.Minute)
-		time.Sleep(10*time.Second)
-
 		if len(peers.peerConns) >= MIN_MINERS {
+			time.Sleep(2*time.Minute)
 			continue
+		} else {
+			time.Sleep(time.Minute)
 		}
 
+		RETRY:
 		select {
 		case ipaddr := <-iplistChan:
-			logger.Printf("New IP rcvd through channel: %v\n", ipaddr)
 			p, err := initiateNewMinerConnection(ipaddr)
 			if err != nil {
-				logger.Printf("Failed to initiate connection with IP address: %v\n", ipaddr)
-				continue
+				logger.Printf("Initiating new miner connection failed: %v\n", err)
+				goto RETRY
 			}
 			go minerConn(p)
+			break
 		default:
 			neighborReq()
+			break
 		}
 	}
 }

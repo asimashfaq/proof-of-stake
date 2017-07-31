@@ -2,7 +2,7 @@ package p2p
 
 func neighborReq() {
 
-	p := getRandomPeer()
+	p := peers.getRandomPeer()
 	if p == nil {
 		logger.Print("Could not fetch a random peer.\n")
 		return

@@ -4,6 +4,7 @@ import (
 	"sync"
 	"net"
 	"strings"
+	"math/rand"
 )
 
 //The reason we use an additional listener port is because the port the miner connected to this peer
@@ -21,6 +22,14 @@ type peersStruct struct {
 	peerMutex 	sync.Mutex
 }
 
+func (p *peer) getIPPort() string {
+
+	ip := strings.Split(p.conn.RemoteAddr().String(),":")
+	//cut off original port
+	port := p.listenerPort
+	return ip[0]+":"+port
+}
+
 func (peers peersStruct) add(p *peer) {
 	peers.peerMutex.Lock()
 	defer peers.peerMutex.Unlock()
@@ -34,25 +43,31 @@ func (peers peersStruct) delete(p *peer) {
 }
 
 func (peers peersStruct) len() int {
-	//being extra paranoid, probably not strictly needed because reading is thread-safe
-	peers.peerMutex.Lock()
-	defer peers.peerMutex.Unlock()
+	//no locking needed
 	return len(peers.peerConns)
 }
 
-func (peers peersStruct) getAll() []string {
+func (peers peersStruct) getRandomPeer() (p *peer) {
+	//Acquire list before locking, otherwise deadlock
+	peerList := peers.getAllPeers()
+	if len(peerList) == 0 {
+		return nil
+	} else {
+		return peerList[int(rand.Uint32()) % len(peerList)]
+	}
+}
+
+func (peers peersStruct) getAllPeers() []*peer {
 	peers.peerMutex.Lock()
 	defer peers.peerMutex.Unlock()
 
-	var ipportList []string
+	var peerList []*peer
 
 	for p := range peers.peerConns {
-		ip := strings.Split(p.conn.RemoteAddr().String(),":")
-		//cut off original port
-		port := p.listenerPort
-		ipportList = append(ipportList, ip[0]+":"+port)
+		peerList = append(peerList,p)
 	}
-	return ipportList
+
+	return peerList
 }
 
 

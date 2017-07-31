@@ -25,11 +25,9 @@ func receiveDataFromMiner() {
 	for {
 		select {
 		case block := <-BlockOut:
-			logger.Printf("Received a block from the miner for broadcasting.")
 			toBrdcst := BuildPacket(BLOCK_BRDCST, block)
 			brdcstMsg <- toBrdcst
 		case txInfo := <-TxsOut:
-			logger.Printf("Received a transaction from the miner for broadcasting: ID: %v.\n", txInfo.TxType)
 			toBrdcst := BuildPacket(txInfo.TxType, txInfo.Payload)
 			brdcstMsg <- toBrdcst
 		}
@@ -39,11 +37,9 @@ func receiveDataFromMiner() {
 //we can't broadcast incoming messages directly, need to forward them to the miner (to check if
 //the tx has already been broadcast before, whether it was a valid tx at all)
 func forwardTxToMiner(p *peer, payload []byte, brdcstType uint8) {
-	logger.Printf("Received a transaction (ID: %v) from %v.\n", brdcstType, p.conn.RemoteAddr().String())
 	TxsIn <- TxInfo{brdcstType, payload}
 }
 func forwardBlockToMiner(p *peer, payload []byte) {
-	logger.Printf("Received a block from %v.\n", p.conn.RemoteAddr().String())
 	BlockIn <- payload
 }
 
@@ -53,7 +49,6 @@ func forwardTxReqToMiner(p *peer, payload []byte, txType uint8) {
 		return
 	}
 
-	logger.Printf("Received the response to a transaction request with type (%v) from %v.\n", txType, p.conn.RemoteAddr().String())
 	switch txType {
 	case FUNDSTX_RES:
 		var fundsTx *protocol.FundsTx
@@ -80,6 +75,5 @@ func forwardTxReqToMiner(p *peer, payload []byte, txType uint8) {
 }
 
 func forwardBlockReqToMiner(p *peer, payload []byte) {
-	logger.Printf("Received the response to a block request from %v.\n", p.conn.RemoteAddr().String())
 	BlockReqChan <- payload
 }

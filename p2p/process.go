@@ -7,8 +7,6 @@ import (
 
 func processNeighborRes(p *peer, payload []byte) {
 
-	logger.Printf("Received (%v) address(es) from peer with IP address: %v\n", len(payload)/(IPV4ADDR+PORT_SIZE), p.conn.RemoteAddr())
-
 	//parse the incoming ipv4 addresses
 	ipportList := _processNeighborRes(payload)
 

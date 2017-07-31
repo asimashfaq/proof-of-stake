@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 	AccTxChan = make(chan *protocol.AccTx)
 	ConfigTxChan = make(chan *protocol.ConfigTx)
 
-	peers = make(map[*peer]bool)
+	peers.peerConns = make(map[*peer]bool)
 	brdcstMsg = make(chan []byte)
 	register = make(chan *peer)
 	disconnect = make(chan *peer)

@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"fmt"
 	"github.com/lisgie/bazo_miner/p2p"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
@@ -69,7 +68,6 @@ func getNewChain(newBlock *protocol.Block) (ancestor *protocol.Block, newChain [
 		select {
 		case encodedBlock := <-p2p.BlockReqChan:
 			newBlock = newBlock.Decode(encodedBlock)
-			fmt.Printf("%v\n", newBlock)
 			//limit the waiting time to 30 seconds
 		case <-time.After(BLOCKFETCH_TIMEOUT * time.Second):
 			return nil, nil

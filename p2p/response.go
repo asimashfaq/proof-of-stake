@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"fmt"
 )
 
 func txRes(p *peer, payload []byte, txKind uint8) {
@@ -134,10 +133,12 @@ func neighborRes(p *peer) {
 	//in the future following structure is possible:
 	//1) nr of ipv4 addresses, 2) nr of ipv6 addresses, followed by list of both
 	var packet []byte
+	var ipportList []string
+	peerList := peers.getAllPeers()
 
-	ipportList := peers.getAll()
-
-	fmt.Printf("%v\n", ipportList)
+	for _,p := range peerList {
+		ipportList = append(ipportList, p.getIPPort())
+	}
 
 	packet = BuildPacket(NEIGHBOR_RES, _neighborRes(ipportList))
 	sendData(p, packet)

@@ -5,9 +5,7 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 	"log"
 	"net"
-	"os"
 	"sync"
-	"time"
 	"encoding/binary"
 	"strconv"
 	"strings"
@@ -45,8 +43,8 @@ type TxInfo struct {
 }
 
 func Init(connTuple string) error {
-	LogFile, _ := os.OpenFile("log/p2p "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
-	logger = log.New(LogFile, "", log.LstdFlags)
+
+	logInit()
 
 	TxsIn = make(chan TxInfo, TX_BUFFER)
 	BlockIn = make(chan []byte)
@@ -67,20 +65,22 @@ func Init(connTuple string) error {
 	iplistChan = make(chan string, MIN_MINERS)
 
 	go broadcastService()
+	go checkHealthService()
 	go receiveDataFromMiner()
 
 	//set localPort global, this will be the listening port for incoming connection
 	localConn = connTuple
-	ipport := strings.Split(connTuple,":")
+	ipport := strings.Split(localConn,":")
 	if ipport[1] != "8000" {
-		logger.Print("Start mining as a non-bootstrap node.")
+		logger.Print("Start mining as a non-bootstrap node\n")
 		err := bootstrap()
 		if err != nil {
 			return err
 		}
 	} else {
-		logger.Print("Start mining as a bootstrap node.")
+		logger.Print("Start mining as a bootstrap node\n")
 	}
+
 
 	go listener()
 	return nil
@@ -92,12 +92,11 @@ func bootstrap() error {
 	//add to connection list
 	p, err := initiateNewMinerConnection(BOOTSTRAP_SERVER)
 	if err != nil {
-		logger.Printf("%v\n", err)
+		logger.Printf("Initiating new miner connection failed: %v\n", err)
 		return err
 	}
 
 	go minerConn(p)
-	go checkHealthService()
 	return nil
 }
 
@@ -107,11 +106,11 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 
 	//check if we already established a connection with that ip or if the ip belongs to us
 	if peerExists(ipport) {
-		return nil, errors.New(fmt.Sprintf("Connection with (%v) already established.\n", ipport))
+		return nil, errors.New(fmt.Sprintf("Connection with %v already established.\n", ipport))
 	}
 
 	if peerSelfConn(ipport) {
-		return nil, errors.New(fmt.Sprintf("Cannot self-connect (%v).\n", ipport))
+		return nil, errors.New(fmt.Sprintf("Cannot self-connect %v.\n", ipport))
 	}
 
 	conn, err := net.Dial("tcp", ipport)
@@ -126,14 +125,14 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	portBuf := make([]byte, PORT_SIZE)
 	localPort,err := strconv.Atoi(strings.Split(localConn,":")[1])
 	if err != nil {
-		return nil, errors.New("Could not initiate new miner connection.")
+		return nil, errors.New(fmt.Sprintf("Parsing port failed: %v\n", err))
 	}
 	binary.BigEndian.PutUint16(portBuf[:],uint16(localPort))
 	packet := BuildPacket(MINER_PING, portBuf)
 	conn.Write(packet)
 	header, _, err := rcvData(p)
 	if err != nil || header.TypeID != MINER_PONG {
-		return nil, errors.New("Connecting to bootstrap server failed.")
+		return nil, errors.New(fmt.Sprintf("Failed to complete miner handshake: %v\n", err))
 	}
 
 	return p, nil
@@ -163,7 +162,7 @@ func handleNewConn(p *peer) {
 	logger.Printf("New incoming connection: %v\n", p.conn.RemoteAddr().String())
 	header, payload, err := rcvData(p)
 	if err != nil {
-		logger.Printf("%v\n", err)
+		logger.Printf("Failed to handle incoming connection: %v\n", err)
 		return
 	}
 
@@ -172,18 +171,18 @@ func handleNewConn(p *peer) {
 
 func minerConn(p *peer) {
 
-	logger.Printf("Adding a new miner: %v\n", p.conn.RemoteAddr().String())
+	logger.Printf("Adding a new miner: %v\n", p.getIPPort())
 
 	ch := make(chan []byte)
 	//give the peer a channel
 	p.ch = ch
 	register <- p
-	go peerWriter(p)
+	go peerBroadcast(p)
 
 	for {
 		header, payload, err := rcvData(p)
 		if err != nil {
-			logger.Printf("%v\n", err)
+			logger.Printf("Miner disconnected: %v\n", err)
 			disconnect <- p
 			return
 		}

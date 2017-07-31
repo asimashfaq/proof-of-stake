@@ -2,8 +2,9 @@ package p2p
 
 import (
 	"bufio"
-	"math/rand"
 	"encoding/binary"
+	"fmt"
+	"errors"
 )
 
 func rcvData(p *peer) (*Header, []byte, error) {
@@ -11,9 +12,8 @@ func rcvData(p *peer) (*Header, []byte, error) {
 	reader := bufio.NewReader(p.conn)
 	header, err := ExtractHeader(reader)
 	if err != nil {
-		logger.Printf("Connection to %v aborted: (%v)\n", p.conn.RemoteAddr().String(), err)
 		p.conn.Close()
-		return nil, nil, err
+		return nil, nil, errors.New(fmt.Sprintf("Connection to %v aborted: (%v)\n", p.getIPPort(), err))
 	}
 	payload := make([]byte, header.Len)
 
@@ -21,44 +21,28 @@ func rcvData(p *peer) (*Header, []byte, error) {
 		payload[cnt], err = reader.ReadByte()
 		if err != nil {
 			p.conn.Close()
-			return nil, nil, err
+			return nil, nil, errors.New(fmt.Sprintf("Connection to %v aborted: %v\n", p.getIPPort(), err))
 		}
 	}
 
+	logger.Printf("Receive message:\nSender: %v\nType: %v\nPayload length: %v\n", p.getIPPort(), logMapping[header.TypeID], len(payload))
 	return header, payload, nil
 }
 
 func sendData(p *peer, payload []byte) {
+	logger.Printf("Send message:\nReceiver: %v\nType: %v\nPayload length: %v\n", p.getIPPort(), logMapping[payload[4]], len(payload)-HEADER_LEN)
 	p.l.Lock()
 	p.conn.Write(payload)
 	p.l.Unlock()
 }
 
-//get a random miner connection
-func getRandomPeer() *peer {
-
-	peers.peerMutex.Lock()
-	defer peers.peerMutex.Unlock()
-	if len(peers.peerConns) == 0 {
-		return nil
-	}
-
-	var peerSlice []*peer
-
-	pos := int(rand.Uint32()) % len(peers.peerConns)
-	for tmpPeer := range peers.peerConns {
-		peerSlice = append(peerSlice, tmpPeer)
-	}
-
-	return peerSlice[pos]
-}
-
 //We have to prevent to connect to miners twice
 func peerExists(newIpport string) bool {
 
-	allConns := peers.getAll()
+	peerList := peers.getAllPeers()
 
-	for _,ipport := range allConns {
+	for _,p := range peerList {
+		ipport := p.getIPPort()
 		if ipport == newIpport {
 			return true
 		}
@@ -73,7 +57,6 @@ func peerSelfConn(newIpport string) bool {
 
 func BuildPacket(typeID uint8, payload []byte) (packet []byte) {
 
-	logger.Printf("Building new packet with type ID (%v) and packet length (%v).\n", typeID, len(payload))
 	var payloadLen [4]byte
 	packet = make([]byte, HEADER_LEN+len(payload))
 	binary.BigEndian.PutUint32(payloadLen[:], uint32(len(payload)))

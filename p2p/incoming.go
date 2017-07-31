@@ -18,7 +18,6 @@ type Header struct {
 
 func processIncomingMsg(p *peer, header *Header, payload []byte) {
 
-	logger.Printf("Received request from %v with following header:\n%v", p.conn.RemoteAddr().String(), header)
 	switch header.TypeID {
 		//BROADCASTING
 	case FUNDSTX_BRDCST:
