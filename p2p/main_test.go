@@ -6,9 +6,14 @@ import (
 	"testing"
 )
 
+var (
+	MINER_IPPORT = "127.0.0.1:8000"
+)
+
 func TestMain(m *testing.M) {
 
-	iplistChan = make(chan string)
+	logInit()
+	localConn = "127.0.0.1:9000"
 
 	TxsIn = make(chan TxInfo, TX_BUFFER)
 	BlockIn = make(chan []byte)
@@ -25,6 +30,15 @@ func TestMain(m *testing.M) {
 	brdcstMsg = make(chan []byte)
 	register = make(chan *peer)
 	disconnect = make(chan *peer)
+
+	iplistChan = make(chan string, MIN_MINERS)
+
+	go broadcastService()
+	go checkHealthService()
+	go receiveDataFromMiner()
+
+	//bootstrap server
+	go listener("127.0.0.1:8000")
 
 	os.Exit(m.Run())
 }

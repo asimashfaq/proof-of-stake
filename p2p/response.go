@@ -136,7 +136,7 @@ func neighborRes(p *peer) {
 	var ipportList []string
 	peerList := peers.getAllPeers()
 
-	for _,p := range peerList {
+	for _, p := range peerList {
 		ipportList = append(ipportList, p.getIPPort())
 	}
 

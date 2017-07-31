@@ -3,14 +3,17 @@ package p2p
 import (
 	"bufio"
 	"encoding/binary"
-	"fmt"
 	"errors"
+	"fmt"
+)
+
+const (
+	HEADER_LEN = 5
 )
 
 func rcvData(p *peer) (*Header, []byte, error) {
-
 	reader := bufio.NewReader(p.conn)
-	header, err := ExtractHeader(reader)
+	header, err := ReadHeader(reader)
 	if err != nil {
 		p.conn.Close()
 		return nil, nil, errors.New(fmt.Sprintf("Connection to %v aborted: (%v)\n", p.getIPPort(), err))
@@ -36,12 +39,12 @@ func sendData(p *peer, payload []byte) {
 	p.l.Unlock()
 }
 
-//We have to prevent to connect to miners twice
+//Tested in server_test.go
 func peerExists(newIpport string) bool {
 
 	peerList := peers.getAllPeers()
 
-	for _,p := range peerList {
+	for _, p := range peerList {
 		ipport := p.getIPPort()
 		if ipport == newIpport {
 			return true
@@ -51,6 +54,7 @@ func peerExists(newIpport string) bool {
 	return false
 }
 
+//Tested in server_test.go
 func peerSelfConn(newIpport string) bool {
 	return newIpport == localConn
 }
@@ -66,7 +70,7 @@ func BuildPacket(typeID uint8, payload []byte) (packet []byte) {
 	return packet
 }
 
-func ExtractHeader(reader *bufio.Reader) (*Header, error) {
+func ReadHeader(reader *bufio.Reader) (*Header, error) {
 	//the first four bytes of any incoming messages is the length of the payload
 	//error catching after every read is necessary to avoid panicking
 	var headerArr [HEADER_LEN]byte
@@ -79,12 +83,19 @@ func ExtractHeader(reader *bufio.Reader) (*Header, error) {
 		headerArr[i] = extr
 	}
 
-	lenBuf := [4]byte{headerArr[0], headerArr[1], headerArr[2], headerArr[3]}
+	header := extractHeader(headerArr[:])
+	return header, nil
+}
 
-	packetLen := binary.BigEndian.Uint32(lenBuf[:])
+//Decoupled functionality for testing reasons
+func extractHeader(headerData []byte) *Header {
 
 	header := new(Header)
+
+	lenBuf := [4]byte{headerData[0], headerData[1], headerData[2], headerData[3]}
+	packetLen := binary.BigEndian.Uint32(lenBuf[:])
+
 	header.Len = packetLen
-	header.TypeID = uint8(headerArr[4])
-	return header, nil
+	header.TypeID = uint8(headerData[4])
+	return header
 }

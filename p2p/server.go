@@ -1,15 +1,15 @@
 package p2p
 
 import (
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"log"
 	"net"
-	"sync"
-	"encoding/binary"
 	"strconv"
 	"strings"
-	"fmt"
+	"sync"
 )
 
 const (
@@ -25,15 +25,13 @@ var (
 	//List of ip addresses. A connection to a subset of the list will be established as soon as the network health
 	//monitor triggers.
 	iplistChan chan string
-	peers peersStruct
+	peers      peersStruct
 	logger     *log.Logger
 	brdcstMsg  chan []byte
 	register   chan *peer
 	disconnect chan *peer
-	localConn string
+	localConn  string
 )
-
-
 
 //we need to decode incoming transactions, therefore type is needed
 //for outgoing transactions, the p2p package needs the information to build the proper header
@@ -70,7 +68,7 @@ func Init(connTuple string) error {
 
 	//set localPort global, this will be the listening port for incoming connection
 	localConn = connTuple
-	ipport := strings.Split(localConn,":")
+	ipport := strings.Split(localConn, ":")
 	if ipport[1] != "8000" {
 		logger.Print("Start mining as a non-bootstrap node\n")
 		err := bootstrap()
@@ -81,8 +79,7 @@ func Init(connTuple string) error {
 		logger.Print("Start mining as a bootstrap node\n")
 	}
 
-
-	go listener()
+	go listener(localConn)
 	return nil
 }
 
@@ -114,21 +111,17 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	}
 
 	conn, err := net.Dial("tcp", ipport)
-	p := &peer{conn, nil, sync.Mutex{}, strings.Split(ipport,":")[1]}
+	p := &peer{conn, nil, sync.Mutex{}, strings.Split(ipport, ":")[1]}
 
 	if err != nil {
 		return nil, err
 	}
 
-	//We need to additionally send our local listening port in order to construct a valid first message
-	//This will be the only time we need it so we don't save it
-	portBuf := make([]byte, PORT_SIZE)
-	localPort,err := strconv.Atoi(strings.Split(localConn,":")[1])
+	packet, err := prepareHandshake()
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Parsing port failed: %v\n", err))
+		return nil, err
 	}
-	binary.BigEndian.PutUint16(portBuf[:],uint16(localPort))
-	packet := BuildPacket(MINER_PING, portBuf)
+
 	conn.Write(packet)
 	header, _, err := rcvData(p)
 	if err != nil || header.TypeID != MINER_PONG {
@@ -138,9 +131,23 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	return p, nil
 }
 
-func listener() {
+func prepareHandshake() ([]byte, error) {
+	//We need to additionally send our local listening port in order to construct a valid first message
+	//This will be the only time we need it so we don't save it
+	portBuf := make([]byte, PORT_SIZE)
+	localPort, err := strconv.Atoi(strings.Split(localConn, ":")[1])
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Parsing port failed: %v\n", err))
+	}
+	binary.BigEndian.PutUint16(portBuf[:], uint16(localPort))
+	packet := BuildPacket(MINER_PING, portBuf)
 
-	listener, err := net.Listen("tcp", localConn)
+	return packet, nil
+}
+
+func listener(ipport string) {
+
+	listener, err := net.Listen("tcp", ipport)
 	if err != nil {
 		logger.Printf("%v\n", err)
 		return
@@ -190,4 +197,3 @@ func minerConn(p *peer) {
 		processIncomingMsg(p, header, payload)
 	}
 }
-

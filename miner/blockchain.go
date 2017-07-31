@@ -45,7 +45,7 @@ func Init() {
 	activeParameters = &parameterSlice[0]
 
 	currentTargetTime = new(timerange)
-	target = append(target, 16)
+	target = append(target, 14)
 
 	localBlockCount = -1
 	globalBlockCount = -1

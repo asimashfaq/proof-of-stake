@@ -37,13 +37,13 @@ func checkHealthService() {
 	for {
 		//time.Sleep(time.Minute)
 		if len(peers.peerConns) >= MIN_MINERS {
-			time.Sleep(2*time.Minute)
+			time.Sleep(2 * time.Minute)
 			continue
 		} else {
 			time.Sleep(time.Minute)
 		}
 
-		RETRY:
+	RETRY:
 		select {
 		case ipaddr := <-iplistChan:
 			p, err := initiateNewMinerConnection(ipaddr)

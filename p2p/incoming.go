@@ -4,12 +4,6 @@ import (
 	"fmt"
 )
 
-const (
-	MAX_BUF_SIZE = 10000000 //10MB
-	HEADER_LEN   = 5
-	VERSION_ID   = 1
-)
-
 //Java can't handle uints, should we only allow lengths of up to 2^31?
 type Header struct {
 	Len    uint32
@@ -19,7 +13,7 @@ type Header struct {
 func processIncomingMsg(p *peer, header *Header, payload []byte) {
 
 	switch header.TypeID {
-		//BROADCASTING
+	//BROADCASTING
 	case FUNDSTX_BRDCST:
 		forwardTxToMiner(p, payload, FUNDSTX_BRDCST)
 	case ACCTX_BRDCST:

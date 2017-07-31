@@ -1,33 +1,33 @@
 package p2p
 
 import (
-	"sync"
+	"math/rand"
 	"net"
 	"strings"
-	"math/rand"
+	"sync"
 )
 
 //The reason we use an additional listener port is because the port the miner connected to this peer
 //is not the same as the one it listens to for new connections. When we are queried for neighbors
 //we send the IP address in p.conn.RemotAddr() with the listenerPort
 type peer struct {
-	conn net.Conn
-	ch   chan []byte
-	l    sync.Mutex
+	conn         net.Conn
+	ch           chan []byte
+	l            sync.Mutex
 	listenerPort string
 }
 
 type peersStruct struct {
-	peerConns      map[*peer]bool
-	peerMutex 	sync.Mutex
+	peerConns map[*peer]bool
+	peerMutex sync.Mutex
 }
 
 func (p *peer) getIPPort() string {
 
-	ip := strings.Split(p.conn.RemoteAddr().String(),":")
+	ip := strings.Split(p.conn.RemoteAddr().String(), ":")
 	//cut off original port
 	port := p.listenerPort
-	return ip[0]+":"+port
+	return ip[0] + ":" + port
 }
 
 func (peers peersStruct) add(p *peer) {
@@ -53,7 +53,7 @@ func (peers peersStruct) getRandomPeer() (p *peer) {
 	if len(peerList) == 0 {
 		return nil
 	} else {
-		return peerList[int(rand.Uint32()) % len(peerList)]
+		return peerList[int(rand.Uint32())%len(peerList)]
 	}
 }
 
@@ -64,12 +64,8 @@ func (peers peersStruct) getAllPeers() []*peer {
 	var peerList []*peer
 
 	for p := range peers.peerConns {
-		peerList = append(peerList,p)
+		peerList = append(peerList, p)
 	}
 
 	return peerList
 }
-
-
-
-
