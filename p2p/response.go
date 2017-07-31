@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"fmt"
 )
 
 func txRes(p *peer, payload []byte, txKind uint8) {
@@ -110,9 +111,7 @@ func pongRes(p *peer, payload []byte) {
 	}
 
 	//restrict amount of connected miners
-	peers.peerMutex.Lock()
-	defer peers.peerMutex.Unlock()
-	if len(peers.peerConns) >= MAX_MINERS {
+	if peers.len() >= MAX_MINERS {
 		return
 	}
 
@@ -135,16 +134,10 @@ func neighborRes(p *peer) {
 	//in the future following structure is possible:
 	//1) nr of ipv4 addresses, 2) nr of ipv6 addresses, followed by list of both
 	var packet []byte
-	var ipportList []string
 
-	peers.peerMutex.Lock()
-	defer peers.peerMutex.Unlock()
-	for p := range peers.peerConns {
-		//Extract and discard the port to which this miner is connected and
-		//append the listener port of this particular miner
-		ip := strings.Split(p.conn.RemoteAddr().String(),":")
-		ipportList = append(ipportList, ip[0]+":"+p.listenerPort)
-	}
+	ipportList := peers.getAll()
+
+	fmt.Printf("%v\n", ipportList)
 
 	packet = BuildPacket(NEIGHBOR_RES, _neighborRes(ipportList))
 	sendData(p, packet)

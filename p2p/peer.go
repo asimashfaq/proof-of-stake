@@ -3,6 +3,7 @@ package p2p
 import (
 	"sync"
 	"net"
+	"strings"
 )
 
 //The reason we use an additional listener port is because the port the miner connected to this peer
@@ -42,7 +43,16 @@ func (peers peersStruct) len() int {
 func (peers peersStruct) getAll() []string {
 	peers.peerMutex.Lock()
 	defer peers.peerMutex.Unlock()
-	return nil
+
+	var ipportList []string
+
+	for p := range peers.peerConns {
+		ip := strings.Split(p.conn.RemoteAddr().String(),":")
+		//cut off original port
+		port := p.listenerPort
+		ipportList = append(ipportList, ip[0]+":"+port)
+	}
+	return ipportList
 }
 
 

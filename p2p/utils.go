@@ -54,21 +54,21 @@ func getRandomPeer() *peer {
 }
 
 //We have to prevent to connect to miners twice
-func peerExists(ipport string) bool {
+func peerExists(newIpport string) bool {
 
-	//just reading, shouldn't be a race condition problem
-	peers.peerMutex.Lock()
-	defer peers.peerMutex.Unlock()
-	for p := range peers.peerConns {
-		if p.conn.RemoteAddr().String() == ipport {
-			return false
+	allConns := peers.getAll()
+
+	for _,ipport := range allConns {
+		if ipport == newIpport {
+			return true
 		}
 	}
+
 	return false
 }
 
-func peerSelfConn(ipport string) bool {
-	return ipport == localConn
+func peerSelfConn(newIpport string) bool {
+	return newIpport == localConn
 }
 
 func BuildPacket(typeID uint8, payload []byte) (packet []byte) {

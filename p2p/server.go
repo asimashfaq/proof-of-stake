@@ -82,7 +82,7 @@ func Init(connTuple string) error {
 		logger.Print("Start mining as a bootstrap node.")
 	}
 
-	go listener(localConn)
+	go listener()
 	return nil
 }
 
@@ -129,7 +129,6 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 		return nil, errors.New("Could not initiate new miner connection.")
 	}
 	binary.BigEndian.PutUint16(portBuf[:],uint16(localPort))
-	fmt.Printf("%v, %v\n", len(portBuf), portBuf)
 	packet := BuildPacket(MINER_PING, portBuf)
 	conn.Write(packet)
 	header, _, err := rcvData(p)
@@ -140,9 +139,9 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	return p, nil
 }
 
-func listener(localPort string) {
+func listener() {
 
-	listener, err := net.Listen("tcp", ":"+localPort)
+	listener, err := net.Listen("tcp", localConn)
 	if err != nil {
 		logger.Printf("%v\n", err)
 		return
