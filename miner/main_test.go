@@ -118,7 +118,7 @@ func cleanAndPrepare() {
 	tmpSlice = append(tmpSlice, parameters{
 		[32]byte{},
 		1,
-		1000,
+		5000000,
 		2016,
 		60,
 		0,

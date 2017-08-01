@@ -135,8 +135,8 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 	for cnt := 0; cnt < loopMax; cnt++ {
 		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%10+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
 
-		//don't mess with the minimum fee just yet
-		if tx.Id == 3 {
+		//don't mess with the minimum fee and block size
+		if tx.Id == 3 || tx.Id == 1{
 			continue
 		}
 		if err := addTx(b, tx); err == nil {

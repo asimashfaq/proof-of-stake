@@ -205,8 +205,6 @@ func validateBlock(b *protocol.Block) error {
 		uptodate = false
 	}
 
-	fmt.Printf("Blocks to validate: %v, uptodate: %v\n", len(blocksToValidate), uptodate)
-
 	if blocksToValidate == nil {
 		return errors.New("Common ancestor not found or new chain shorter than current one.")
 	}

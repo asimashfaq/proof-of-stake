@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"testing"
 )
@@ -102,15 +101,6 @@ func TestTimestamps(t *testing.T) {
 				)
 			}
 		}
-
-		fmt.Printf("Blockhash: %x, diff_interval = %v, block_interval = %v, globalCnt = %v, localCnt = %v, target: %v, targettime: %v\n",
-			b.Hash[0:8],
-			activeParameters.diff_interval,
-			activeParameters.block_interval,
-			globalBlockCount,
-			localBlockCount,
-			target,
-			currentTargetTime)
 	}
 }
 
