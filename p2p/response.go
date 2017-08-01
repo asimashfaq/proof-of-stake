@@ -7,7 +7,6 @@ import (
 	"github.com/lisgie/bazo_miner/storage"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func txRes(p *peer, payload []byte, txKind uint8) {
@@ -82,15 +81,6 @@ func accRes(p *peer, payload []byte) {
 		return
 	}
 	packet := BuildPacket(ACC_RES, encodedAcc)
-	sendData(p, packet)
-}
-
-func timeRes(p *peer) {
-
-	var buf [8]byte
-	time := time.Now().Unix()
-	binary.BigEndian.PutUint64(buf[:], uint64(time))
-	packet := BuildPacket(TIME_RES, buf[:])
 	sendData(p, packet)
 }
 

@@ -22,6 +22,8 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 		forwardTxToMiner(p, payload, CONFIGTX_BRDCST)
 	case BLOCK_BRDCST:
 		forwardBlockToMiner(p, payload)
+	case TIME_BRDCST:
+		processTimeRes(p, payload)
 
 		//Miner Requests
 	case FUNDSTX_REQ:

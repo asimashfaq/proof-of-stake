@@ -64,6 +64,7 @@ func Init(connTuple string) error {
 
 	go broadcastService()
 	go checkHealthService()
+	go timeService()
 	go receiveDataFromMiner()
 
 	//set localPort global, this will be the listening port for incoming connection
@@ -111,7 +112,7 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	}
 
 	conn, err := net.Dial("tcp", ipport)
-	p := &peer{conn, nil, sync.Mutex{}, strings.Split(ipport, ":")[1]}
+	p := &peer{conn, nil, sync.Mutex{}, strings.Split(ipport, ":")[1],0}
 
 	if err != nil {
 		return nil, err
@@ -159,7 +160,7 @@ func listener(ipport string) {
 			logger.Printf("%v\n", err)
 			continue
 		}
-		p := &peer{conn, nil, sync.Mutex{}, ""}
+		p := &peer{conn, nil, sync.Mutex{}, "", 0}
 		go handleNewConn(p)
 	}
 }

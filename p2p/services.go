@@ -1,6 +1,9 @@
 package p2p
 
-import "time"
+import (
+	"time"
+	"fmt"
+)
 
 //this is not accessed concurrently, one single goroutine
 func broadcastService() {
@@ -57,5 +60,22 @@ func checkHealthService() {
 			neighborReq()
 			break
 		}
+	}
+}
+
+func timeService() {
+
+	go func(){
+		for {
+			time.Sleep(time.Minute)
+			writeSystemTime()
+			fmt.Printf("%v\n", systemTime)
+		}
+	}()
+
+	for {
+		time.Sleep(20*time.Second)
+		packet := BuildPacket(TIME_BRDCST, getTime())
+		brdcstMsg <- packet
 	}
 }

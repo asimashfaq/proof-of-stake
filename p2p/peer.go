@@ -15,6 +15,7 @@ type peer struct {
 	ch           chan []byte
 	l            sync.Mutex
 	listenerPort string
+	time         int64
 }
 
 type peersStruct struct {
@@ -68,4 +69,19 @@ func (peers peersStruct) getAllPeers() []*peer {
 	}
 
 	return peerList
+}
+
+func (peers peersStruct) getPeerTimes() (peerTimes []int64) {
+	peers.peerMutex.Lock()
+	defer peers.peerMutex.Unlock()
+
+	for p := range peers.peerConns {
+		p.l.Lock()
+		peerTimes = append(peerTimes, p.time)
+		//concurrent writes need to protected. We set the time to 0 again as an indicator that the value has been consumed
+		p.time = 0
+		p.l.Unlock()
+	}
+
+	return peerTimes
 }

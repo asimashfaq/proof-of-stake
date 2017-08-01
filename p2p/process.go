@@ -5,6 +5,17 @@ import (
 	"strconv"
 )
 
+func processTimeRes(p *peer, payload []byte) {
+
+	time := int64(binary.BigEndian.Uint64(payload))
+	//concurrent writes need to be protected
+	//we use the same lock to prevent concurrent writes. It would be more efficient to use different locks
+	//but the speedup is so marginal that it's not worth it
+	p.l.Lock()
+	defer p.l.Unlock()
+	p.time = time
+}
+
 func processNeighborRes(p *peer, payload []byte) {
 
 	//parse the incoming ipv4 addresses

@@ -194,6 +194,8 @@ func validateBlock(b *protocol.Block) error {
 	blockValidation.Lock()
 	defer blockValidation.Unlock()
 
+
+
 	//TODO: Add block size check
 	//this is necessary, because we need to first validate all blocks (need to fetch tx data)
 	//before doing any state validation, we save all of them temporarily so we don't have to
