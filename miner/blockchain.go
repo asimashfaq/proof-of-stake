@@ -13,18 +13,17 @@ import (
 	"time"
 )
 
-var logger *log.Logger
-
-//using these accounts a mining beneficiary
-var accA, accB, minerAcc *protocol.Account
-var hashA, hashB [32]byte
-
-var blockValidation = &sync.Mutex{}
-
-var timestamp []int64
-var parameterSlice []parameters
-var activeParameters *parameters
-var tmpSlice []parameters
+var (
+	logger               *log.Logger
+	accA, accB, minerAcc *protocol.Account
+	hashA, hashB         [32]byte
+	blockValidation      = &sync.Mutex{}
+	timestamp            []int64
+	parameterSlice       []parameters
+	activeParameters     *parameters
+	tmpSlice             []parameters
+	uptodate             bool
+)
 
 func Init() {
 
@@ -45,7 +44,7 @@ func Init() {
 	activeParameters = &parameterSlice[0]
 
 	currentTargetTime = new(timerange)
-	target = append(target, 14)
+	target = append(target, 13)
 
 	localBlockCount = -1
 	globalBlockCount = -1

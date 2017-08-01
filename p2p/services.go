@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"time"
-	"fmt"
 )
 
 //this is not accessed concurrently, one single goroutine
@@ -65,11 +64,12 @@ func checkHealthService() {
 
 func timeService() {
 
+	//initialize system time
+	systemTime = time.Now().Unix()
 	go func(){
 		for {
 			time.Sleep(time.Minute)
 			writeSystemTime()
-			fmt.Printf("%v\n", systemTime)
 		}
 	}()
 

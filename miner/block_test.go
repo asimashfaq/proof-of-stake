@@ -146,3 +146,23 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 
 	return hashFundsSlice, hashAccSlice, hashConfigSlice
 }
+
+func TestTimestampCheck(t *testing.T) {
+
+	cleanAndPrepare()
+	timePast := time.Now().Unix()-3650
+	timeFuture := time.Now().Unix()+3650
+	timeNow := time.Now().Unix()+50
+
+	if err := timestampCheck(timePast); err == nil {
+		t.Error("Dynamic time check failed\n")
+	}
+
+	if err := timestampCheck(timeFuture); err == nil {
+		t.Error("Dynamic time check failed\n")
+	}
+
+	if err := timestampCheck(timeNow); err != nil {
+		t.Errorf("Valid time got rejected: %v\n", err)
+	}
+}

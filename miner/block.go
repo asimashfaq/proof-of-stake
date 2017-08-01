@@ -195,14 +195,19 @@ func validateBlock(b *protocol.Block) error {
 	defer blockValidation.Unlock()
 
 
-
 	//TODO: Add block size check
-	//this is necessary, because we need to first validate all blocks (need to fetch tx data)
-	//before doing any state validation, we save all of them temporarily so we don't have to
-	//refetch
 	blockDataMap := make(map[[32]byte]blockData)
 
 	blocksToRollback, blocksToValidate := getBlockSequences(b)
+
+	//We're not up-to-date. Thus, we can't do dynamic checks like time verification
+	if len(blocksToValidate) == 1 {
+		uptodate = true
+	} else {
+		uptodate = false
+	}
+
+	fmt.Printf("Blocks to validate: %v, uptodate: %v\n", len(blocksToValidate), uptodate)
 
 	if blocksToValidate == nil {
 		return errors.New("Common ancestor not found or new chain shorter than current one.")
@@ -217,6 +222,8 @@ func validateBlock(b *protocol.Block) error {
 		}
 		blockDataMap[block.Hash] = blockData{accTxs, fundsTxs, configTxs, block}
 	}
+
+
 
 	//no rollback needed, just a new block to validate
 	if len(blocksToRollback) == 0 {
@@ -249,6 +256,12 @@ func validateBlock(b *protocol.Block) error {
 }
 
 func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, err error) {
+
+	if uptodate {
+		if err := timestampCheck(block.Timestamp); err != nil {
+			return nil,nil,nil,err
+		}
+	}
 
 	//duplicates are not allowed, use hasmap to easily check for duplicates
 	duplicates := make(map[[32]byte]bool)
@@ -310,16 +323,29 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 
 	}
 
-	logger.Println("Proof of work validation passed.")
-
 	//cmp merkle tree
 	if buildMerkleTree(block.AccTxData, block.FundsTxData, block.ConfigTxData) != block.MerkleRoot {
 		return nil, nil, nil, errors.New("Merkle Root incorrect.")
 		logger.Println("Merkle Root incorrect.")
 	}
 
-	logger.Println("Merkle root hash passed.")
+
 	return accTxSlice, fundsTxSlice, configTxSlice, err
+}
+
+func timestampCheck(timestamp int64) error {
+	systemTime := p2p.ReadSystemTime()
+	if timestamp > systemTime {
+		if timestamp - systemTime > int64(time.Hour.Seconds()) {
+			//more than one hour in the past -> reject
+			return errors.New("Timestamp was too far in the future.\n")
+		}
+	} else {
+		if systemTime - timestamp > int64(time.Hour.Seconds()) {
+			return errors.New("Timestamp was too far in the past.\n")
+		}
+	}
+	return nil
 }
 
 func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan chan error) {
