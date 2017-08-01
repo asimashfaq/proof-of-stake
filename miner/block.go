@@ -194,8 +194,6 @@ func validateBlock(b *protocol.Block) error {
 	blockValidation.Lock()
 	defer blockValidation.Unlock()
 
-
-	//TODO: Add block size check
 	blockDataMap := make(map[[32]byte]blockData)
 
 	blocksToRollback, blocksToValidate := getBlockSequences(b)
@@ -261,6 +259,10 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 		if err := timestampCheck(block.Timestamp); err != nil {
 			return nil,nil,nil,err
 		}
+	}
+
+	if calcBlockSize(block) > activeParameters.block_size {
+		return nil,nil,nil,errors.New("Block size too large.")
 	}
 
 	//duplicates are not allowed, use hasmap to easily check for duplicates
@@ -346,6 +348,14 @@ func timestampCheck(timestamp int64) error {
 		}
 	}
 	return nil
+}
+
+func calcBlockSize(block *protocol.Block) (size uint64) {
+
+	size = protocol.BLOCKHEADER_SIZE
+	size += uint64(block.NrAccTx + block.NrFundsTx + uint16(block.NrConfigTx)) * 32
+
+	return size
 }
 
 func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan chan error) {
