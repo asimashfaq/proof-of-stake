@@ -4,12 +4,6 @@ import (
 	"fmt"
 )
 
-//Java can't handle uints, should we only allow lengths of up to 2^31?
-type Header struct {
-	Len    uint32
-	TypeID uint8
-}
-
 func processIncomingMsg(p *peer, header *Header, payload []byte) {
 
 	switch header.TypeID {

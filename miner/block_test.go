@@ -1,13 +1,13 @@
 package miner
 
 import (
+	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"math/rand"
 	"reflect"
 	"testing"
 	"time"
-	"fmt"
 )
 
 //Tests block adding, verification, serialization and deserialization
@@ -136,7 +136,7 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%10+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
 
 		//don't mess with the minimum fee and block size
-		if tx.Id == 3 || tx.Id == 1{
+		if tx.Id == 3 || tx.Id == 1 {
 			continue
 		}
 		if err := addTx(b, tx); err == nil {
@@ -151,9 +151,9 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 func TestTimestampCheck(t *testing.T) {
 
 	cleanAndPrepare()
-	timePast := time.Now().Unix()-3650
-	timeFuture := time.Now().Unix()+3650
-	timeNow := time.Now().Unix()+50
+	timePast := time.Now().Unix() - 3650
+	timeFuture := time.Now().Unix() + 3650
+	timeNow := time.Now().Unix() + 50
 
 	if err := timestampCheck(timePast); err == nil {
 		t.Error("Dynamic time check failed\n")
@@ -179,7 +179,7 @@ func TestCalcBlockSize(t *testing.T) {
 
 	size := calcBlockSize(b)
 
-	if size != 30*32 + protocol.BLOCKHEADER_SIZE {
+	if size != 30*32+protocol.BLOCKHEADER_SIZE {
 		fmt.Printf("Miscalculated block size: %v\n", size)
 	}
 }

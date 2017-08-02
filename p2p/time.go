@@ -1,18 +1,14 @@
 package p2p
 
 import (
-	"time"
 	"encoding/binary"
-	"sync"
 	"sort"
-)
-
-const (
-	MIN_PEERS_FOR_TIME = 3
+	"sync"
+	"time"
 )
 
 var (
-	systemTime int64
+	systemTime     int64
 	systemTimeLock sync.Mutex
 )
 
@@ -37,7 +33,7 @@ func writeSystemTime() {
 
 	var ipeerTimes []int
 	//remove all 0s and cast to int (needed to leverage sort.Ints)
-	for _,time := range peerTimes {
+	for _, time := range peerTimes {
 		if time != 0 {
 			ipeerTimes = append(ipeerTimes, int(time))
 		}
@@ -56,13 +52,13 @@ func calcMedian(ipeerTimes []int) (median int64) {
 
 	sort.Ints(ipeerTimes)
 	//odd number of entries
-	if len(ipeerTimes) % 2 == 1 {
+	if len(ipeerTimes)%2 == 1 {
 		return int64(ipeerTimes[len(ipeerTimes)/2])
 	} else {
 		//even number of entries
 		low := int64(ipeerTimes[len(ipeerTimes)/2])
 		high := int64(ipeerTimes[len(ipeerTimes)/2+1])
 
-		return (high+low)/2
+		return (high + low) / 2
 	}
 }

@@ -174,7 +174,7 @@ func TestCollectTxFeesRollback(t *testing.T) {
 		t.Errorf("Tx fees rollback failed: %v != %v\n", minerBal, minerAcc.Balance)
 	}
 
-	minerAcc.Balance = protocol.MAX_MONEY - 100
+	minerAcc.Balance = MAX_MONEY - 100
 	var fee2 uint64
 	minerBal = minerAcc.Balance
 	//interrupt somewhere in between

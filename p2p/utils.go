@@ -7,10 +7,6 @@ import (
 	"fmt"
 )
 
-const (
-	HEADER_LEN = 5
-)
-
 func rcvData(p *peer) (*Header, []byte, error) {
 	reader := bufio.NewReader(p.conn)
 	header, err := ReadHeader(reader)

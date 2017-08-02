@@ -40,38 +40,6 @@ func ReadClosedBlock(hash [32]byte) (block *protocol.Block) {
 func ReadOpenTx(hash [32]byte) (transaction protocol.Transaction) {
 
 	return txMemPool[hash]
-
-	/*var encodedTx []byte
-	var fundstx *protocol.FundsTx
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("openfunds"))
-		encodedTx = b.Get(hash[:])
-		return nil
-	})
-	if encodedTx != nil {
-		return fundstx.Decode(encodedTx)
-	}
-
-	var acctx *protocol.AccTx
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("openaccs"))
-		encodedTx = b.Get(hash[:])
-		return nil
-	})
-	if encodedTx != nil {
-		return acctx.Decode(encodedTx)
-	}
-
-	var configtx *protocol.ConfigTx
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("openconfigs"))
-		encodedTx = b.Get(hash[:])
-		return nil
-	})
-	if encodedTx != nil {
-		return configtx.Decode(encodedTx)
-	}
-	return nil*/
 }
 
 //needed for the miner to prepare a new block
@@ -82,38 +50,6 @@ func ReadAllOpenTxs() (allOpenTxs []protocol.Transaction) {
 	}
 
 	return
-
-	/*var fundstx *protocol.FundsTx
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("openfunds"))
-		b.ForEach(func(k, v []byte) error {
-			allOpenTxs = append(allOpenTxs, fundstx.Decode(v))
-			return nil
-		})
-		return nil
-	})
-
-	var acctx *protocol.AccTx
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("openaccs"))
-		b.ForEach(func(k, v []byte) error {
-			allOpenTxs = append(allOpenTxs, acctx.Decode(v))
-			return nil
-		})
-		return nil
-	})
-
-	var configtx *protocol.ConfigTx
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("openconfigs"))
-		b.ForEach(func(k, v []byte) error {
-			allOpenTxs = append(allOpenTxs, configtx.Decode(v))
-			return nil
-		})
-		return nil
-	})
-
-	return allOpenTxs*/
 }
 
 func ReadClosedTx(hash [32]byte) (transaction protocol.Transaction) {

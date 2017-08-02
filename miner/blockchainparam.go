@@ -16,12 +16,6 @@ var (
 	currentTargetTime *timerange
 )
 
-const (
-	//in seconds
-	TXFETCH_TIMEOUT    = 5
-	BLOCKFETCH_TIMEOUT = 40
-)
-
 //new struct only created when at least one parameter changes in a block
 type parameters struct {
 	blockHash [32]byte
@@ -83,15 +77,11 @@ func collectStatistics(b *protocol.Block) {
 		//use the genesis block as a common ancestor for new miners who have not synchronized with the chain yet.
 		if currentTargetTime.first == 0 {
 			target = append(target, target[len(target)-1])
-			fmt.Printf("Genesis: %v\n", target)
 		} else {
 			target = append(target, calculateNewDifficulty(currentTargetTime))
-			fmt.Printf("Target update: %v\n", target)
-
 		}
 
 		targetTimes = append(targetTimes, *currentTargetTime)
-		fmt.Printf("Target times: %v\n", targetTimes)
 
 		logger.Printf("Target changed, new target: %v", target[len(target)-1])
 		localBlockCount = 0
@@ -110,13 +100,9 @@ func collectStatisticsRollback(b *protocol.Block) {
 	if localBlockCount == 0 && globalBlockCount != 0 {
 		localBlockCount = int64(activeParameters.diff_interval) - 1
 		//target rollback
-		fmt.Printf("Before: %v\n", target)
 		target = target[:len(target)-1]
-		fmt.Printf("After: %v\n", target)
 		currentTargetTime.first = targetTimes[len(targetTimes)-1].first
-		fmt.Printf("Before: %v\n", targetTimes)
 		targetTimes = targetTimes[:len(targetTimes)-1]
-		fmt.Printf("After: %v\n", targetTimes)
 	} else {
 		localBlockCount--
 	}

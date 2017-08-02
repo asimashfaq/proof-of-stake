@@ -1,18 +1,17 @@
 package miner
 
 import (
-	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/lisgie/bazo_miner/p2p"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"golang.org/x/crypto/sha3"
+	"math/big"
 	"time"
 )
 
-//acts as a temporary datastructure to fetch the payload of all transactions
+//Datastructure to fetch the payload of all transactions, needed for state validation
 type blockData struct {
 	accTxSlice    []*protocol.AccTx
 	fundsTxSlice  []*protocol.FundsTx
@@ -20,35 +19,41 @@ type blockData struct {
 	block         *protocol.Block
 }
 
-//imitating constructor
+//Block constructor, argument is the previous block in the blockchain
 func newBlock(prevHash [32]byte) *protocol.Block {
 	b := new(protocol.Block)
-	b.Header = 0x01
 	b.PrevHash = prevHash
 	b.StateCopy = make(map[[32]byte]*protocol.Account)
 	return b
 }
 
-//this method is to validate transactions, a copy of the state
-// is used for every instead of manipulating the global state
-//because we the work might get interrupted by receiving a protocol.Block
+//Transaction validation operates on a copy of a tiny subset of the state (all accounts involved in transactions).
+//We do not operate global state because the work might get interrupted by receiving a block that needs validation
+//which is done on the global state
+//b: Block to add the transaction to
+//tx: A tx that implements the Transaction interface
 func addTx(b *protocol.Block, tx protocol.Transaction) error {
+
+	//activeParameters is a datastructure that stores the current system parameters, gets only changed when
+	//configTxs are broadcast in the network
 	if tx.TxFee() < activeParameters.fee_minimum {
 		logger.Printf("Transaction fee too low: %v (minimum is: %v)\n", tx.TxFee(), activeParameters.fee_minimum)
 		err := fmt.Sprintf("Transaction fee too low: %v (minimum is: %v)\n", tx.TxFee(), activeParameters.fee_minimum)
 		return errors.New(err)
 	}
 
+	//There is a trade-off what tests can be made now and which have to be delayed (when dynamic state is needed
+	//for inspection. The decision made is to check whether accTx and configTx have been signed with rootAcc. This
+	//is a dynamic test because it needs to have access to the rootAcc state. The other option would be to include
+	//the address (public key of signature) in the transaction inside the tx -> would resulted in bigger tx size.
+	//So the trade-off is effectively clean abstraction vs. tx size. Everything related to fundsTx is postponed because
+	//the txs are dependent on each other.
 	if !verify(tx) {
 		logger.Printf("Transaction could not be verified: %v\n", tx)
 		return errors.New("Transaction could not be verified.")
 	}
 
-	//check whether this the tx is already in closed storage
-	if storage.ReadClosedTx(tx.Hash()) != nil {
-		return errors.New("This transaction was already included in a previous block.")
-	}
-
+	//This check involves the state, e.g., does the account already exist, does the sender have enough balance etc.
 	switch tx.(type) {
 	case *protocol.AccTx:
 		err := addAccTx(b, tx.(*protocol.AccTx))
@@ -77,21 +82,25 @@ func addTx(b *protocol.Block, tx protocol.Transaction) error {
 
 func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
 
-	//at this point the tx has already been verified
 	accHash := sha3.Sum256(tx.PubKey[:])
-	if _, exists := storage.State[accHash]; exists {
-		return errors.New("Account already exists.")
+	//According to the accTx specification, we only accept new accounts _except_ if the removal bit is
+	//set in the header (2nd bit)
+	if tx.Header&0x02 != 0x02 {
+		if _, exists := storage.State[accHash]; exists {
+			return errors.New("Account already exists.")
+		}
 	}
 
+	//Add the tx hash to the block header and write it to open storage (non-validated transactions)
 	b.AccTxData = append(b.AccTxData, tx.Hash())
-	storage.WriteOpenTx(tx)
 	logger.Printf("Added tx to the AccTxData slice: %v", *tx)
 	return nil
 }
 
 func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 
-	//checking if the sender account is already in the local state copy
+	//Checking if the sender account is already in the local state copy. If not and account exist, create local copy
+	//If account does not exist in state, abort.
 	if _, exists := b.StateCopy[tx.From]; !exists {
 		if acc := storage.State[tx.From]; acc != nil {
 			hash := serializeHashContent(acc.Address)
@@ -100,10 +109,12 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 				newAcc = *acc
 				b.StateCopy[tx.From] = &newAcc
 			}
+		} else {
+			return errors.New(fmt.Sprintf("Sender account not present in the state: %x\n", tx.From))
 		}
 	}
 
-	//vice versa for receiver account
+	//Vice versa for receiver account
 	if _, exists := b.StateCopy[tx.To]; !exists {
 		if acc := storage.State[tx.To]; acc != nil {
 			hash := serializeHashContent(acc.Address)
@@ -112,29 +123,32 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 				newAcc = *acc
 				b.StateCopy[tx.To] = &newAcc
 			}
+		} else {
+			return errors.New(fmt.Sprintf("Receiver account not present in the state: %x\n", tx.From))
 		}
 	}
 
-	//rootkey doesn't need to get checked for balance
-	//however, txcnt is still increased, makes things a little easiert in the state manipulation
+	//Root accounts are exempt from balance requirements. All other accounts need to have (at least)
+	//fee + amount to spend as balance available
 	if !isRootKey(tx.From) {
-		if (tx.Amount + tx.Fee) > b.StateCopy[tx.From].Balance {
+		if (tx.Amount + tx.Fee) >= b.StateCopy[tx.From].Balance {
 			return errors.New("Not enough funds to complete the transaction!")
 		}
 	}
 
-	//check if txcnt makes sense
+	//Transaction count need to match the state, preventing replay attacks
 	if b.StateCopy[tx.From].TxCnt != tx.TxCnt {
 		err := fmt.Sprintf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)", tx.TxCnt, b.StateCopy[tx.From].TxCnt)
 		return errors.New(err)
 	}
 
-	//don't add tx if amount leads to overflow at receiver acc (amount == 0 has already been checked with verify())
-	if b.StateCopy[tx.To].Balance+tx.Amount > protocol.MAX_MONEY {
+	//Prevent balance overflow in receiver account
+	if b.StateCopy[tx.To].Balance+tx.Amount > MAX_MONEY {
 		err := fmt.Sprintf("Transaction amount (%v) leads to overflow at receiver account balance (%v).\n", tx.Amount, b.StateCopy[tx.To].Balance)
 		return errors.New(err)
 	}
 
+	//Update state copy
 	accSender := b.StateCopy[tx.From]
 	accSender.TxCnt += 1
 	accSender.Balance -= tx.Amount
@@ -142,34 +156,38 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 	accReceiver := b.StateCopy[tx.To]
 	accReceiver.Balance += tx.Amount
 
+	//Add the tx hash to the block header and write it to open storage (non-validated transactions)
 	b.FundsTxData = append(b.FundsTxData, tx.Hash())
-	storage.WriteOpenTx(tx)
 	logger.Printf("Added tx to the block FundsTxData slice: %v", *tx)
 	return nil
 }
 
 func addConfigTx(b *protocol.Block, tx *protocol.ConfigTx) error {
 
+	//No further checks needed, static checks were already done with verify()
 	b.ConfigTxData = append(b.ConfigTxData, tx.Hash())
-	storage.WriteOpenTx(tx)
 	logger.Printf("Added tx to the ConfigTxData slice: %v", *tx)
 	return nil
 }
 
+//This function prepares the block to broadcast into the network. No new txs are added at this point.
 func finalizeBlock(b *protocol.Block) error {
-	//merkle tree only built from funds transactions
+
+	//Merkle tree includes the hashes of all txs
 	b.MerkleRoot = buildMerkleTree(b.AccTxData, b.FundsTxData, b.ConfigTxData)
+
 	b.Timestamp = time.Now().Unix()
 
-	//TODO: Make this nicer, choosing by command line argument
-	copy(b.Beneficiary[:], hashA[:])
+	//BENEFICIARY is a config parameter set in config.go
+	beneficiary, _ := new(big.Int).SetString(BENEFICIARY, 16)
+	copy(b.Beneficiary[:], beneficiary.Bytes())
 
-	//anonymous struct
-	partialHash := hashBlock(b)
+	partialHash := b.HashBlock()
 	nonce, err := proofOfWork(getDifficulty(), partialHash)
 	if err != nil {
 		return err
 	}
+	//Put pieces to gether to get the final hash
 	b.Hash = sha3.Sum256(append(nonce.Bytes(), partialHash[:]...))
 
 	//we need to write the proof at the end of the fixed-size byte array of length 9
@@ -198,11 +216,14 @@ func validateBlock(b *protocol.Block) error {
 
 	blocksToRollback, blocksToValidate := getBlockSequences(b)
 
-	//We're not up-to-date. Thus, we can't do dynamic checks like time verification
-	if len(blocksToValidate) == 1 {
-		uptodate = true
-	} else {
+	//Verify block time is dynamic and corresponds to system time at the time of retrieval
+	//If we're syncing or far behind, we cannot do this dynamic check
+	//We therefore include a boolean uptodate. If it's true we consider ourselves uptodate and
+	//do dynamic time checking
+	if len(blocksToValidate) > DELAYED_BLOCKS {
 		uptodate = false
+	} else {
+		uptodate = true
 	}
 
 	if blocksToValidate == nil {
@@ -218,8 +239,6 @@ func validateBlock(b *protocol.Block) error {
 		}
 		blockDataMap[block.Hash] = blockData{accTxs, fundsTxs, configTxs, block}
 	}
-
-
 
 	//no rollback needed, just a new block to validate
 	if len(blocksToRollback) == 0 {
@@ -255,12 +274,12 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 
 	if uptodate {
 		if err := timestampCheck(block.Timestamp); err != nil {
-			return nil,nil,nil,err
+			return nil, nil, nil, err
 		}
 	}
 
 	if calcBlockSize(block) > activeParameters.block_size {
-		return nil,nil,nil,errors.New("Block size too large.")
+		return nil, nil, nil, errors.New("Block size too large.")
 	}
 
 	//duplicates are not allowed, use hasmap to easily check for duplicates
@@ -316,7 +335,7 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 	}
 	nonce := block.Nonce[startIndex:]
 
-	partialHash := hashBlock(block)
+	partialHash := block.HashBlock()
 	if block.Hash != sha3.Sum256(append(nonce, partialHash[:]...)) || !validateProofOfWork(getDifficulty(), block.Hash) {
 		return nil, nil, nil, errors.New("Proof of work is incorrect.")
 		logger.Println("Proof of work is incorrect.")
@@ -329,19 +348,18 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 		logger.Println("Merkle Root incorrect.")
 	}
 
-
 	return accTxSlice, fundsTxSlice, configTxSlice, err
 }
 
 func timestampCheck(timestamp int64) error {
 	systemTime := p2p.ReadSystemTime()
 	if timestamp > systemTime {
-		if timestamp - systemTime > int64(time.Hour.Seconds()) {
+		if timestamp-systemTime > int64(time.Hour.Seconds()) {
 			//more than one hour in the past -> reject
 			return errors.New("Timestamp was too far in the future.\n")
 		}
 	} else {
-		if systemTime - timestamp > int64(time.Hour.Seconds()) {
+		if systemTime-timestamp > int64(time.Hour.Seconds()) {
 			return errors.New("Timestamp was too far in the past.\n")
 		}
 	}
@@ -351,7 +369,7 @@ func timestampCheck(timestamp int64) error {
 func calcBlockSize(block *protocol.Block) (size uint64) {
 
 	size = protocol.BLOCKHEADER_SIZE
-	size += uint64(block.NrAccTx + block.NrFundsTx + uint16(block.NrConfigTx)) * 32
+	size += uint64(block.NrAccTx+block.NrFundsTx+uint16(block.NrConfigTx)) * 32
 
 	return size
 }
@@ -539,26 +557,4 @@ func postValidation(data blockData) {
 	//it might be that block is not in the openblock storage, but this doesn't matter
 	storage.DeleteOpenBlock(data.block.Hash)
 	storage.WriteClosedBlock(data.block)
-}
-
-func hashBlock(b *protocol.Block) (hash [32]byte) {
-
-	var buf bytes.Buffer
-
-	blockToHash := struct {
-		prevHash    [32]byte
-		header      uint8
-		timestamp   int64
-		merkleRoot  [32]byte
-		beneficiary [32]byte
-	}{
-		b.PrevHash,
-		b.Header,
-		b.Timestamp,
-		b.MerkleRoot,
-		b.Beneficiary,
-	}
-
-	binary.Write(&buf, binary.BigEndian, blockToHash)
-	return sha3.Sum256(buf.Bytes())
 }

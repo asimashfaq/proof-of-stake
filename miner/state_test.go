@@ -80,7 +80,7 @@ func TestAccountOverflow(t *testing.T) {
 	accAHash := serializeHashContent(accA.Address)
 	accBHash := serializeHashContent(accB.Address)
 
-	accA.Balance = protocol.MAX_MONEY
+	accA.Balance = MAX_MONEY
 	accA.TxCnt = 0
 	tx, err := protocol.ConstrFundsTx(0x01, 1, 1, 0, accBHash, accAHash, &PrivKeyB)
 	if !verifyFundsTx(tx) || err != nil {
@@ -92,7 +92,7 @@ func TestAccountOverflow(t *testing.T) {
 
 	//err shouldn't be nil, because the tx can't have been successful
 	//also, the balance of A shouldn't have changed
-	if err == nil || accA.Balance != protocol.MAX_MONEY {
+	if err == nil || accA.Balance != MAX_MONEY {
 		t.Errorf("Failed to block overflowing transaction to account with balance: %v\n", accA.Balance)
 	}
 }

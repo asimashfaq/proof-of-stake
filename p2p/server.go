@@ -12,15 +12,6 @@ import (
 	"sync"
 )
 
-const (
-	MIN_MINERS       = 10
-	MAX_MINERS       = 20
-	TX_BUFFER        = 10
-	BOOTSTRAP_SERVER = "127.0.0.1:8000"
-	IPV4ADDR         = 4
-	PORT_SIZE        = 2
-)
-
 var (
 	//List of ip addresses. A connection to a subset of the list will be established as soon as the network health
 	//monitor triggers.
@@ -112,7 +103,7 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	}
 
 	conn, err := net.Dial("tcp", ipport)
-	p := &peer{conn, nil, sync.Mutex{}, strings.Split(ipport, ":")[1],0}
+	p := &peer{conn, nil, sync.Mutex{}, strings.Split(ipport, ":")[1], 0}
 
 	if err != nil {
 		return nil, err

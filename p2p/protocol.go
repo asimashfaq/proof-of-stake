@@ -1,5 +1,12 @@
 package p2p
 
+const HEADER_LEN = 5
+
+type Header struct {
+	Len    uint32
+	TypeID uint8
+}
+
 const (
 	FUNDSTX_BRDCST  = 1
 	ACCTX_BRDCST    = 2

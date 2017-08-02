@@ -31,9 +31,9 @@ func processNeighborRes(p *peer, payload []byte) {
 func _processNeighborRes(payload []byte) (ipportList []string) {
 
 	index := 0
-	for cnt := 0; cnt < len(payload)/(IPV4ADDR+PORT_SIZE); cnt++ {
+	for cnt := 0; cnt < len(payload)/(IPV4ADDR_SIZE+PORT_SIZE); cnt++ {
 		var addr string
-		for singleAddr := index; singleAddr < index+IPV4ADDR; singleAddr++ {
+		for singleAddr := index; singleAddr < index+IPV4ADDR_SIZE; singleAddr++ {
 			tmp := int(payload[singleAddr])
 			addr += strconv.Itoa(tmp)
 			addr += "."
@@ -46,7 +46,7 @@ func _processNeighborRes(payload []byte) (ipportList []string) {
 
 		//add ipaddr to the channel
 		ipportList = append(ipportList, addr)
-		index += IPV4ADDR + PORT_SIZE
+		index += IPV4ADDR_SIZE + PORT_SIZE
 	}
 	return ipportList
 }

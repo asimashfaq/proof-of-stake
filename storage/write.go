@@ -28,23 +28,6 @@ func WriteClosedBlock(block *protocol.Block) {
 func WriteOpenTx(transaction protocol.Transaction) {
 
 	txMemPool[transaction.Hash()] = transaction
-
-	/*var bucket string
-	switch transaction.(type) {
-	case *protocol.FundsTx:
-		bucket = "openfunds"
-	case *protocol.AccTx:
-		bucket = "openaccs"
-	case *protocol.ConfigTx:
-		bucket = "openconfigs"
-	}
-
-	hash := transaction.Hash()
-	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
-		err := b.Put(hash[:], transaction.Encode())
-		return err
-	})*/
 }
 
 func WriteClosedTx(transaction protocol.Transaction) {

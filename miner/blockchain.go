@@ -1,8 +1,6 @@
 package miner
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
@@ -27,7 +25,8 @@ var (
 
 func Init() {
 
-	testing_setup()
+	//Initialize root key
+	initRootKey()
 
 	LogFile, _ := os.OpenFile("log/miner "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	logger = log.New(LogFile, "", log.LstdFlags)
@@ -44,7 +43,7 @@ func Init() {
 	activeParameters = &parameterSlice[0]
 
 	currentTargetTime = new(timerange)
-	target = append(target, 13)
+	target = append(target, 14)
 
 	localBlockCount = -1
 	globalBlockCount = -1
@@ -85,13 +84,12 @@ func mining() {
 	}
 }
 
-//some testing code
-func testing_setup() {
+func initRootKey() {
 
 	var pubKey [64]byte
 
-	pub1, _ := new(big.Int).SetString(protocol.RootPub1, 16)
-	pub2, _ := new(big.Int).SetString(protocol.RootPub2, 16)
+	pub1, _ := new(big.Int).SetString(INITROOTKEY1, 16)
+	pub2, _ := new(big.Int).SetString(INITROOTKEY2, 16)
 
 	copy(pubKey[:32], pub1.Bytes())
 	copy(pubKey[32:], pub2.Bytes())
@@ -99,46 +97,7 @@ func testing_setup() {
 	rootHash := serializeHashContent(pubKey)
 
 	rootAcc := protocol.Account{Address: pubKey}
+
 	storage.State[rootHash] = &rootAcc
 	storage.RootKeys[rootHash] = &rootAcc
-
-	puba1, _ := new(big.Int).SetString(protocol.PubA1, 16)
-	puba2, _ := new(big.Int).SetString(protocol.PubA2, 16)
-	priva, _ := new(big.Int).SetString(protocol.PrivA, 16)
-	PubKeyA := ecdsa.PublicKey{
-		elliptic.P256(),
-		puba1,
-		puba2,
-	}
-	PrivKeyA := ecdsa.PrivateKey{
-		PubKeyA,
-		priva,
-	}
-
-	pubb1, _ := new(big.Int).SetString(protocol.PubB1, 16)
-	pubb2, _ := new(big.Int).SetString(protocol.PubB2, 16)
-	privb, _ := new(big.Int).SetString(protocol.PrivB, 16)
-	PubKeyB := ecdsa.PublicKey{
-		elliptic.P256(),
-		pubb1,
-		pubb2,
-	}
-	PrivKeyB := ecdsa.PrivateKey{
-		PubKeyB,
-		privb,
-	}
-
-	accA = &protocol.Account{Balance: 1500000}
-	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
-	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
-	hashA = serializeHashContent(accA.Address)
-
-	//This one is just for testing purposes
-	accB = &protocol.Account{Balance: 702000}
-	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
-	copy(accB.Address[32:64], PrivKeyB.PublicKey.Y.Bytes())
-	hashB = serializeHashContent(accB.Address)
-
-	storage.State[hashA] = accA
-	storage.State[hashB] = accB
 }

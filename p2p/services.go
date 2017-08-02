@@ -39,18 +39,18 @@ func checkHealthService() {
 	for {
 		//time.Sleep(time.Minute)
 		if len(peers.peerConns) >= MIN_MINERS {
-			time.Sleep(2 * time.Minute)
+			time.Sleep(2 * HEALTH_CHECK_INTERVAL * time.Minute)
 			continue
 		} else {
-			time.Sleep(time.Minute)
+			//this delay is needed to prevent sending neighbor requests like a maniac
+			time.Sleep(HEALTH_CHECK_INTERVAL * time.Second)
 		}
 
 	RETRY:
 		select {
 		case ipaddr := <-iplistChan:
 			p, err := initiateNewMinerConnection(ipaddr)
-			if err != nil {
-				logger.Printf("Initiating new miner connection failed: %v\n", err)
+			if p == nil || err != nil {
 				goto RETRY
 			}
 			go minerConn(p)
@@ -66,15 +66,15 @@ func timeService() {
 
 	//initialize system time
 	systemTime = time.Now().Unix()
-	go func(){
+	go func() {
 		for {
-			time.Sleep(time.Minute)
+			time.Sleep(UPDATE_SYS_TIME * time.Second)
 			writeSystemTime()
 		}
 	}()
 
 	for {
-		time.Sleep(20*time.Second)
+		time.Sleep(TIME_BRDCST_INTERVAL * time.Second)
 		packet := BuildPacket(TIME_BRDCST, getTime())
 		brdcstMsg <- packet
 	}

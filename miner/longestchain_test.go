@@ -1,11 +1,9 @@
 package miner
 
 import (
-	"testing"
 	"github.com/lisgie/bazo_miner/storage"
+	"testing"
 )
-
-
 
 func TestGetBlockSequences(t *testing.T) {
 

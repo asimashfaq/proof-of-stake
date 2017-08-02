@@ -9,11 +9,10 @@ import (
 	"reflect"
 )
 
-//we can't use polymorphism, e.g. we can't use tx.verify() because the Transaction interface doesn't declare
+//We can't use polymorphism, e.g. we can't use tx.verify() because the Transaction interface doesn't declare
 //the verify method. This is because verification depends on the State (e.g., dynamic properties), which
 //should only be of concern to the miner, not to the protocol package. However, this has the disadvantage
-//that we have to do cas distinction here. We could use a wrapper type and do an interface for it, but
-//that's too much complication
+//that we have to do case distinction here.
 func verify(tx protocol.Transaction) bool {
 
 	var verified bool
@@ -39,7 +38,7 @@ func verifyFundsTx(tx *protocol.FundsTx) bool {
 	r, s := new(big.Int), new(big.Int)
 
 	//fundstx only makes sense if amount > 0
-	if tx.Amount == 0 || tx.Amount > protocol.MAX_MONEY {
+	if tx.Amount == 0 || tx.Amount > MAX_MONEY {
 		logger.Printf("Invalid transaction amount %v\n", tx.Amount)
 		return false
 	}

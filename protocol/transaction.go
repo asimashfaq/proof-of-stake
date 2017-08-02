@@ -5,6 +5,6 @@ type Transaction interface {
 	Encode() []byte
 	//Decoding is not listed here, because it returns a different type for each tx (return value Transaction itself
 	//is apparently not allowed)
-	TxFee() uint64 //just fee is already occupied by the struct fields themselves
+	TxFee() uint64
 	Size() uint8
 }
