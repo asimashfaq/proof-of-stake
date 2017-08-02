@@ -6,5 +6,5 @@ type Transaction interface {
 	//Decoding is not listed here, because it returns a different type for each tx (return value Transaction itself
 	//is apparently not allowed)
 	TxFee() uint64
-	Size() uint8
+	Size() uint64
 }

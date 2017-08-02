@@ -26,9 +26,11 @@ func TestFundsStateChangeRollback(t *testing.T) {
 
 	var feeA, feeB uint64
 
+	//State snapshot
 	rollBackA := accA.Balance
 	rollBackB := accB.Balance
 
+	//Record transaction amounts in this variables
 	balanceA := accA.Balance
 	balanceB := accB.Balance
 
@@ -88,6 +90,7 @@ func TestAccStateChangeRollback(t *testing.T) {
 
 	var accs []*protocol.AccTx
 
+	//Store accs that are to be changed and rolled back in a accTx slice
 	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
 		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%1000, &RootPrivKey)
@@ -116,8 +119,8 @@ func TestAccStateChangeRollback(t *testing.T) {
 }
 
 func TestConfigStateChangeRollback(t *testing.T) {
-	cleanAndPrepare()
 
+	cleanAndPrepare()
 	var configSlice []*protocol.ConfigTx
 
 	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 1, 1000, rand.Uint64(), &RootPrivKey)

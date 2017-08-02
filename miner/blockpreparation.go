@@ -6,21 +6,32 @@ import (
 	"sort"
 )
 
+//The code here is needed if a new block is being built. All open (not yet validated) transactions are first fetched
+//from the mempool and then sorted. The sorting is important because if transactions are fetched from the mempool
+//they're received in random order (because it's implemented as map). However, if a user wants to issue more fundsTxs
+//they need to be sorted according to increasing txCnt, this greatly increases throughput.
+
 type openTxs []protocol.Transaction
 
 func prepareBlock(block *protocol.Block) {
 
-	//empty mempool (opentxs)
+	//Fetch all txs from mempool (opentxs)
 	opentxs := storage.ReadAllOpenTxs()
 
-	//this copy is strange, but seems to be necessary?
-	//shouldn't be too bad because no deep copy
+	//This copy is strange, but seems to be necessary to leverage the sort interface.
+	//Shouldn't be too bad because no deep copy.
 	var tmpCopy openTxs
 	tmpCopy = opentxs
+
 	sort.Sort(tmpCopy)
 	for _, tx := range opentxs {
+		//Prevent block size overflow
+		if block.GetSize() + tx.Size() > activeParameters.block_size {
+			break
+		}
 		err := addTx(block, tx)
 		if err != nil {
+			//If the tx is invalid, we remove it completely, prevents starvation in the mempool
 			storage.DeleteOpenTx(tx)
 		}
 	}

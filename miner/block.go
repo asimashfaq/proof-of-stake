@@ -183,7 +183,7 @@ func finalizeBlock(b *protocol.Block) error {
 	copy(b.Beneficiary[:], beneficiary.Bytes())
 
 	partialHash := b.HashBlock()
-	nonce, err := proofOfWork(getDifficulty(), partialHash)
+	nonce, err := proofOfWork(getDifficulty(), partialHash, b.PrevHash)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func finalizeBlock(b *protocol.Block) error {
 	//Put pieces to gether to get the final hash
 	b.Hash = sha3.Sum256(append(nonce[:], partialHash[:]...))
 
-	//this doesn't need to be hashed, because we already have the merkle tree taking care of consistency
+	//This doesn't need to be hashed, because we already have the merkle tree taking care of consistency
 	b.NrAccTx = uint16(len(b.AccTxData))
 	b.NrFundsTx = uint16(len(b.FundsTxData))
 	b.NrConfigTx = uint8(len(b.ConfigTxData))
@@ -199,19 +199,23 @@ func finalizeBlock(b *protocol.Block) error {
 	return nil
 }
 
-//this function needs to be split into block syntax/PoW check and actual state change
-//because there is the case that we might need to go fetch several blocks in reverse order
-//and have to check the blocks first before changing the state in the correct order
+//This function is split into block syntax/PoW check and actual state change
+//because there is the case that we might need to go fetch several blocks
+// and have to check the blocks first before changing the state in the correct order
 func validateBlock(b *protocol.Block) error {
 
+	//This mutex is necessary that own-mined blocks and received blocks from the network are not
+	//validated concurrently
 	blockValidation.Lock()
 	defer blockValidation.Unlock()
 
+	//Prepare datastructure to fill tx payloads
 	blockDataMap := make(map[[32]byte]blockData)
 
+	//Get the right branch, and a list of blocks to rollback (if necessary)
 	blocksToRollback, blocksToValidate := getBlockSequences(b)
 
-	//Verify block time is dynamic and corresponds to system time at the time of retrieval
+	//Verify block time is dynamic and corresponds to system time at the time of retrieval.
 	//If we're syncing or far behind, we cannot do this dynamic check
 	//We therefore include a boolean uptodate. If it's true we consider ourselves uptodate and
 	//do dynamic time checking
@@ -225,9 +229,11 @@ func validateBlock(b *protocol.Block) error {
 		return errors.New("Common ancestor not found or new chain shorter than current one.")
 	}
 
-	//if not the whole chain of blocks is valid, we don't consider any of them
-	//this avoids the attack to create a fake long chain with only some blocks valid
+	//If not the whole chain of blocks is valid, we don't do state changes on any of them before
+	//making sure they're properly formed. This avoids the attack to create a fake long chain with
+	//only some blocks valid
 	for _, block := range blocksToValidate {
+		//Fetching payload data from the txs (if necessary, ask other miners)
 		accTxs, fundsTxs, configTxs, err := preValidation(block)
 		if err != nil {
 			return err
@@ -235,11 +241,10 @@ func validateBlock(b *protocol.Block) error {
 		blockDataMap[block.Hash] = blockData{accTxs, fundsTxs, configTxs, block}
 	}
 
-	//no rollback needed, just a new block to validate
+	//No rollback needed, just a new block to validate
 	if len(blocksToRollback) == 0 {
 		for _, block := range blocksToValidate {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
-				//if one block fails along the way, we just stop, but this is very unlikely to happen
 				return err
 			}
 			logger.Printf("Validating block: %v\n", block)
@@ -254,7 +259,6 @@ func validateBlock(b *protocol.Block) error {
 		}
 		for _, block := range blocksToValidate {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
-				//if one block fails along the way, we just stop, but this is very unlikely to happen
 				return err
 			}
 			logger.Printf("Validating block: %v\n", block)
@@ -265,8 +269,11 @@ func validateBlock(b *protocol.Block) error {
 	return nil
 }
 
+//Doesn't involve any state changes
 func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, err error) {
 
+	//This dynamic check is only done if we're up-to-date with syncing. Otherwise, timestamp is not checked
+	//Other miners (which are up-to-date) made sure that this is correct
 	if uptodate {
 		if err := timestampCheck(block.Timestamp); err != nil {
 			return nil, nil, nil, err
@@ -277,7 +284,7 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 		return nil, nil, nil, errors.New("Block size too large.")
 	}
 
-	//duplicates are not allowed, use hasmap to easily check for duplicates
+	//Duplicates are not allowed, use tx hash hasmap to easily check for duplicates
 	duplicates := make(map[[32]byte]bool)
 	for _, txHash := range block.AccTxData {
 		if _, exists := duplicates[txHash]; exists {
@@ -298,10 +305,10 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 		duplicates[txHash] = true
 	}
 
-	//parallel transaction data fetch
+	//We fetch tx data for each type in parallel -> performance boost
 	errChan := make(chan error, 3)
 
-	//we need to allocate slice space for the underlying array when we give pass it as reference
+	//we need to allocate slice space for the underlying array when we pass them as reference
 	accTxSlice = make([]*protocol.AccTx, block.NrAccTx)
 	fundsTxSlice = make([]*protocol.FundsTx, block.NrFundsTx)
 	configTxSlice = make([]*protocol.ConfigTx, block.NrConfigTx)
@@ -310,6 +317,7 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 	go fetchFundsTxData(block, fundsTxSlice, errChan)
 	go fetchConfigTxData(block, configTxSlice, errChan)
 
+	//Wait for all goroutines to finish
 	for cnt := 0; cnt < 3; cnt++ {
 		err = <-errChan
 		if err != nil {
@@ -317,10 +325,12 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 		}
 	}
 
+	//Does the beneficiary exist in the state
 	if acc := getAccountFromHash(block.Beneficiary); acc == nil {
 		return nil, nil, nil, errors.New("Beneficiary not in the State.")
 	}
 
+	//PoW validation
 	partialHash := block.HashBlock()
 	if block.Hash != sha3.Sum256(append(block.Nonce[:], partialHash[:]...)) || !validateProofOfWork(getDifficulty(), block.Hash) {
 		return nil, nil, nil, errors.New("Proof of work is incorrect.")
@@ -328,7 +338,7 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 
 	}
 
-	//cmp merkle tree
+	//Merkle Tree validation
 	if buildMerkleTree(block.AccTxData, block.FundsTxData, block.ConfigTxData) != block.MerkleRoot {
 		return nil, nil, nil, errors.New("Merkle Root incorrect.")
 		logger.Println("Merkle Root incorrect.")
@@ -337,11 +347,12 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 	return accTxSlice, fundsTxSlice, configTxSlice, err
 }
 
+
+//Only blocks with timestamp not diverging from system time (past or future) more than one hour are accepted
 func timestampCheck(timestamp int64) error {
 	systemTime := p2p.ReadSystemTime()
 	if timestamp > systemTime {
 		if timestamp-systemTime > int64(time.Hour.Seconds()) {
-			//more than one hour in the past -> reject
 			return errors.New("Timestamp was too far in the future.\n")
 		}
 	} else {
@@ -352,9 +363,11 @@ func timestampCheck(timestamp int64) error {
 	return nil
 }
 
+//We use slices (not maps) because order is now important
 func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan chan error) {
 
 	for cnt, txHash := range block.AccTxData {
+		//Reject blocks that have txs which have already been validated
 		closedTx := storage.ReadClosedTx(txHash)
 		if closedTx != nil {
 			errChan <- errors.New("Block validation had accTx that was already in a previous block")
@@ -363,6 +376,7 @@ func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan
 
 		var tx protocol.Transaction
 		var accTx *protocol.AccTx
+		//Tx is either in open storage or needs to be fetched from the network
 		tx = storage.ReadOpenTx(txHash)
 		if tx != nil {
 			accTx = tx.(*protocol.AccTx)
@@ -373,10 +387,10 @@ func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan
 				return
 			}
 
-			//blocking wait
+			//Blocking Wait
 			select {
 			case accTx = <-p2p.AccTxChan:
-				//limit the waiting time to 30 seconds
+				//Limit the waiting time for TXFETCH_TIMEOUT seconds
 			case <-time.After(TXFETCH_TIMEOUT * time.Second):
 				errChan <- errors.New("AccTx fetch timed out.")
 			}
@@ -411,7 +425,6 @@ func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, e
 				return
 			}
 
-			//blocking wait
 			select {
 			case fundsTx = <-p2p.FundsTxChan:
 			case <-time.After(TXFETCH_TIMEOUT * time.Second):
@@ -451,10 +464,8 @@ func fetchConfigTxData(block *protocol.Block, configTxSlice []*protocol.ConfigTx
 				return
 			}
 
-			//blocking wait
 			select {
 			case configTx = <-p2p.ConfigTxChan:
-				//limit the waiting time to 30 seconds
 			case <-time.After(TXFETCH_TIMEOUT * time.Second):
 				errChan <- errors.New("ConfigTx fetch timed out.")
 				return
@@ -470,33 +481,26 @@ func fetchConfigTxData(block *protocol.Block, configTxSlice []*protocol.ConfigTx
 	errChan <- nil
 }
 
-//apply to State
+//Dynamic state check
 func stateValidation(data blockData) error {
 
-	//we collect the fundsTx in local memory to rollback when needed
-	//also, we don't want to fetch the same data several times
-
+	//The sequence of validation matters. If we start with accs, then fund transfers can be done in the same block
+	//even though the accounts did not exist before the block validation
 	if err := accStateChange(data.accTxSlice); err != nil {
 		return err
 	}
 
 	if err := fundsStateChange(data.fundsTxSlice); err != nil {
-		//block invalid, rollback
 		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
 
-	//can't result in an error, verify() already excluded all invalid system parameters
-	//needs additionally the block hash
-
-	//both collectTxFees as well as collectBlockReward can throw an error when the balance of the protocol overflows
-	//collect fees for both transaction types
 	if err := collectTxFees(data.accTxSlice, data.fundsTxSlice, data.configTxSlice, data.block.Beneficiary); err != nil {
 		fundsStateChangeRollback(data.fundsTxSlice)
 		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
-	//collect block reward
+
 	if err := collectBlockReward(activeParameters.block_reward, data.block.Beneficiary); err != nil {
 		collectTxFeesRollback(data.accTxSlice, data.fundsTxSlice, data.configTxSlice, data.block.Beneficiary)
 		fundsStateChangeRollback(data.fundsTxSlice)
@@ -504,14 +508,13 @@ func stateValidation(data blockData) error {
 		return err
 	}
 
-	logger.Print("Block validated and state changed accordingly: \n")
-	printState()
+	logger.Printf("State: \n%v\n", getState())
 
 	return nil
 }
 
 func postValidation(data blockData) {
-	//put all txs from the block from open to close
+	//Write all open transactions to closed/validated storage
 	for _, tx := range data.accTxSlice {
 		storage.WriteClosedTx(tx)
 		storage.DeleteOpenTx(tx)
@@ -522,17 +525,19 @@ func postValidation(data blockData) {
 		storage.DeleteOpenTx(tx)
 	}
 
-	//block consists of system parameter changes
 	for _, tx := range data.configTxSlice {
 		storage.WriteClosedTx(tx)
 		storage.DeleteOpenTx(tx)
 	}
 
-	//the new system parameters get active if the block was successfully validated
+	//The new system parameters get active if the block was successfully validated
+	//This is done after state validation (in contrast to accTx/fundsTx).
+	//Conversely, if blocks are rolled back, the system parameters are changed first
 	configStateChange(data.configTxSlice, data.block.Hash)
+	//Collects meta information about the block (and handled difficulty adaption)
 	collectStatistics(data.block)
 
-	//it might be that block is not in the openblock storage, but this doesn't matter
+	//It might be that block is not in the openblock storage, but this doesn't matter
 	storage.DeleteOpenBlock(data.block.Hash)
 	storage.WriteClosedBlock(data.block)
 }

@@ -13,31 +13,28 @@ import (
 
 var (
 	logger               *log.Logger
-	accA, accB, minerAcc *protocol.Account
-	hashA, hashB         [32]byte
 	blockValidation      = &sync.Mutex{}
-	timestamp            []int64
 	parameterSlice       []parameters
 	activeParameters     *parameters
-	tmpSlice             []parameters
 	uptodate             bool
 )
 
+//Miner entry point
 func Init() {
 
 	//Initialize root key
 	initRootKey()
 
+	//Set up logger
 	LogFile, _ := os.OpenFile("log/miner "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	logger = log.New(LogFile, "", log.LstdFlags)
 
-	//var tmpTimestamp []int64
 	parameterSlice = append(parameterSlice, parameters{
 		[32]byte{},
 		1,
-		1000,
+		5000000, //5MB
 		2016,
-		60,
+		60, //1min
 		0,
 	})
 	activeParameters = &parameterSlice[0]
@@ -45,18 +42,18 @@ func Init() {
 	currentTargetTime = new(timerange)
 	target = append(target, 14)
 
-	localBlockCount = -1
-	globalBlockCount = -1
+	//Start blockchain with genesis block and 0 hash
+	//Don't validate nor broadcast
 	genesis := newBlock([32]byte{})
 	collectStatistics(genesis)
 	storage.WriteClosedBlock(genesis)
 
-	logger.Println("Starting system, initializing state map")
-
+	//Start to listen to network inputs (txs and blocks)
 	go incomingData()
 	mining()
 }
 
+//Mining is a constant process, trying to come up with a successful PoW
 func mining() {
 	currentBlock := newBlock([32]byte{})
 	for {
@@ -72,10 +69,14 @@ func mining() {
 			logger.Printf("%v\n", err)
 		} else {
 			broadcastBlock(currentBlock)
-			validateBlock(currentBlock)
+			err := validateBlock(currentBlock)
+			logger.Printf("Received block (%x) could not be validated: %v\n", currentBlock.Hash[0:12], err)
 		}
 
-		//mining successful, construct new block out of mempool transactions
+		//This is the same mutex that is claimed at the beginning of a block validation. The reason we do this is
+		//that before start mining a new block we empty the mempool which contains tx data that is likely to be
+		//validated with block validation, so we wait in order to not work on tx data that is already validated
+		//when we finish the block
 		blockValidation.Lock()
 		nextBlock := newBlock(lastBlock.Hash)
 		currentBlock = nextBlock
@@ -84,6 +85,7 @@ func mining() {
 	}
 }
 
+//At least one root key needs to be set which is allowed to create new accounts
 func initRootKey() {
 
 	var pubKey [64]byte

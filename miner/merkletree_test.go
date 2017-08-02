@@ -19,7 +19,7 @@ func TestBuildMerkleTree(t *testing.T) {
 	var tx2 *protocol.AccTx
 	var tx3 *protocol.ConfigTx
 
-	//generating a private key and prepare data
+	//Generating a private key and prepare data
 	privA, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	tx, _ = protocol.ConstrFundsTx(0x01, 23, 1, 0, [32]byte{'0'}, [32]byte{'1'}, privA)
 	tx2, _ = protocol.ConstrAccTx(0, 23, privA)
@@ -30,8 +30,7 @@ func TestBuildMerkleTree(t *testing.T) {
 	hash2 = tx2.Hash()
 	hash3 = tx3.Hash()
 
-	//test with one node
-	//self hash
+	//Test wite one hash (selfhash)
 	tmpHash = append(hash1[:], hash1[:]...)
 	hashSlice = append(hashSlice, hash1)
 	if serializeHashContent(tmpHash) != buildMerkleTree(hashSlice) {
@@ -57,6 +56,7 @@ func TestBuildMerkleTree(t *testing.T) {
 	}
 }
 
+//Testing edge cases
 func TestEmptyMerkleTree(t *testing.T) {
 
 	//nil slices

@@ -7,11 +7,13 @@ import (
 	"testing"
 )
 
+//Tests whether state is the same before validation and after rollback of a block
 func TestValidateBlockRollback(t *testing.T) {
 
 	cleanAndPrepare()
 	b := newBlock([32]byte{})
 
+	//Make state snapshot
 	accsBefore := make(map[[64]byte]protocol.Account)
 	accsBefore2 := make(map[[64]byte]protocol.Account)
 	accsAfter := make(map[[64]byte]protocol.Account)
@@ -20,6 +22,7 @@ func TestValidateBlockRollback(t *testing.T) {
 		accsBefore[acc.Address] = *acc
 	}
 
+	//Fill block with random transactions, finalize (PoW etc.) and validate (state change)
 	createBlockWithTxs(b)
 	finalizeBlock(b)
 	validateBlock(b)
@@ -46,10 +49,12 @@ func TestValidateBlockRollback(t *testing.T) {
 	}
 }
 
+//Same test as TestValidateBlockRollback but with multiple blocks validations/rollbacks
 func TestMultipleBlocksRollback(t *testing.T) {
-	//create 4 blocks after genesis, rollback 3
+	//Create 4 blocks after genesis, rollback 3
 	cleanAndPrepare()
 
+	//State snapshot
 	stateb := make(map[[64]byte]protocol.Account)
 	stateb2 := make(map[[64]byte]protocol.Account)
 	stateb3 := make(map[[64]byte]protocol.Account)

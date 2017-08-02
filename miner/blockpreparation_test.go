@@ -29,7 +29,7 @@ func TestPrepareAndSortTxs(t *testing.T) {
 		}
 	}
 
-	//add other tx types as well to make the test more challenging
+	//Add other tx types as well to make the test more challenging
 	for cnt := 0; cnt < testsize; cnt++ {
 		tx, _ := protocol.ConstrAccTx(0x01, rand.Uint64()%100+1, &RootPrivKey)
 		if verifyAccTx(tx) {
@@ -40,8 +40,8 @@ func TestPrepareAndSortTxs(t *testing.T) {
 	for cnt := 0; cnt < testsize; cnt++ {
 		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%10+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
 
-		//don't mess with the minimum fee just yet
-		if tx.Id == 3 {
+		//Don't mess with the minimum fee and block size
+		if tx.Id == 3 || tx.Id == 1 {
 			continue
 		}
 		if verifyConfigTx(tx) {
@@ -50,12 +50,10 @@ func TestPrepareAndSortTxs(t *testing.T) {
 	}
 
 	b := newBlock([32]byte{})
-	//fmt.Printf("%v\n", b)
 	prepareBlock(b)
-	//fmt.Printf("%v\n", b)
 	finalizeBlock(b)
 
-	//we could also use sort.IsSorted(...) bool, but manual check makes sure our sort interface is correct
+	//We could also use sort.IsSorted(...) bool, but manual check makes sure our sort interface is correct
 	//this test ensures that all generated fundstx are included in the block, this is only possible if their
 	//txcnt is sorted ascendingly
 	if int(b.NrFundsTx) != testsize*2 {

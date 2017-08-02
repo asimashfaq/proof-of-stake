@@ -90,8 +90,8 @@ func TestAccountOverflow(t *testing.T) {
 	accSlice = append(accSlice, tx)
 	err = fundsStateChange(accSlice)
 
-	//err shouldn't be nil, because the tx can't have been successful
-	//also, the balance of A shouldn't have changed
+	//Err shouldn't be nil, because the tx can't have been successful
+	//Also, the balance of A shouldn't have changed
 	if err == nil || accA.Balance != MAX_MONEY {
 		t.Errorf("Failed to block overflowing transaction to account with balance: %v\n", accA.Balance)
 	}
@@ -124,9 +124,9 @@ func TestAccTxStateChange(t *testing.T) {
 		}
 	}
 
-	//create a new root account
+	//Create a new root account, set the header to 0x01
 	var singleSlice []*protocol.AccTx
-	tx, _ := protocol.ConstrAccTx(1, rand.Uint64()%1000, &RootPrivKey)
+	tx, _ := protocol.ConstrAccTx(0x01, rand.Uint64()%1000, &RootPrivKey)
 	singleSlice = append(singleSlice, tx)
 	var pubKeyTmp [64]byte
 	copy(pubKeyTmp[:], tx.PubKey[:])
@@ -136,8 +136,10 @@ func TestAccTxStateChange(t *testing.T) {
 	if !isRootKey(serializeHashContent(pubKeyTmp)) {
 		t.Errorf("AccTx Header bit 1 not working.")
 	}
+
+	//Set header to 0x02 -> delete root account
 	newTx := *tx
-	newTx.Header = 2
+	newTx.Header = 0x02
 	singleSlice[0] = &newTx
 	accStateChange(singleSlice)
 
@@ -196,10 +198,11 @@ func TestConfigTxStateChange(t *testing.T) {
 	}
 }
 
+//If we parse configTxs which are unknown, we don't change parameter datastructure
 func TestConfigTxStateChangeUnknown(t *testing.T) {
 
 	cleanAndPrepare()
-	//issuing config txs
+	//Issuing configTxs with unknown Id
 	var configs []*protocol.ConfigTx
 	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 1000, rand.Uint64(), &RootPrivKey)
 	tx2, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 2000, rand.Uint64(), &RootPrivKey)
@@ -224,7 +227,7 @@ func TestConfigTxStateChangeUnknown(t *testing.T) {
 		t.Error("Parameter state changed even though it shouldn't have.")
 	}
 
-	//adding a tx that changes state
+	//Adding a tx that changes state
 	tx4, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 3000, rand.Uint64(), &RootPrivKey)
 	configs = append(configs, tx4)
 
@@ -242,7 +245,7 @@ func TestConfigTxStateChangeUnknown(t *testing.T) {
 
 	configStateChange(configs, [32]byte{'0', '1'})
 	configStateChangeRollback(configs, [32]byte{'0'})
-	//only change if block hashes match
+	//Only change if block hashes match
 	if reflect.DeepEqual(tmpParameter, *activeParameters) {
 		t.Error("Parameter state changed even though it shouldn't have.")
 	}

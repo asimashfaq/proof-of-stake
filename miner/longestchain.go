@@ -7,17 +7,19 @@ import (
 	"time"
 )
 
+//Function to give a list of blocks to rollback (in the right order) and a list of blocks to validate.
+//Covers both cases (if block belongs to the longest chain or not to the longest chain)
 func getBlockSequences(newBlock *protocol.Block) (blocksToRollback, blocksToValidate []*protocol.Block) {
 
-	//newChainLen indicates how long the chain is to the common ancestor
+	//Fetch all blocks that are needed to validate
 	ancestor, newChain := getNewChain(newBlock)
 
+	//Common ancestor not found, discard block
 	if ancestor == nil {
-		//ancestor not found, discard block
 		return nil, nil
 	}
 
-	//we count how many blocks there are on the currently active chain
+	//Count how many blocks there are on the currently active chain
 	tmpBlock := lastBlock
 	for {
 		if tmpBlock.Hash == ancestor.Hash {
@@ -28,21 +30,24 @@ func getBlockSequences(newBlock *protocol.Block) (blocksToRollback, blocksToVali
 		tmpBlock = storage.ReadClosedBlock(tmpBlock.PrevHash)
 	}
 
-	//compare current length with new chain length
+	//Compare current length with new chain length
 	if len(blocksToRollback) >= len(newChain) {
-		//current chain length is longer or equal, nothing to do
+		//Current chain length is longer or equal (our conesnsus protocol states that in this case we reject the block)
 		return nil, nil
 	} else {
-		//new chain is longer
+		//New chain is longer, rollback and validate new chain
 		return blocksToRollback, newChain
 	}
 }
 
+//Returns the ancestor from which the split occurs (if a split occured, if not it's just our last block) and a list
+//of blocks that belong to a new chain
 func getNewChain(newBlock *protocol.Block) (ancestor *protocol.Block, newChain []*protocol.Block) {
 
 	for {
 		newChain = append(newChain, newBlock)
 
+		//Search for an ancestor (which needs to be in closed storage -> validated block)
 		prevBlockHash := newBlock.PrevHash
 		potentialAncestor := storage.ReadClosedBlock(prevBlockHash)
 
@@ -56,23 +61,22 @@ func getNewChain(newBlock *protocol.Block) (ancestor *protocol.Block, newChain [
 			return potentialAncestor, newChain
 		}
 
-		//it might be the case that we already started a sync and the block is in the openblock storage
+		//It might be the case that we already started a sync and the block is in the openblock storage
 		newBlock = storage.ReadOpenBlock(prevBlockHash)
 		if newBlock != nil {
 			continue
 		}
-		//fetch the block we apparently missed
+		//Fetch the block we apparently missed from the network
 		p2p.BlockReq(prevBlockHash)
 
-		//blocking wait
+		//Blocking wait
 		select {
 		case encodedBlock := <-p2p.BlockReqChan:
 			newBlock = newBlock.Decode(encodedBlock)
-			//limit the waiting time to 30 seconds
+			//Limit waiting time to BLOCKFETCH_TIMEOUT seconds before aborting
 		case <-time.After(BLOCKFETCH_TIMEOUT * time.Second):
 			return nil, nil
 		}
 	}
-
 	return nil, nil
 }

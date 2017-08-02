@@ -14,6 +14,7 @@ import (
 	"testing"
 )
 
+//Some user accounts for testing
 const (
 	PubA1 = "c2be9abbeaec39a066c2a09cee23bb9ab2a0b88f2880b1e785b4d317adf0dc7c"
 	PubA2 = "8ce020fde838d9c443f6c93345dafe7fd74f091c4d2f30b37e2453679a257ed5"
@@ -23,19 +24,22 @@ const (
 	PrivB = "7a0a9babcc97ea7991ed67ed7f800f70c5e04e99718960ad8efab2ca052f00c7"
 )
 
+//Root account for testing
 const (
-	//P-256
 	RootPub1 = "6323cc034597195ae69bcfb628ecdffa5989c7503154c566bab4a87f3e9910ac"
 	RootPub2 = "f6115b77a15852764c609c6a5c1739e698ebc6e49bf14617c561b9110039cec7"
 	RootPriv = "277ed539f56122c25a6fc115d07d632b47e71416c9aebf1beb54ee704f11842c"
 )
 
+//Globally accessible values for all other tests, (root)account-related
 var (
+	accA, accB, minerAcc             *protocol.Account
 	PrivKeyA, PrivKeyB, MinerPrivKey ecdsa.PrivateKey
 	PubKeyA, PubKeyB                 ecdsa.PublicKey
 	RootPrivKey                      ecdsa.PrivateKey
 )
 
+//Create some accounts that are used by the tests
 func addTestingAccounts() {
 
 	accA, accB, minerAcc = new(protocol.Account), new(protocol.Account), new(protocol.Account)
@@ -68,7 +72,7 @@ func addTestingAccounts() {
 
 	copy(accA.Address[0:32], PrivKeyA.PublicKey.X.Bytes())
 	copy(accA.Address[32:64], PrivKeyA.PublicKey.Y.Bytes())
-	hashA = serializeHashContent(accA.Address)
+	hashA := serializeHashContent(accA.Address)
 
 	//This one is just for testing purposes
 	copy(accB.Address[0:32], PrivKeyB.PublicKey.X.Bytes())
@@ -91,6 +95,7 @@ func addTestingAccounts() {
 
 }
 
+//Create some root accounts that are used by the tests
 func addRootAccounts() {
 
 	var pubKey [64]byte
@@ -118,6 +123,8 @@ func addRootAccounts() {
 	storage.RootKeys[rootHash] = &rootAcc
 }
 
+//The state changes (accounts, funds, system parameters etc.) need to be reverted before any new test starts
+//So every test has the same view on the blockchain
 func cleanAndPrepare() {
 
 	storage.DeleteAll()
@@ -129,6 +136,7 @@ func cleanAndPrepare() {
 
 	lastBlock = nil
 
+	//Prepare system parameters
 	currentTargetTime = new(timerange)
 	target = append(target, 11)
 
@@ -144,8 +152,6 @@ func cleanAndPrepare() {
 	parameterSlice = tmpSlice
 	activeParameters = &parameterSlice[0]
 
-	localBlockCount = -1
-	globalBlockCount = -1
 	genesis := newBlock([32]byte{})
 	collectStatistics(genesis)
 	storage.WriteClosedBlock(genesis)
@@ -153,6 +159,7 @@ func cleanAndPrepare() {
 	addTestingAccounts()
 	addRootAccounts()
 
+	//Some meaningful balance to simplify testing
 	minerAcc.Balance = 0
 	accA.Balance = 123232345678
 	accB.Balance = 823237654321
@@ -165,10 +172,9 @@ func TestMain(m *testing.M) {
 	storage.Init("test.db")
 	p2p.Init("127.0.0.1:8000")
 
-	//setting a new random seed
 	addTestingAccounts()
 	addRootAccounts()
-	//we don't want logging msgs when testing, designated messages
+	//We don't want logging msgs when testing, we have designated messages
 	logger = log.New(nil, "", 0)
 	logger.SetOutput(ioutil.Discard)
 	os.Exit(m.Run())

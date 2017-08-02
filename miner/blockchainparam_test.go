@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-//This test function tests whether target calculation responds to block rollbacks
+//Testing whether target calculation responds to block rollbacks
 func TestTargetHistory(t *testing.T) {
 
 	cleanAndPrepare()
@@ -25,7 +25,7 @@ func TestTargetHistory(t *testing.T) {
 		blocks = append(blocks, tmpBlock)
 	}
 
-	//temporarily save the last target time to test after rollback
+	//Temporarily save the last target time to test after rollback
 	tmpTimeRange := timerange{
 		targetTimes[len(targetTimes)-1].first,
 		targetTimes[len(targetTimes)-1].last,
@@ -37,7 +37,7 @@ func TestTargetHistory(t *testing.T) {
 	targetSize = len(target)
 	targetTimesSize = len(targetTimes)
 
-	//this rollback causes the previous target and timerange to get active again
+	//This rollback causes the previous target and timerange to get active again
 	validateBlockRollback(blocks[len(blocks)-1])
 	blocks = blocks[:len(blocks)-1]
 
@@ -62,7 +62,7 @@ func TestTargetHistory(t *testing.T) {
 	}
 }
 
-//recognition of longer paths, common ancestor etc.
+//Tests whether system changes of relevant parameters influence the code
 func TestTimestamps(t *testing.T) {
 
 	cleanAndPrepare()
@@ -104,6 +104,7 @@ func TestTimestamps(t *testing.T) {
 	}
 }
 
+//Tests whether the diff logic respects edge cases
 func TestCalculateNewDifficulty(t *testing.T) {
 
 	cleanAndPrepare()

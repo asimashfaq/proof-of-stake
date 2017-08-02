@@ -5,6 +5,7 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"golang.org/x/crypto/sha3"
+	"fmt"
 )
 
 func isRootKey(hash [32]byte) bool {
@@ -12,27 +13,26 @@ func isRootKey(hash [32]byte) bool {
 	return exists
 }
 
-//for normal accounts, it
 func accStateChange(txSlice []*protocol.AccTx) error {
 
 	for _, tx := range txSlice {
 		switch tx.Header {
 		case 1:
-			//first bit set, given account will be a new root account
+			//First bit set, given account will be a new root account
 			newAcc := protocol.Account{Address: tx.PubKey}
 			storage.RootKeys[sha3.Sum256(tx.PubKey[:])] = &newAcc
 			continue
 		case 2:
-			//second bit set, delete account from root account
+			//Second bit set, delete account from root account
 			delete(storage.RootKeys, sha3.Sum256(tx.PubKey[:]))
 			continue
 		}
 
-		//create a regular account
+		//Create a regular account
 		addressHash := sha3.Sum256(tx.PubKey[:])
 		acc := storage.GetAccountFromHash(addressHash)
 		if acc != nil {
-			logger.Printf("CRITICAL: Address already exists in the state: %x\n", addressHash[0:4])
+			//Shouldn't happen, because this should have been prevented when adding an accTx to the block
 			return errors.New("CRITICAL: Address already exists in the state")
 		}
 		newAcc := protocol.Account{Address: tx.PubKey}
@@ -46,16 +46,12 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 	for index, tx := range txSlice {
 
 		var err error
-		//check if we have to issue new coins
+		//Check if we have to issue new coins (in case a root account signed the tx)
 		for hash, rootAcc := range storage.RootKeys {
 			if hash == tx.From {
-				logger.Printf("Root Key Transaction: %x\n", hash[0:8])
-
 				if rootAcc.Balance+tx.Amount+tx.Fee > MAX_MONEY {
-					logger.Printf("Root Account overflows (%v) with given transaction amount (%v) and fee (%v).\n", rootAcc.Balance, tx.Amount, tx.Fee)
 					err = errors.New("Sender does not exist in the State.")
 				}
-
 				rootAcc.Balance += tx.Amount
 				rootAcc.Balance += tx.Fee
 			}
@@ -72,25 +68,26 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 			err = errors.New("Receiver does not exist in the State.")
 		}
 
-		//also check for txCnt
+		//Check transaction counter
 		if tx.TxCnt != accSender.TxCnt {
 			logger.Printf("Sender txCnt does not match: %v (tx.txCnt) vs. %v (state txCnt)\n", tx.TxCnt, accSender.TxCnt)
 			err = errors.New("TxCnt mismatch!")
 		}
 
+		//Check sender balance
 		if (tx.Amount + tx.Fee) > accSender.Balance {
 			logger.Printf("Sender does not have enough balance: %x\n", accSender.Balance)
 			err = errors.New("Sender does not have enough funds for the transaction.")
 		}
 
-		//overflow protection
+		//Overflow protection
 		if tx.Amount+accReceiver.Balance > MAX_MONEY {
 			logger.Printf("Transaction amount (%v) would lead to balance overflow at the receiver account (%v)\n", tx.Amount, accReceiver.Balance)
 			err = errors.New("Transaction amount would lead to balance overflow at the receiver account\n")
 		}
 
 		if err != nil {
-			//was it the first tx in the block, no rollback needed
+			//If it was the first tx in the block, no rollback needed
 			if index == 0 {
 				return err
 			}
@@ -98,7 +95,7 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 			return err
 		}
 
-		//we're manipulating pointer, no need to write back
+		//We're manipulating pointer, no need to write back
 		accSender.TxCnt += 1
 		accSender.Balance -= tx.Amount
 		accReceiver.Balance += tx.Amount
@@ -107,11 +104,12 @@ func fundsStateChange(txSlice []*protocol.FundsTx) error {
 	return nil
 }
 
-//we accept config slices with unknown id, but don't act on the payload
+//We accept config slices with unknown id, but don't act on the payload. This is in case we have not updated to a new
+//software with corresponding code to act on the configTx id/payload
 func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 
 	var newParameters parameters
-	//initialize it to state right now (before validating config txs)
+	//Initialize it to state right now (before validating config txs)
 	newParameters = *activeParameters
 
 	if len(configTxSlice) == 0 {
@@ -123,7 +121,6 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 		case protocol.FEE_MINIMUM_ID:
 			if parameterBoundsChecking(protocol.FEE_MINIMUM_ID, tx.Payload) {
 				newParameters.fee_minimum = tx.Payload
-				//minor change, changes a runtime parameter, no further adaptations
 				change = true
 			}
 		case protocol.BLOCK_SIZE_ID:
@@ -136,9 +133,6 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 				newParameters.block_reward = tx.Payload
 				change = true
 			}
-
-			//the following parameter changes all influence the timestamp process
-			//we therefore need to reset the difficulty calculation
 		case protocol.DIFF_INTERVAL_ID:
 			if parameterBoundsChecking(protocol.DIFF_INTERVAL_ID, tx.Payload) {
 				newParameters.diff_interval = tx.Payload
@@ -152,16 +146,12 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 		}
 	}
 
-	//only add a new parameter struct if something meaningful actually changed
+	//Only add a new parameter struct if a relevant system parameter changed
 	if change {
 		newParameters.blockHash = blockHash
-
 		parameterSlice = append(parameterSlice, newParameters)
 		activeParameters = &parameterSlice[len(parameterSlice)-1]
 	}
-
-	//some parameters require more changes than just updating a runtime variable
-
 }
 
 func collectTxFees(accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, minerHash [32]byte) error {
@@ -174,25 +164,23 @@ func collectTxFees(accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsT
 
 	for _, tx := range accTxSlice {
 		if minerAcc.Balance+tx.Fee > MAX_MONEY {
-			//rollback of all perviously transferred transaction fees to the protocol's account
+			//Rollback of all perviously transferred transaction fees to the protocol's account
 			collectTxFeesRollback(tmpAccTx, tmpFundsTx, tmpConfigTx, minerHash)
 			logger.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
 			return errors.New("Miner balance overflows with transaction fee.\n")
 		}
 
-		//money gets created from thin air
-		//no need to subtract money from root key
+		//Money gets created from thin air, no need to subtract money from root key
 		minerAcc.Balance += tx.Fee
 		tmpAccTx = append(tmpAccTx, tx)
 	}
 
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
 	for _, tx := range fundsTxSlice {
-		//preventing protocol account from overflowing
+		//Prevent protocol account from overflowing
 		if minerAcc.Balance+tx.Fee > MAX_MONEY {
-			//rollback of all perviously transferred transaction fees to the protocol's account
+			//Rollback of all perviously transferred transaction fees to the protocol's account
 			collectTxFeesRollback(tmpAccTx, tmpFundsTx, tmpConfigTx, minerHash)
-			logger.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
 			return errors.New("Miner balance overflows with transaction fee.\n")
 		}
 		minerAcc.Balance += tx.Fee
@@ -205,11 +193,13 @@ func collectTxFees(accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsT
 
 	for _, tx := range configTxSlice {
 		if minerAcc.Balance+tx.Fee > MAX_MONEY {
-			//rollback of all perviously transferred transaction fees to the protocol's account
+			//Rollback of all perviously transferred transaction fees to the protocol's account
 			collectTxFeesRollback(tmpAccTx, tmpFundsTx, tmpConfigTx, minerHash)
 			logger.Printf("Miner balance (%v) overflows with transaction fee (%v).\n", minerAcc.Balance, tx.Fee)
 			return errors.New("Miner balance overflows with transaction fee.\n")
 		}
+
+		//No need to subtract money because signed by root account
 		minerAcc.Balance += tx.Fee
 		tmpConfigTx = append(tmpConfigTx, tx)
 	}
@@ -232,9 +222,10 @@ func collectBlockReward(reward uint64, minerHash [32]byte) error {
 	return nil
 }
 
-func printState() {
-	logger.Println("State updated: ")
+//For logging purposes
+func getState() (state string) {
 	for key, acc := range storage.State {
-		logger.Printf("%x: %v\n", key[0:10], acc)
+		state += fmt.Sprintf("%x: %v\n", key[0:10], acc)
 	}
+	return state
 }

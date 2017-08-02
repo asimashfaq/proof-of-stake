@@ -10,6 +10,8 @@ import (
 )
 
 //Tests block adding, verification, serialization and deserialization
+//This test goes further than protocol/block_test.go because it tests the integrity of the payloads as well
+//while protocol/block_test.go only tests serialization/deserialization and size calculation
 func TestBlock(t *testing.T) {
 
 	cleanAndPrepare()
@@ -43,6 +45,7 @@ func TestBlock(t *testing.T) {
 	}
 }
 
+//Duplicate Txs are not allowed
 func TestBlockTxDuplicates(t *testing.T) {
 
 	cleanAndPrepare()
@@ -65,6 +68,7 @@ func TestBlockTxDuplicates(t *testing.T) {
 	}
 }
 
+//Blocks that link to the previous block and have valid txs should pass
 func TestMultipleBlocks(t *testing.T) {
 
 	cleanAndPrepare()
@@ -97,6 +101,28 @@ func TestMultipleBlocks(t *testing.T) {
 	}
 }
 
+//Test the blocktimestamp check
+func TestTimestampCheck(t *testing.T) {
+
+	cleanAndPrepare()
+	timePast := time.Now().Unix() - 3650
+	timeFuture := time.Now().Unix() + 3650
+	timeNow := time.Now().Unix() + 50
+
+	if err := timestampCheck(timePast); err == nil {
+		t.Error("Dynamic time check failed\n")
+	}
+
+	if err := timestampCheck(timeFuture); err == nil {
+		t.Error("Dynamic time check failed\n")
+	}
+
+	if err := timestampCheck(timeNow); err != nil {
+		t.Errorf("Valid time got rejected: %v\n", err)
+	}
+}
+
+//Helper function used by lots of test to fill the block with some random datas
 func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) {
 
 	var testSize uint32
@@ -129,7 +155,7 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 		}
 	}
 
-	//NrConfigTx is saved in a uint8
+	//NrConfigTx is saved in a uint8, so testsize shouldn't be larger than 255
 	loopMax = int(rand.Uint32()%testSize) + 1
 	for cnt := 0; cnt < loopMax; cnt++ {
 		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%10+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
@@ -145,24 +171,4 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 	}
 
 	return hashFundsSlice, hashAccSlice, hashConfigSlice
-}
-
-func TestTimestampCheck(t *testing.T) {
-
-	cleanAndPrepare()
-	timePast := time.Now().Unix() - 3650
-	timeFuture := time.Now().Unix() + 3650
-	timeNow := time.Now().Unix() + 50
-
-	if err := timestampCheck(timePast); err == nil {
-		t.Error("Dynamic time check failed\n")
-	}
-
-	if err := timestampCheck(timeFuture); err == nil {
-		t.Error("Dynamic time check failed\n")
-	}
-
-	if err := timestampCheck(timeNow); err != nil {
-		t.Errorf("Valid time got rejected: %v\n", err)
-	}
 }

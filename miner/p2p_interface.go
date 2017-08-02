@@ -6,6 +6,9 @@ import (
 	"github.com/lisgie/bazo_miner/storage"
 )
 
+//The code in this source file communicates with the p2p package via channels
+
+//Constantly listen to incoming data from the network
 func incomingData() {
 	for {
 		select {
@@ -17,14 +20,16 @@ func incomingData() {
 	}
 }
 
+
 func processTx(incomingTx p2p.TxInfo) {
 
 	var tx protocol.Transaction
+
+	//Make sure the transaction can be properly decoded, verification is done at a later stage to reduce latency
 	switch incomingTx.TxType {
 	case p2p.FUNDSTX_BRDCST:
 		var fTx *protocol.FundsTx
 		fTx = fTx.Decode(incomingTx.Payload)
-
 		if fTx == nil {
 			return
 		}
@@ -53,7 +58,7 @@ func processTx(incomingTx p2p.TxInfo) {
 		return
 	}
 
-	//write to mempool
+	//Write to mempool and rebroadcast
 	logger.Printf("Writing transaction (%x) in the mempool.\n", tx.Hash())
 	storage.WriteOpenTx(tx)
 	p2p.TxsOut <- incomingTx
@@ -64,32 +69,20 @@ func processBlock(payload []byte) {
 	var block *protocol.Block
 	block = block.Decode(payload)
 
-	//block already confirmed and validated
+	//Block already confirmed and validated
 	if storage.ReadClosedBlock(block.Hash) != nil {
 		logger.Printf("Received block (%x) has already been validated.\n", block.Hash[0:12])
 		return
 	}
 
-	//claim a lock and start validating
+	//Start validation process
 	err := validateBlock(block)
 	if err != nil {
-		//no conflict, giving away for broadcast
 		logger.Printf("Received block (%x) could not be validated: %v\n", block.Hash[0:12], err)
 	} else {
-		logger.Printf("Received block (%x) has been validated and broadcast again.", block.Hash[0:12])
 		broadcastBlock(block)
 	}
 }
 
-func broadcastTx(tx protocol.Transaction) {
-	switch tx.(type) {
-	case *protocol.FundsTx:
-		p2p.TxsOut <- p2p.TxInfo{p2p.FUNDSTX_BRDCST, tx.Encode()}
-	case *protocol.AccTx:
-		p2p.TxsOut <- p2p.TxInfo{p2p.ACCTX_BRDCST, tx.Encode()}
-	case *protocol.ConfigTx:
-		p2p.TxsOut <- p2p.TxInfo{p2p.CONFIGTX_BRDCST, tx.Encode()}
-	}
-}
-
+//p2p.BlockOut is a channel whose data get consumed by the p2p package
 func broadcastBlock(block *protocol.Block) { p2p.BlockOut <- block.Encode() }
