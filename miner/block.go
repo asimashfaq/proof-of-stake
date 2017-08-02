@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/sha3"
 	"math/big"
 	"time"
+	"golang.org/x/tools/go/gcimporter15/testdata"
 )
 
 //Datastructure to fetch the payload of all transactions, needed for state validation
@@ -278,7 +279,7 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 		}
 	}
 
-	if calcBlockSize(block) > activeParameters.block_size {
+	if block.GetSize() > activeParameters.block_size {
 		return nil, nil, nil, errors.New("Block size too large.")
 	}
 
@@ -364,14 +365,6 @@ func timestampCheck(timestamp int64) error {
 		}
 	}
 	return nil
-}
-
-func calcBlockSize(block *protocol.Block) (size uint64) {
-
-	size = protocol.BLOCKHEADER_SIZE
-	size += uint64(block.NrAccTx+block.NrFundsTx+uint16(block.NrConfigTx)) * 32
-
-	return size
 }
 
 func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan chan error) {

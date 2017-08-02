@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"fmt"
 	"github.com/lisgie/bazo_miner/protocol"
 	"github.com/lisgie/bazo_miner/storage"
 	"math/rand"
@@ -165,21 +164,5 @@ func TestTimestampCheck(t *testing.T) {
 
 	if err := timestampCheck(timeNow); err != nil {
 		t.Errorf("Valid time got rejected: %v\n", err)
-	}
-}
-
-func TestCalcBlockSize(t *testing.T) {
-
-	cleanAndPrepare()
-
-	b := newBlock([32]byte{})
-	b.NrAccTx = 10
-	b.NrFundsTx = 10
-	b.NrConfigTx = 10
-
-	size := calcBlockSize(b)
-
-	if size != 30*32+protocol.BLOCKHEADER_SIZE {
-		fmt.Printf("Miscalculated block size: %v\n", size)
 	}
 }
