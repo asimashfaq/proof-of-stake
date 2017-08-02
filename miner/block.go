@@ -9,7 +9,6 @@ import (
 	"golang.org/x/crypto/sha3"
 	"math/big"
 	"time"
-	"golang.org/x/tools/go/gcimporter15/testdata"
 )
 
 //Datastructure to fetch the payload of all transactions, needed for state validation
@@ -188,14 +187,9 @@ func finalizeBlock(b *protocol.Block) error {
 	if err != nil {
 		return err
 	}
+	b.Nonce = nonce
 	//Put pieces to gether to get the final hash
-	b.Hash = sha3.Sum256(append(nonce.Bytes(), partialHash[:]...))
-
-	//we need to write the proof at the end of the fixed-size byte array of length 9
-	//needs to be decoded by the receiver
-	for index, val := range nonce.Bytes() {
-		b.Nonce[protocol.PROOF_SIZE-len(nonce.Bytes())+index] = val
-	}
+	b.Hash = sha3.Sum256(append(nonce[:], partialHash[:]...))
 
 	//this doesn't need to be hashed, because we already have the merkle tree taking care of consistency
 	b.NrAccTx = uint16(len(b.AccTxData))
@@ -327,17 +321,8 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 		return nil, nil, nil, errors.New("Beneficiary not in the State.")
 	}
 
-	startIndex := 0
-	for _, singleByte := range block.Nonce {
-		if singleByte != 0x00 {
-			break
-		}
-		startIndex++
-	}
-	nonce := block.Nonce[startIndex:]
-
 	partialHash := block.HashBlock()
-	if block.Hash != sha3.Sum256(append(nonce, partialHash[:]...)) || !validateProofOfWork(getDifficulty(), block.Hash) {
+	if block.Hash != sha3.Sum256(append(block.Nonce[:], partialHash[:]...)) || !validateProofOfWork(getDifficulty(), block.Hash) {
 		return nil, nil, nil, errors.New("Proof of work is incorrect.")
 		logger.Println("Proof of work is incorrect.")
 

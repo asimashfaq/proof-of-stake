@@ -15,7 +15,7 @@ func TestBlockSerialization(t *testing.T) {
 	b.Hash = [32]byte{0,1,2,3,4}
 	b.PrevHash = [32]byte{1,2,3,4,5}
 	b.Header = byte(rand.Int31())
-	b.Nonce = rand.Uint64()
+	b.Nonce = [8]byte{0,1,2,3,4,5,6,7}
 	b.Timestamp = time.Now().Unix()
 	b.MerkleRoot = [32]byte{2,3,4,5,6}
 	b.Beneficiary = [32]byte{3,4,5,6,7}

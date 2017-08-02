@@ -3,8 +3,8 @@ package miner
 import (
 	"errors"
 	"golang.org/x/crypto/sha3"
-	"math/big"
 	"time"
+	"encoding/binary"
 )
 
 func validateProofOfWork(diff uint8, hash [32]byte) bool {
@@ -20,7 +20,7 @@ func validateProofOfWork(diff uint8, hash [32]byte) bool {
 	return true
 }
 
-func proofOfWork(diff uint8, partialHash [32]byte) (*big.Int, error) {
+func proofOfWork(diff uint8, partialHash [32]byte) ([8]byte, error) {
 
 	logger.Printf("Start mining a new block with difficulty: %v\n", diff)
 
@@ -28,22 +28,23 @@ func proofOfWork(diff uint8, partialHash [32]byte) (*big.Int, error) {
 	var byteNr uint8
 	var abort bool
 	//big int needed because int64 overflows if nonce too large
-	oneIncr := big.NewInt(1)
-	cnt := big.NewInt(0)
 
 	startedWith := lastBlock.Hash
 
-	for ; ; cnt.Add(cnt, oneIncr) {
+	var tmpArr [8]byte
+	var cnt uint64
+	for cnt = 0; cnt < 18446744073709551615; cnt++ {
 
 		//CPU IS BUUUUUUUUUUUUUUURNING otherwise
 		time.Sleep(time.Millisecond)
 
 		if startedWith != lastBlock.Hash {
-			return nil, errors.New("Abort mining, another block has been successfully validated in the meantime")
+			return [8]byte{}, errors.New("Abort mining, another block has been successfully validated in the meantime")
 		}
 		abort = false
 
-		tmp = sha3.Sum256(append(cnt.Bytes(), partialHash[:]...))
+		binary.BigEndian.PutUint64(tmpArr[:], cnt)
+		tmp = sha3.Sum256(append(tmpArr[:], partialHash[:]...))
 		for byteNr = 0; byteNr < (uint8)(diff/8); byteNr++ {
 			if tmp[byteNr] != 0 {
 				abort = true
@@ -60,5 +61,6 @@ func proofOfWork(diff uint8, partialHash [32]byte) (*big.Int, error) {
 		break
 	}
 
-	return cnt, nil
+
+	return tmpArr, nil
 }

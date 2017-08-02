@@ -20,7 +20,7 @@ type Block struct {
 	Header      byte
 	Hash        [32]byte
 	PrevHash    [32]byte
-	Nonce       uint64 //72-bit, enough even if the network gets really large
+	Nonce       [8]byte //72-bit, enough even if the network gets really large
 	Timestamp   int64
 	MerkleRoot  [32]byte
 	Beneficiary [32]byte
@@ -71,10 +71,9 @@ func (b *Block) Encode() (encodedBlock []byte) {
 	}
 
 	//making byte array of all non-byte data
-	var nonce, timeStamp [8]byte
+	var timeStamp [8]byte
 	var nrFundsTx, nrAccTx [2]byte
 
-	binary.BigEndian.PutUint64(nonce[:], b.Nonce)
 	binary.BigEndian.PutUint64(timeStamp[:], uint64(b.Timestamp))
 	binary.BigEndian.PutUint16(nrFundsTx[:], b.NrFundsTx)
 	binary.BigEndian.PutUint16(nrAccTx[:], b.NrAccTx)
@@ -86,7 +85,7 @@ func (b *Block) Encode() (encodedBlock []byte) {
 
 	copy(encodedBlock[1:33], b.Hash[:])
 	copy(encodedBlock[33:65], b.PrevHash[:])
-	copy(encodedBlock[65:73], nonce[:])
+	copy(encodedBlock[65:73], b.Nonce[:])
 	copy(encodedBlock[73:81], timeStamp[:])
 	copy(encodedBlock[81:113], b.MerkleRoot[:])
 	copy(encodedBlock[113:145], b.Beneficiary[:])
@@ -122,7 +121,6 @@ func (*Block) Decode(encodedBlock []byte) (b *Block) {
 		return nil
 	}
 
-	nonce := binary.BigEndian.Uint64(encodedBlock[65:73])
 	timeStampTmp := binary.BigEndian.Uint64(encodedBlock[73:81])
 	nrFundsTx := binary.BigEndian.Uint16(encodedBlock[145:147])
 	nrAccTx := binary.BigEndian.Uint16(encodedBlock[147:149])
@@ -131,10 +129,8 @@ func (*Block) Decode(encodedBlock []byte) (b *Block) {
 	b.Header = encodedBlock[0]
 	copy(b.Hash[:], encodedBlock[1:33])
 	copy(b.PrevHash[:], encodedBlock[33:65])
-
-	b.Nonce = nonce
+	copy(b.Nonce[:], encodedBlock[65:73])
 	b.Timestamp = timeStamp
-
 	copy(b.MerkleRoot[:], encodedBlock[81:113])
 	copy(b.Beneficiary[:], encodedBlock[113:145])
 	b.NrFundsTx = nrFundsTx
