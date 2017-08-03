@@ -4,7 +4,7 @@ import "fmt"
 
 const HEADER_LEN = 5
 
-//Mapping constants
+//Mapping constants, used to parse incoming messages
 const (
 	FUNDSTX_BRDCST  = 1
 	ACCTX_BRDCST    = 2

@@ -105,8 +105,8 @@ func TestMultipleBlocks(t *testing.T) {
 func TestTimestampCheck(t *testing.T) {
 
 	cleanAndPrepare()
-	timePast := time.Now().Unix() - 3650
-	timeFuture := time.Now().Unix() + 3650
+	timePast := time.Now().Unix() - 4000
+	timeFuture := time.Now().Unix() + 4000
 	timeNow := time.Now().Unix() + 50
 
 	if err := timestampCheck(timePast); err == nil {

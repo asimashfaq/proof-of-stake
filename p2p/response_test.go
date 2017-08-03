@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+//Test serialization of request/responses
 func Test_NeighborRes(t *testing.T) {
 
 	ipportList := []string{

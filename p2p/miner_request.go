@@ -4,7 +4,8 @@ import (
 	"errors"
 )
 
-//all the request in this file are specifically initiated by the miner package
+//Both block and tx requests are handled asymmetricaly, using channels as inter-communication
+//All the request in this file are specifically initiated by the miner package
 func BlockReq(hash [32]byte) error {
 
 	p := peers.getRandomPeer()
@@ -17,6 +18,7 @@ func BlockReq(hash [32]byte) error {
 	return nil
 }
 
+//Request specific transaction
 func TxReq(hash [32]byte, reqType uint8) error {
 
 	p := peers.getRandomPeer()
@@ -26,6 +28,5 @@ func TxReq(hash [32]byte, reqType uint8) error {
 
 	packet := BuildPacket(reqType, hash[:])
 	sendData(p, packet)
-
 	return nil
 }

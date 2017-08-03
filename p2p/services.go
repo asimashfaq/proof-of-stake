@@ -4,23 +4,21 @@ import (
 	"time"
 )
 
-//this is not accessed concurrently, one single goroutine
+//This is not accessed concurrently, one single goroutine. However, the "peers" are accessed concurrently, therefore the
+//thread-safe implementation
 func broadcastService() {
 	for {
 		select {
-		//broadcasting all messages
-		//Mutex for peers structure need not be claimed here, because
-		//this is the only function that can actually add or reject connections (no race conditions
+		//Broadcasting all messages
 		case msg := <-brdcstMsg:
 			for p := range peers.peerConns {
+				//Write to the channel, which the peerBroadcast(*peer) running in a seperate goroutine consumes right away
 				p.ch <- msg
 			}
 		case p := <-register:
 			peers.add(p)
-			//peers.peerConns[p] = true
 		case p := <-disconnect:
 			peers.delete(p)
-			//delete(peers.peerConns, p)
 			close(p.ch)
 		}
 	}
@@ -37,17 +35,19 @@ func peerBroadcast(p *peer) {
 func checkHealthService() {
 
 	for {
-		//time.Sleep(time.Minute)
+		//Periodically check if we are well-connected
 		if len(peers.peerConns) >= MIN_MINERS {
 			time.Sleep(2 * HEALTH_CHECK_INTERVAL * time.Minute)
 			continue
 		} else {
-			//this delay is needed to prevent sending neighbor requests like a maniac
+			//This delay is needed to prevent sending neighbor requests like a maniac
 			time.Sleep(HEALTH_CHECK_INTERVAL * time.Second)
 		}
 
+		//The only goto in the code (I promise), but best solution here IMHO
 	RETRY:
 		select {
+		//iplistChan gets filled with every incoming neighborRes, they're consumed here
 		case ipaddr := <-iplistChan:
 			p, err := initiateNewMinerConnection(ipaddr)
 			if p == nil || err != nil {
@@ -56,15 +56,16 @@ func checkHealthService() {
 			go minerConn(p)
 			break
 		default:
+			//In case we don't have any ip addresses in the channel left, make a request to the network
 			neighborReq()
 			break
 		}
 	}
 }
 
+//Calculates periodically system time from available sources and broadcasts the time to all connected peers
 func timeService() {
-
-	//initialize system time
+	//Initialize system time
 	systemTime = time.Now().Unix()
 	go func() {
 		for {

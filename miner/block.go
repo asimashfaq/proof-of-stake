@@ -192,6 +192,7 @@ func finalizeBlock(b *protocol.Block) error {
 	b.Hash = sha3.Sum256(append(nonce[:], partialHash[:]...))
 
 	//This doesn't need to be hashed, because we already have the merkle tree taking care of consistency
+
 	b.NrAccTx = uint16(len(b.AccTxData))
 	b.NrFundsTx = uint16(len(b.FundsTxData))
 	b.NrConfigTx = uint8(len(b.ConfigTxData))
@@ -247,7 +248,7 @@ func validateBlock(b *protocol.Block) error {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				return err
 			}
-			logger.Printf("Validating block: %vState: %v\n", block, getState())
+			logger.Printf("Validating block: %vState:\n%v\n", block, getState())
 			postValidation(blockDataMap[block.Hash])
 		}
 	} else {
@@ -255,13 +256,13 @@ func validateBlock(b *protocol.Block) error {
 			if err := validateBlockRollback(block); err != nil {
 				return err
 			}
-			logger.Printf("Rolled back block: %vState: %v\n", block, getState())
+			logger.Printf("Rolled back block: %vState:\n%v\n", block, getState())
 		}
 		for _, block := range blocksToValidate {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				return err
 			}
-			logger.Printf("Validating block: %vState: %v\n",block, getState())
+			logger.Printf("Validating block: %vState:\n%v\n",block, getState())
 			postValidation(blockDataMap[block.Hash])
 		}
 	}

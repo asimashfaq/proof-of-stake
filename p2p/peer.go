@@ -18,6 +18,7 @@ type peer struct {
 	time         int64
 }
 
+//peerStruct is a thread-safe map that supports all necessary map operations needed by the server
 type peersStruct struct {
 	peerConns map[*peer]bool
 	peerMutex sync.Mutex
@@ -26,7 +27,7 @@ type peersStruct struct {
 func (p *peer) getIPPort() string {
 
 	ip := strings.Split(p.conn.RemoteAddr().String(), ":")
-	//cut off original port
+	//Cut off original port
 	port := p.listenerPort
 	return ip[0] + ":" + port
 }
@@ -78,7 +79,7 @@ func (peers peersStruct) getPeerTimes() (peerTimes []int64) {
 	for p := range peers.peerConns {
 		p.l.Lock()
 		peerTimes = append(peerTimes, p.time)
-		//concurrent writes need to protected. We set the time to 0 again as an indicator that the value has been consumed
+		//Concurrent writes need to protected. We set the time to 0 again as an indicator that the value has been consumed
 		p.time = 0
 		p.l.Unlock()
 	}

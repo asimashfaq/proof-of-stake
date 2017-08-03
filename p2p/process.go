@@ -7,7 +7,7 @@ import (
 	"github.com/lisgie/bazo_miner/storage"
 )
 
-//Process tx broadcasts from other miners We can't broadcast incoming messages directly, first check if
+//Process tx broadcasts from other miners. We can't broadcast incoming messages directly, first check if
 //the tx has already been broadcast before, whether it is a valid tx etc.
 func processTxBrdcst(p *peer, payload []byte, brdcstType uint8) {
 
@@ -56,9 +56,9 @@ func processTxBrdcst(p *peer, payload []byte, brdcstType uint8) {
 func processTimeRes(p *peer, payload []byte) {
 
 	time := int64(binary.BigEndian.Uint64(payload))
-	//concurrent writes need to be protected
-	//we use the same lock to prevent concurrent writes. It would be more efficient to use different locks
-	//but the speedup is so marginal that it's not worth it
+	//Concurrent writes need to be protected
+	//We use the same peer lock to prevent concurrent writes (on the network). It would be more efficient to use
+	//different locks but the speedup is so marginal that it's not worth it
 	p.l.Lock()
 	defer p.l.Unlock()
 	p.time = time
@@ -66,16 +66,17 @@ func processTimeRes(p *peer, payload []byte) {
 
 func processNeighborRes(p *peer, payload []byte) {
 
-	//parse the incoming ipv4 addresses
+	//Parse the incoming ipv4 addresses
 	ipportList := _processNeighborRes(payload)
 
 	for _, ipportIter := range ipportList {
 		logger.Printf("IP/Port received: %v\n", ipportIter)
+		//iplistChan is a buffered channel to handle ips asynchronously
 		iplistChan <- ipportIter
 	}
 }
 
-//Decoupled for cleaner testing
+//Split the processNeighborRes function in two for cleaner testing
 func _processNeighborRes(payload []byte) (ipportList []string) {
 
 	index := 0
@@ -86,13 +87,12 @@ func _processNeighborRes(payload []byte) (ipportList []string) {
 			addr += strconv.Itoa(tmp)
 			addr += "."
 		}
-		//remove trailing dot
+		//Remove trailing dot
 		addr = addr[:len(addr)-1]
 		addr += ":"
-		//extract port number
+		//Extract port number
 		addr += strconv.Itoa(int(binary.BigEndian.Uint16(payload[index+4 : index+6])))
 
-		//add ipaddr to the channel
 		ipportList = append(ipportList, addr)
 		index += IPV4ADDR_SIZE + PORT_SIZE
 	}

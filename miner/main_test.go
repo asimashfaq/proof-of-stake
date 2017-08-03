@@ -136,7 +136,11 @@ func cleanAndPrepare() {
 
 	lastBlock = nil
 
+	globalBlockCount = -1
+	localBlockCount = -1
+
 	//Prepare system parameters
+	targetTimes = []timerange{}
 	currentTargetTime = new(timerange)
 	target = append(target, 11)
 

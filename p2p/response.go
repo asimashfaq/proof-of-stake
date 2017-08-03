@@ -9,13 +9,14 @@ import (
 	"strings"
 )
 
+//This file responds to incoming requests from miners in a synchronous fashion
 func txRes(p *peer, payload []byte, txKind uint8) {
 
 	var txHash [32]byte
 	copy(txHash[:], payload[0:32])
 
 	var tx protocol.Transaction
-	//we need to look in the mempool as well as the validated txs
+	//Check closed and open storage if the tx is available
 	openTx := storage.ReadOpenTx(txHash)
 	closedTx := storage.ReadClosedTx(txHash)
 
@@ -25,6 +26,7 @@ func txRes(p *peer, payload []byte, txKind uint8) {
 		tx = closedTx
 	}
 
+	//In case it was not found, send a corresponding message back
 	if tx == nil {
 		packet := BuildPacket(NOT_FOUND, nil)
 		sendData(p, packet)
@@ -44,6 +46,7 @@ func txRes(p *peer, payload []byte, txKind uint8) {
 	sendData(p, packet)
 }
 
+//Here as well, checking open and closed block storage
 func blockRes(p *peer, payload []byte) {
 
 	var (
@@ -68,6 +71,7 @@ func blockRes(p *peer, payload []byte) {
 	sendData(p, packet)
 }
 
+//Responds to an account request from another miner
 func accRes(p *peer, payload []byte) {
 
 	var hash [32]byte
@@ -84,12 +88,10 @@ func accRes(p *peer, payload []byte) {
 	sendData(p, packet)
 }
 
+//Completes the handshake with another miner
 func pongRes(p *peer, payload []byte) {
 
-	//Miner Ping supplies its IP:Port
-	//IP is optional, if no IP supplied, the sender addresse is taken. Port is necessary to listen to
-
-	//IP:PORT
+	//Payload consists of a 2 bytes array (port number [big endian encoded])
 	port := _pongRes(payload)
 
 	if port != "" {
@@ -99,12 +101,13 @@ func pongRes(p *peer, payload []byte) {
 		return
 	}
 
-	//restrict amount of connected miners
+	//Restrict amount of connected miners
 	if peers.len() >= MAX_MINERS {
 		return
 	}
 
 	go minerConn(p)
+	//Complete handshake
 	packet := BuildPacket(MINER_PONG, nil)
 	sendData(p, packet)
 }
@@ -143,7 +146,7 @@ func _neighborRes(ipportList []string) (payload []byte) {
 		ipport := strings.Split(ipportIter, ":")
 		split := strings.Split(ipport[0], ".")
 
-		//serializing ip addresses
+		//Serializing IP:Port addr tuples
 		for ipv4addr := 0; ipv4addr < 4; ipv4addr++ {
 			addrPart, err := strconv.Atoi(split[ipv4addr])
 			if err != nil {

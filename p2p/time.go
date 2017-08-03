@@ -3,15 +3,14 @@ package p2p
 import (
 	"encoding/binary"
 	"sort"
-	"sync"
 	"time"
 )
 
 var (
 	systemTime     int64
-	systemTimeLock sync.Mutex
 )
 
+//Get current local time
 func getTime() []byte {
 
 	var buf [8]byte
@@ -20,19 +19,14 @@ func getTime() []byte {
 	return buf[:]
 }
 
-//Needs to be accessible by the miner package
-func ReadSystemTime() int64 {
-	return systemTime
-}
-
 func writeSystemTime() {
 	peerTimes := peers.getPeerTimes()
 
-	//add our own time as well
+	//Add our own time as well
 	peerTimes = append(peerTimes, time.Now().Unix())
 
 	var ipeerTimes []int
-	//remove all 0s and cast to int (needed to leverage sort.Ints)
+	//Remove all 0s and cast to int (needed to leverage sort.Ints)
 	for _, time := range peerTimes {
 		if time != 0 {
 			ipeerTimes = append(ipeerTimes, int(time))
@@ -48,6 +42,7 @@ func writeSystemTime() {
 	systemTime = calcMedian(ipeerTimes)
 }
 
+//To protect against outliers, get the median
 func calcMedian(ipeerTimes []int) (median int64) {
 
 	sort.Ints(ipeerTimes)

@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+//Testing handshake and intiating new miner connections with the broadcast server (both run locally)
 func TestInitiateNewMinerConnection(t *testing.T) {
 
 	//wait until connections are safely opened

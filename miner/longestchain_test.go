@@ -35,20 +35,27 @@ func TestGetBlockSequences(t *testing.T) {
 		t.Error("Wrong validation sequence\n")
 	}
 
+	//PoW needs lastBlock, have to set it manually
+	lastBlock = storage.ReadClosedBlock([32]byte{})
 	c := newBlock([32]byte{})
 	createBlockWithTxs(c)
 	finalizeBlock(c)
 	storage.WriteOpenBlock(c)
 
+	//PoW needs lastBlock, have to set it manually
+	lastBlock = c
 	c2 := newBlock(c.Hash)
 	createBlockWithTxs(c2)
 	finalizeBlock(c2)
 	storage.WriteOpenBlock(c2)
 
+	//PoW needs lastBlock, have to set it manually
+	lastBlock = c2
 	c3 := newBlock(c2.Hash)
 	createBlockWithTxs(c3)
 	finalizeBlock(c3)
 
+	lastBlock = b2
 	//Blockchain now: genesis <- b <- b2
 	//New Blockchain of longer size: genesis <- c <- c2 <- c3
 	rollback, validate = getBlockSequences(c3)
@@ -86,21 +93,25 @@ func TestGetBlockSequences(t *testing.T) {
 
 	//Blockchain now: genesis <- b <- b2 <- b3
 	//Competing chain: genesis <- c <- c2 <- c3
+	lastBlock = storage.ReadClosedBlock([32]byte{})
 	c = newBlock([32]byte{})
 	createBlockWithTxs(c)
 	finalizeBlock(c)
 	storage.WriteOpenBlock(c)
 
+	lastBlock = c
 	c2 = newBlock(c.Hash)
 	createBlockWithTxs(c2)
 	finalizeBlock(c2)
 	storage.WriteOpenBlock(c2)
 
+	lastBlock = c2
 	c3 = newBlock(c2.Hash)
 	createBlockWithTxs(c3)
 	finalizeBlock(c3)
 
 	//Make sure that the new blockchain of equal length does not get activated
+	lastBlock = b3
 	rollback, validate = getBlockSequences(c3)
 	if rollback != nil || validate != nil {
 		t.Error("Did not properly detect longest chain\n")
@@ -130,17 +141,20 @@ func TestGetNewChain(t *testing.T) {
 		t.Error("Wrong new chain\n")
 	}
 
-	//Blockchain now: genesis <- b <- b2
+	//Blockchain now: genesis <- b
 	//New chain: genesis <- c <- c2
+	lastBlock = storage.ReadClosedBlock([32]byte{})
 	c := newBlock([32]byte{})
 	createBlockWithTxs(c)
 	finalizeBlock(c)
 	storage.WriteOpenBlock(c)
 
+	lastBlock = c
 	c2 := newBlock(c.Hash)
 	createBlockWithTxs(c2)
 	finalizeBlock(c2)
 
+	lastBlock = b
 	ancestor, newChain = getNewChain(c2)
 
 	if ancestor.Hash != [32]byte{} {

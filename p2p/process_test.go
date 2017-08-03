@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+//Test the parsing of serialized ip addresses
 func TestProcessNeighborRes(t *testing.T) {
 
 	//Build some ip addresses

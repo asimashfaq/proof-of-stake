@@ -14,7 +14,6 @@ var (
 	FundsTxChan = make(chan *protocol.FundsTx)
 	AccTxChan = make(chan *protocol.AccTx)
 	ConfigTxChan = make(chan *protocol.ConfigTx)
-
 	BlockReqChan = make(chan []byte)
 )
 
@@ -31,7 +30,7 @@ func forwardBlockToMiner(p *peer, payload []byte) {
 	BlockIn <- payload
 }
 
-//these are transactions the miner specifically requested
+//These are transactions the miner specifically requested
 func forwardTxReqToMiner(p *peer, payload []byte, txType uint8) {
 	if payload == nil {
 		return
@@ -64,4 +63,8 @@ func forwardTxReqToMiner(p *peer, payload []byte, txType uint8) {
 
 func forwardBlockReqToMiner(p *peer, payload []byte) {
 	BlockReqChan <- payload
+}
+
+func ReadSystemTime() int64 {
+	return systemTime
 }

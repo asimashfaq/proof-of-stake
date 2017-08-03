@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/lisgie/bazo_miner/protocol"
 	"log"
 	"net"
 	"strconv"
@@ -26,45 +25,38 @@ var (
 	disconnect = make(chan *peer)
 )
 
-//we need to decode incoming transactions, therefore type is needed
-//for outgoing transactions, the p2p package needs the information to build the proper header
-type TxInfo struct {
-	TxType  uint8
-	Payload []byte
-}
-
+//Entry point for p2p package
 func Init(connTuple string) error {
 
 	logInit()
 
+	//Initialize peer map
 	peers.peerConns = make(map[*peer]bool)
 
+	//Start all services that are running concurrently
 	go broadcastService()
 	go checkHealthService()
 	go timeService()
 	go receiveBlockFromMiner()
 
-	//set localPort global, this will be the listening port for incoming connection
+	//Set localPort global, this will be the listening port for incoming connection
 	localConn = connTuple
 	ipport := strings.Split(localConn, ":")
 	if ipport[1] != "8000" {
-		logger.Print("Start mining as a non-bootstrap node\n")
 		err := bootstrap()
 		if err != nil {
 			return err
 		}
-	} else {
-		logger.Print("Start mining as a bootstrap node\n")
 	}
 
+	//Listen for all subsequent incoming connections on specified local address/listening port
 	go listener(localConn)
 	return nil
 }
 
 func bootstrap() error {
-	//connect to bootstrap server
-	//initiate MINER_PING
-	//add to connection list
+	//Connect to bootstrap server. To make it more fault-tolerant, we can increase the number of bootstrap servers in
+	//the future. initiateNewMinerConn(...) starts with MINER_PING to perform the initial handshake message
 	p, err := initiateNewMinerConnection(BOOTSTRAP_SERVER)
 	if err != nil {
 		logger.Printf("Initiating new miner connection failed: %v\n", err)
@@ -75,11 +67,12 @@ func bootstrap() error {
 	return nil
 }
 
+
 func initiateNewMinerConnection(ipport string) (*peer, error) {
 
 	var conn net.Conn
 
-	//check if we already established a connection with that ip or if the ip belongs to us
+	//Check if we already established a connection with that ip or if the ip belongs to us
 	if peerExists(ipport) {
 		return nil, errors.New(fmt.Sprintf("Connection with %v already established.\n", ipport))
 	}
@@ -88,6 +81,8 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 		return nil, errors.New(fmt.Sprintf("Cannot self-connect %v.\n", ipport))
 	}
 
+	//Open up a tcp connection and instantiate a peer struct, wait for adding it to the peerStruct before we finalize
+	//the handshake
 	conn, err := net.Dial("tcp", ipport)
 	p := &peer{conn, nil, sync.Mutex{}, strings.Split(ipport, ":")[1], 0}
 
@@ -101,6 +96,8 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	}
 
 	conn.Write(packet)
+
+	//Wait for the other party to finish the handshake with the corresponding message
 	header, _, err := rcvData(p)
 	if err != nil || header.TypeID != MINER_PONG {
 		return nil, errors.New(fmt.Sprintf("Failed to complete miner handshake: %v\n", err))
@@ -109,10 +106,12 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	return p, nil
 }
 
+
 func prepareHandshake() ([]byte, error) {
 	//We need to additionally send our local listening port in order to construct a valid first message
 	//This will be the only time we need it so we don't save it
 	portBuf := make([]byte, PORT_SIZE)
+	//Extracts the port from our localConn variable (which is in the form IP:Port)
 	localPort, err := strconv.Atoi(strings.Split(localConn, ":")[1])
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Parsing port failed: %v\n", err))
@@ -142,6 +141,7 @@ func listener(ipport string) {
 	}
 }
 
+
 func handleNewConn(p *peer) {
 
 	logger.Printf("New incoming connection: %v\n", p.conn.RemoteAddr().String())
@@ -157,10 +157,9 @@ func handleNewConn(p *peer) {
 func minerConn(p *peer) {
 
 	logger.Printf("Adding a new miner: %v\n", p.getIPPort())
-
-	ch := make(chan []byte)
-	//give the peer a channel
-	p.ch = ch
+	//Give the peer a channel
+	p.ch = make(chan []byte)
+	//Register withe the broadcast service and start the additional writer
 	register <- p
 	go peerBroadcast(p)
 
@@ -168,6 +167,7 @@ func minerConn(p *peer) {
 		header, payload, err := rcvData(p)
 		if err != nil {
 			logger.Printf("Miner disconnected: %v\n", err)
+			//In case of a comm fail, disconnect cleanly from the broadcast service
 			disconnect <- p
 			return
 		}
