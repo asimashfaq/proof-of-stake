@@ -8,11 +8,8 @@ import (
 	"fmt"
 )
 
-//TODO: Add TxCnt such that if two times (might be a significant amount of time apart) the same configTx
-//is broadcast, we don't run into problems
-
 const (
-	CONFIGTX_SIZE = 82
+	CONFIGTX_SIZE = 83
 
 	BLOCK_SIZE_ID     = 1
 	DIFF_INTERVAL_ID  = 2
@@ -24,7 +21,7 @@ const (
 	MIN_BLOCK_SIZE = 1000      //1KB
 	MAX_BLOCK_SIZE = 100000000 //100MB
 
-	MIN_DIFF_INTERVAL = 1 //10min for 1min interval
+	MIN_DIFF_INTERVAL = 30 //amount in seconds
 	MAX_DIFF_INTERVAL = 9223372036854775807
 
 	MIN_FEE_MINIMUM = 0
@@ -45,16 +42,18 @@ type ConfigTx struct {
 	Id      uint8
 	Payload uint64
 	Fee     uint64
+	TxCnt	uint8
 	Sig     [64]byte
 }
 
-func ConstrConfigTx(header uint8, id uint8, payload uint64, fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *ConfigTx, err error) {
+func ConstrConfigTx(header uint8, id uint8, payload uint64, fee uint64, txCnt uint8, rootPrivKey *ecdsa.PrivateKey) (tx *ConfigTx, err error) {
 
 	tx = new(ConfigTx)
 	tx.Header = header
 	tx.Id = id
 	tx.Payload = payload
 	tx.Fee = fee
+	tx.TxCnt = txCnt
 
 	txHash := tx.Hash()
 
@@ -81,11 +80,13 @@ func (tx *ConfigTx) Hash() (hash [32]byte) {
 		Id      uint8
 		Payload uint64
 		Fee     uint64
+		TxCnt	uint8
 	}{
 		tx.Header,
 		tx.Id,
 		tx.Payload,
 		tx.Fee,
+		tx.TxCnt,
 	}
 	return serializeHashContent(txHash)
 }
@@ -112,7 +113,8 @@ func (tx *ConfigTx) Encode() (encodedTx []byte) {
 	encodedTx[1] = tx.Id
 	copy(encodedTx[2:10], payloadBuf[:])
 	copy(encodedTx[10:18], feeBuf[:])
-	copy(encodedTx[18:82], tx.Sig[:])
+	encodedTx[18] = byte(tx.TxCnt)
+	copy(encodedTx[19:83], tx.Sig[:])
 
 	return encodedTx
 }
@@ -128,7 +130,8 @@ func (*ConfigTx) Decode(encodedTx []byte) (tx *ConfigTx) {
 	tx.Id = encodedTx[1]
 	tx.Payload = binary.BigEndian.Uint64(encodedTx[2:10])
 	tx.Fee = binary.BigEndian.Uint64(encodedTx[10:18])
-	copy(tx.Sig[:], encodedTx[18:82])
+	tx.TxCnt = uint8(encodedTx[18])
+	copy(tx.Sig[:], encodedTx[19:83])
 
 	return tx
 }
@@ -141,9 +144,11 @@ func (tx ConfigTx) String() string {
 		"\n"+
 			"Id: %v\n"+
 			"Payload: %v\n"+
-			"Fee: %v\n",
+			"Fee: %v\n"+
+			"TxCnt: %v\n",
 		tx.Id,
 		tx.Payload,
 		tx.Fee,
+		tx.TxCnt,
 	)
 }

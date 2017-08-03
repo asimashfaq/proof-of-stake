@@ -38,14 +38,14 @@ func TestConfigTx(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
 	//creating some root-signed config txs
-	tx, err := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 1, 5000, rand.Uint64(), &RootPrivKey)
-	tx2, err2 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 5000, rand.Uint64(), &RootPrivKey)
-	tx3, err3 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 3, 5000, rand.Uint64(), &RootPrivKey)
-	tx4, err4 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 4, 5000, rand.Uint64(), &RootPrivKey)
-	tx5, err5 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(), &RootPrivKey)
+	tx, err := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 1, 5000, rand.Uint64(), 0, &RootPrivKey)
+	tx2, err2 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 5000, rand.Uint64(),0, &RootPrivKey)
+	tx3, err3 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 3, 5000, rand.Uint64(),0, &RootPrivKey)
+	tx4, err4 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 4, 5000, rand.Uint64(),0, &RootPrivKey)
+	tx5, err5 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(),0, &RootPrivKey)
 
 	//Add an invalid configTx, should not be accepted
-	txfail, err6 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 20, 5000, rand.Uint64(), &RootPrivKey)
+	txfail, err6 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 20, 5000, rand.Uint64(), 0, &RootPrivKey)
 
 	if (verifyConfigTx(tx) == false || err != nil) &&
 		(verifyConfigTx(tx2) == false || err2 != nil) &&

@@ -248,7 +248,7 @@ func validateBlock(b *protocol.Block) error {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				return err
 			}
-			logger.Printf("Validating block: %vState:\n%v\n", block, getState())
+			logger.Printf("Validating block: %vState:\n%v", block, getState())
 			postValidation(blockDataMap[block.Hash])
 		}
 	} else {
@@ -256,13 +256,13 @@ func validateBlock(b *protocol.Block) error {
 			if err := validateBlockRollback(block); err != nil {
 				return err
 			}
-			logger.Printf("Rolled back block: %vState:\n%v\n", block, getState())
+			logger.Printf("Rolled back block: %vState:\n%v", block, getState())
 		}
 		for _, block := range blocksToValidate {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				return err
 			}
-			logger.Printf("Validating block: %vState:\n%v\n",block, getState())
+			logger.Printf("Validating block: %vState:\n%v",block, getState())
 			postValidation(blockDataMap[block.Hash])
 		}
 	}
@@ -327,7 +327,7 @@ func preValidation(block *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTx
 	}
 
 	//Does the beneficiary exist in the state
-	if acc := getAccountFromHash(block.Beneficiary); acc == nil {
+	if acc := storage.GetAccountFromHash(block.Beneficiary); acc == nil {
 		return nil, nil, nil, errors.New("Beneficiary not in the State.")
 	}
 

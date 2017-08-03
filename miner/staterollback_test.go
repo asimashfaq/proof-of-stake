@@ -124,11 +124,11 @@ func TestConfigStateChangeRollback(t *testing.T) {
 	cleanAndPrepare()
 	var configSlice []*protocol.ConfigTx
 
-	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 1, 1000, rand.Uint64(), &RootPrivKey)
-	tx2, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 2000, rand.Uint64(), &RootPrivKey)
-	tx3, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 3, 3000, rand.Uint64(), &RootPrivKey)
-	tx4, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 4, 4000, rand.Uint64(), &RootPrivKey)
-	tx5, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(), &RootPrivKey)
+	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 1, 1000, rand.Uint64(),0, &RootPrivKey)
+	tx2, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 2000, rand.Uint64(),0, &RootPrivKey)
+	tx3, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 3, 3000, rand.Uint64(),0, &RootPrivKey)
+	tx4, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 4, 4000, rand.Uint64(),0, &RootPrivKey)
+	tx5, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(),0, &RootPrivKey)
 
 	configSlice = append(configSlice, tx)
 	configSlice = append(configSlice, tx2)

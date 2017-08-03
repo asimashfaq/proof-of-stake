@@ -23,7 +23,7 @@ func TestBuildMerkleTree(t *testing.T) {
 	privA, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	tx, _ = protocol.ConstrFundsTx(0x01, 23, 1, 0, [32]byte{'0'}, [32]byte{'1'}, privA)
 	tx2, _ = protocol.ConstrAccTx(0, 23, privA)
-	tx3, _ = protocol.ConstrConfigTx(0x02, 2, 5000, 34, privA)
+	tx3, _ = protocol.ConstrConfigTx(0x02, 2, 5000, 34, 0, privA)
 
 	//testing with 1,2,3 nodes
 	hash1 = tx.Hash()

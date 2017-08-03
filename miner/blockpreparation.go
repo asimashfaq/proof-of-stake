@@ -39,6 +39,7 @@ func prepareBlock(block *protocol.Block) {
 
 //Implement the sort interface
 func (f openTxs) Len() int {
+
 	return len(f)
 }
 

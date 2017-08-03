@@ -59,7 +59,7 @@ func mining() {
 	for {
 		err := finalizeBlock(currentBlock)
 		if err != nil {
-			fmt.Printf("Mining failure: %v\n", err)
+			fmt.Printf("%v\n", err)
 		} else {
 			fmt.Println("Block mined.")
 		}

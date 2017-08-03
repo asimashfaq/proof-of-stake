@@ -157,7 +157,7 @@ func TestConfigTxStateChange(t *testing.T) {
 
 	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
-		tx, err := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%10000000, rand.Uint64(), &RootPrivKey)
+		tx, err := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%10000000, rand.Uint64(), uint8(i), &RootPrivKey)
 		if err != nil {
 			t.Errorf("ConfigTx Creation failed (%v)\n", err)
 		}
@@ -176,11 +176,11 @@ func TestConfigTxStateChange(t *testing.T) {
 	cleanAndPrepare()
 	var configs2 []*protocol.ConfigTx
 	//test the inner workings of configStateChange as well...
-	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 1, 1000, rand.Uint64(), &RootPrivKey)
-	tx2, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 2000, rand.Uint64(), &RootPrivKey)
-	tx3, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 3, 3000, rand.Uint64(), &RootPrivKey)
-	tx4, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 4, 4000, rand.Uint64(), &RootPrivKey)
-	tx5, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(), &RootPrivKey)
+	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 1, 1000, rand.Uint64(), 0, &RootPrivKey)
+	tx2, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 2000, rand.Uint64(), 0, &RootPrivKey)
+	tx3, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 3, 3000, rand.Uint64(), 0, &RootPrivKey)
+	tx4, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 4, 4000, rand.Uint64(), 0, &RootPrivKey)
+	tx5, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(), 0, &RootPrivKey)
 
 	configs2 = append(configs2, tx)
 	configs2 = append(configs2, tx2)
@@ -204,9 +204,9 @@ func TestConfigTxStateChangeUnknown(t *testing.T) {
 	cleanAndPrepare()
 	//Issuing configTxs with unknown Id
 	var configs []*protocol.ConfigTx
-	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 1000, rand.Uint64(), &RootPrivKey)
-	tx2, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 2000, rand.Uint64(), &RootPrivKey)
-	tx3, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 3000, rand.Uint64(), &RootPrivKey)
+	tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 1000, rand.Uint64(), 0, &RootPrivKey)
+	tx2, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 2000, rand.Uint64(), 0, &RootPrivKey)
+	tx3, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 11, 3000, rand.Uint64(), 0, &RootPrivKey)
 
 	//save parameter state
 	tmpParameter := parameterSlice[len(parameterSlice)-1]
@@ -228,7 +228,7 @@ func TestConfigTxStateChangeUnknown(t *testing.T) {
 	}
 
 	//Adding a tx that changes state
-	tx4, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 3000, rand.Uint64(), &RootPrivKey)
+	tx4, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 2, 3000, rand.Uint64(), 0, &RootPrivKey)
 	configs = append(configs, tx4)
 
 	configStateChange(configs, [32]byte{'0', '1'})

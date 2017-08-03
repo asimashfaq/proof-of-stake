@@ -27,7 +27,7 @@ func WriteClosedBlock(block *protocol.Block) (err error) {
 	return err
 }
 
-//breaking the "tx" shortcut for here and using "transaction" to distinguish between bolt's transactions
+//Changing the "tx" shortcut here and using "transaction" to distinguish between bolt's transactions
 func WriteOpenTx(transaction protocol.Transaction) {
 
 	txMemPool[transaction.Hash()] = transaction

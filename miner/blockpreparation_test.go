@@ -38,7 +38,7 @@ func TestPrepareAndSortTxs(t *testing.T) {
 	}
 
 	for cnt := 0; cnt < testsize; cnt++ {
-		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%10+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
+		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%10+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1,uint8(cnt), &RootPrivKey)
 
 		//Don't mess with the minimum fee and block size
 		if tx.Id == 3 || tx.Id == 1 {
