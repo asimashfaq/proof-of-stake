@@ -4,6 +4,7 @@ import (
 	"errors"
 	"golang.org/x/crypto/sha3"
 	"encoding/binary"
+	"time"
 )
 
 //Tests whether the first diff bits are zero
@@ -35,15 +36,17 @@ func proofOfWork(diff uint8, partialHash, prevHash [32]byte) ([8]byte, error) {
 		cnt uint64
 	)
 
-	//2^64-1 = 18446744073709551616
+	//2^64-1 = 18446744073709551615
 	for cnt = 0; cnt < 18446744073709551615; cnt++ {
-		//lastBlock is a global variable which points to the block. This check makes sure we abort if another
+		//lastBlock is a global variable which points to the last block. This check makes sure we abort if another
 		//block has been validated
-		if prevHash != lastBlock.PrevHash {
+
+		if prevHash != lastBlock.Hash {
 			return [8]byte{}, errors.New("Abort mining, another block has been successfully validated in the meantime")
 		}
 		abort = false
 
+		time.Sleep(time.Millisecond)
 		binary.BigEndian.PutUint64(cntBuf[:], cnt)
 		pow = sha3.Sum256(append(cntBuf[:], partialHash[:]...))
 		//Byte check
