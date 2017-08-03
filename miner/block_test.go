@@ -61,8 +61,12 @@ func TestBlockTxDuplicates(t *testing.T) {
 
 	//Rollback the block and add a duplicate
 	validateBlockRollback(b)
-	b.FundsTxData = append(b.FundsTxData, b.FundsTxData[0])
+	if len(b.ConfigTxData) > 0 {
+		b.ConfigTxData = append(b.ConfigTxData, b.ConfigTxData[0])
+	}
+
 	finalizeBlock(b)
+
 	if err := validateBlock(b); err == nil {
 		t.Errorf("Duplicate Tx not detected.\n")
 	}
