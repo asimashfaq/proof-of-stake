@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"github.com/lisgie/bazo_miner/protocol"
 	"os"
 	"testing"
 )

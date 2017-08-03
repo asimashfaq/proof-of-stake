@@ -5,6 +5,7 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 )
 
+//There exist open/closed buckets and closed tx buckets for all types (open txs are in volatile storage)
 func DeleteOpenBlock(hash [32]byte) {
 
 	db.Update(func(tx *bolt.Tx) error {
@@ -26,24 +27,6 @@ func DeleteClosedBlock(hash [32]byte) {
 func DeleteOpenTx(transaction protocol.Transaction) {
 
 	delete(txMemPool, transaction.Hash())
-
-	/*var bucket string
-	switch transaction.(type) {
-	case *protocol.FundsTx:
-		bucket = "openfunds"
-	case *protocol.AccTx:
-		bucket = "openaccs"
-	case *protocol.ConfigTx:
-		bucket = "openconfigs"
-	}
-
-	//get (slice of unaddressable value) error if we do it directly
-	hash := transaction.Hash()
-	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
-		err := b.Delete(hash[:])
-		return err
-	})*/
 }
 
 func DeleteClosedTx(transaction protocol.Transaction) {

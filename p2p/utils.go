@@ -7,15 +7,14 @@ import (
 	"fmt"
 )
 
-
-func rcvData(p *peer) (*Header, []byte, error) {
+func rcvData(p *peer) (header *Header, payload []byte, err error) {
 	reader := bufio.NewReader(p.conn)
-	header, err := ReadHeader(reader)
+	header, err = ReadHeader(reader)
 	if err != nil {
 		p.conn.Close()
 		return nil, nil, errors.New(fmt.Sprintf("Connection to %v aborted: (%v)\n", p.getIPPort(), err))
 	}
-	payload := make([]byte, header.Len)
+	payload = make([]byte, header.Len)
 
 	for cnt := 0; cnt < int(header.Len); cnt++ {
 		payload[cnt], err = reader.ReadByte()

@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"log"
 )
 
 const (
@@ -109,7 +108,6 @@ func (tx *FundsTx) Encode() (encodedTx []byte) {
 func (*FundsTx) Decode(encodedTx []byte) (tx *FundsTx) {
 
 	if len(encodedTx) != FUNDSTX_SIZE {
-		log.Printf("DecodeFundsTxTx, received buffer does not match Funds Tx size: %v\n", len(encodedTx))
 		return nil
 	}
 

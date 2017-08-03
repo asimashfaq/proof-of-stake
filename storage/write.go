@@ -5,23 +5,26 @@ import (
 	"github.com/lisgie/bazo_miner/protocol"
 )
 
-//TODO: Error checking
-func WriteOpenBlock(block *protocol.Block) {
+func WriteOpenBlock(block *protocol.Block) (err error) {
 
-	db.Update(func(tx *bolt.Tx) error {
+	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("openblocks"))
 		err := b.Put(block.Hash[:], block.Encode())
 		return err
 	})
+
+	return err
 }
 
-func WriteClosedBlock(block *protocol.Block) {
+func WriteClosedBlock(block *protocol.Block) (err error) {
 
-	db.Update(func(tx *bolt.Tx) error {
+	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("closedblocks"))
 		err := b.Put(block.Hash[:], block.Encode())
 		return err
 	})
+
+	return err
 }
 
 //breaking the "tx" shortcut for here and using "transaction" to distinguish between bolt's transactions
@@ -30,7 +33,7 @@ func WriteOpenTx(transaction protocol.Transaction) {
 	txMemPool[transaction.Hash()] = transaction
 }
 
-func WriteClosedTx(transaction protocol.Transaction) {
+func WriteClosedTx(transaction protocol.Transaction) (err error) {
 
 	var bucket string
 	switch transaction.(type) {
@@ -43,9 +46,11 @@ func WriteClosedTx(transaction protocol.Transaction) {
 	}
 
 	hash := transaction.Hash()
-	db.Update(func(tx *bolt.Tx) error {
+	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
 		err := b.Put(hash[:], transaction.Encode())
 		return err
 	})
+
+	return err
 }

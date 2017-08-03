@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"log"
 )
 
 //TODO: Add TxCnt such that if two times (might be a significant amount of time apart) the same configTx
@@ -121,7 +120,6 @@ func (tx *ConfigTx) Encode() (encodedTx []byte) {
 func (*ConfigTx) Decode(encodedTx []byte) (tx *ConfigTx) {
 
 	if len(encodedTx) != CONFIGTX_SIZE {
-		log.Printf("DecodeConfigTx, received buffer does not match Config Tx size: %v\n", len(encodedTx))
 		return nil
 	}
 

@@ -70,7 +70,7 @@ func (b *Block) Encode() (encodedBlock []byte) {
 		return nil
 	}
 
-	//making byte array of all non-byte data
+	//Making byte array of all non-byte data
 	var timeStamp [8]byte
 	var nrFundsTx, nrAccTx [2]byte
 
@@ -78,7 +78,7 @@ func (b *Block) Encode() (encodedBlock []byte) {
 	binary.BigEndian.PutUint16(nrFundsTx[:], b.NrFundsTx)
 	binary.BigEndian.PutUint16(nrAccTx[:], b.NrAccTx)
 
-	//reserve space
+	//Allocate memory
 	encodedBlock = make([]byte,b.GetSize())
 
 	encodedBlock[0] = b.Header
@@ -95,6 +95,7 @@ func (b *Block) Encode() (encodedBlock []byte) {
 
 	index := BLOCKHEADER_SIZE
 
+	//Serialize all tx hashes
 	for _, txHash := range b.FundsTxData {
 		copy(encodedBlock[index:index+HASH_LEN], txHash[:])
 		index += HASH_LEN
@@ -139,6 +140,7 @@ func (*Block) Decode(encodedBlock []byte) (b *Block) {
 
 	index := BLOCKHEADER_SIZE
 
+	//Deserialize all tx hashes
 	var hash [32]byte
 	for cnt := 0; cnt < int(nrFundsTx); cnt++ {
 		copy(hash[:], encodedBlock[index:index+HASH_LEN])

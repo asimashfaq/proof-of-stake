@@ -3,12 +3,10 @@ package storage
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/lisgie/bazo_miner/protocol"
 	"golang.org/x/crypto/sha3"
 )
 
-func GetAccountFromHash(hash [32]byte) *protocol.Account { return State[hash] }
-
+//Serializes the input in big endian and returns the sha3 hash function applied on ths input
 func serializeHashContent(data interface{}) (hash [32]byte) {
 
 	var buf bytes.Buffer

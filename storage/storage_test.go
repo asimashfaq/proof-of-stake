@@ -36,10 +36,10 @@ func TestReadWriteDeleteTx(t *testing.T) {
 		hashAccSlice = append(hashAccSlice, tx)
 	}
 
+	//Restricted to 256, because the number of configTxs is stored in a uint8 in blocks
 	loopMax = 256
 	for cnt := 0; cnt < loopMax; cnt++ {
 		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
-		//don't mess with the minimum fee
 		hashConfigSlice = append(hashConfigSlice, tx)
 		WriteOpenTx(tx)
 	}
@@ -62,7 +62,7 @@ func TestReadWriteDeleteTx(t *testing.T) {
 		}
 	}
 
-	//deleting open txs
+	//Deleting open txs
 	for _, tx := range hashFundsSlice {
 		DeleteOpenTx(tx)
 	}
@@ -75,6 +75,7 @@ func TestReadWriteDeleteTx(t *testing.T) {
 		DeleteOpenTx(tx)
 	}
 
+	//Make sure all txs are actually deleted
 	for _, tx := range hashFundsSlice {
 		if ReadOpenTx(tx.Hash()) != nil {
 			t.Errorf("Error deleting transaction hash: %x\n", tx)
@@ -94,9 +95,10 @@ func TestReadWriteDeleteTx(t *testing.T) {
 	}
 }
 
+//Disk-based k/v storage
 func TestReadWriteDeleteBlock(t *testing.T) {
 
-	//this shouldn't panic
+	//No panic
 	DeleteOpenBlock([32]byte{'0'})
 
 	b, b2, b3 := new(protocol.Block), new(protocol.Block), new(protocol.Block)

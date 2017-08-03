@@ -12,19 +12,16 @@ import (
 var (
 	db        *bolt.DB
 	logger    *log.Logger
-	State     map[[32]byte]*protocol.Account
-	RootKeys  map[[32]byte]*protocol.Account
-	txMemPool map[[32]byte]protocol.Transaction
+	State     = make(map[[32]byte]*protocol.Account)
+	RootKeys  = make(map[[32]byte]*protocol.Account)
+	txMemPool = make(map[[32]byte]protocol.Transaction)
 )
 
+//Entry function for the storage package
 func Init(dbname string) {
 
 	LogFile, _ := os.OpenFile("log/storage "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	logger = log.New(LogFile, "", log.LstdFlags)
-
-	State = make(map[[32]byte]*protocol.Account)
-	RootKeys = make(map[[32]byte]*protocol.Account)
-	txMemPool = make(map[[32]byte]protocol.Transaction)
 
 	var err error
 	db, err = bolt.Open(dbname, 0600, nil)
@@ -46,27 +43,6 @@ func Init(dbname string) {
 		}
 		return nil
 	})
-	/*db.Update(func(tx *bolt.Tx) error {
-		_, err = tx.CreateBucket([]byte("openfunds"))
-		if err != nil {
-			return fmt.Errorf("Create bucket: %s", err)
-		}
-		return nil
-	})
-	db.Update(func(tx *bolt.Tx) error {
-		_, err = tx.CreateBucket([]byte("openaccs"))
-		if err != nil {
-			return fmt.Errorf("Create bucket: %s", err)
-		}
-		return nil
-	})
-	db.Update(func(tx *bolt.Tx) error {
-		_, err = tx.CreateBucket([]byte("openconfigs"))
-		if err != nil {
-			return fmt.Errorf("Create bucket: %s", err)
-		}
-		return nil
-	})*/
 	db.Update(func(tx *bolt.Tx) error {
 		_, err = tx.CreateBucket([]byte("closedfunds"))
 		if err != nil {
