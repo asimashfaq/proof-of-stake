@@ -37,13 +37,13 @@ func verifyFundsTx(tx *protocol.FundsTx) bool {
 	pub1, pub2 := new(big.Int), new(big.Int)
 	r, s := new(big.Int), new(big.Int)
 
-	//fundstx only makes sense if amount > 0
+	//fundsTx only makes sense if amount > 0
 	if tx.Amount == 0 || tx.Amount > MAX_MONEY {
 		logger.Printf("Invalid transaction amount %v\n", tx.Amount)
 		return false
 	}
 
-	//check if accounts are present in the actual state
+	//Check if accounts are present in the actual state
 	accFrom := storage.State[tx.From]
 	accTo := storage.State[tx.To]
 
@@ -89,6 +89,8 @@ func verifyAccTx(tx *protocol.AccTx) bool {
 
 		pubKey := ecdsa.PublicKey{elliptic.P256(), pub1, pub2}
 		txHash := tx.Hash()
+
+		//Only the hash of the pubkey is hashed and verified here
 		if ecdsa.Verify(&pubKey, txHash[:], r, s) == true {
 			return true
 		}
@@ -125,7 +127,8 @@ func verifyConfigTx(tx *protocol.ConfigTx) bool {
 	return false
 }
 
-//returns if id is in the list of possible ids and rational value for payload parameter
+//Returns true if id is in the list of possible ids and rational value for payload parameter.
+//Some values just don't make any sense and have to be restricted accordingly
 func parameterBoundsChecking(id uint8, payload uint64) bool {
 
 	switch id {

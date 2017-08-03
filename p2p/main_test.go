@@ -10,21 +10,19 @@ var (
 	MINER_IPPORT = "127.0.0.1:8000"
 )
 
+//Corresponds largely to server.go -> Init(...)
 func TestMain(m *testing.M) {
 
 	logInit()
+
+	//Used for some tests, the bootstarp server is listening at 8000 at the same time
 	localConn = "127.0.0.1:9000"
 
-	TxsIn = make(chan TxInfo, TX_BUFFER)
 	BlockIn = make(chan []byte)
-	TxsOut = make(chan TxInfo, TX_BUFFER)
 	BlockOut = make(chan []byte)
 
 	//channels for specific miner requests
-	BlockReqChan = make(chan []byte)
-	FundsTxChan = make(chan *protocol.FundsTx)
-	AccTxChan = make(chan *protocol.AccTx)
-	ConfigTxChan = make(chan *protocol.ConfigTx)
+
 
 	peers.peerConns = make(map[*peer]bool)
 	brdcstMsg = make(chan []byte)
@@ -34,10 +32,11 @@ func TestMain(m *testing.M) {
 	iplistChan = make(chan string, MIN_MINERS)
 
 	go broadcastService()
+	go timeService()
 	go checkHealthService()
-	go receiveDataFromMiner()
+	go receiveBlockFromMiner()
 
-	//bootstrap server
+	//Bootstrap server
 	go listener("127.0.0.1:8000")
 
 	os.Exit(m.Run())

@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+//Rollback tests for all tx types
 func TestFundsStateChangeRollback(t *testing.T) {
 
 	cleanAndPrepare()
@@ -158,7 +159,7 @@ func TestCollectTxFeesRollback(t *testing.T) {
 	minerHash := serializeHashContent(minerAcc.Address)
 
 	minerBal := minerAcc.Balance
-	//rollback everything
+	//Rollback everything
 	var fee uint64
 	loopMax := int(rand.Uint64() % 1000)
 	for i := 0; i < loopMax+1; i++ {
@@ -180,7 +181,7 @@ func TestCollectTxFeesRollback(t *testing.T) {
 	minerAcc.Balance = MAX_MONEY - 100
 	var fee2 uint64
 	minerBal = minerAcc.Balance
-	//interrupt somewhere in between
+	//Miner gets fees, the miner account balance will overflow at some point
 	for i := 2; i < 100; i++ {
 		tx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%1000000+1, uint64(i), uint32(i), accAHash, accBHash, &PrivKeyA)
 		funds2 = append(funds2, tx)
@@ -189,7 +190,7 @@ func TestCollectTxFeesRollback(t *testing.T) {
 
 	accABal := accA.Balance
 	accBBal := accB.Balance
-	//should throw an error and result in a rollback, because of acc balance overflow
+	//Should throw an error and result in a rollback, because of acc balance overflow
 	tmpBlock := newBlock([32]byte{})
 	tmpBlock.Beneficiary = minerHash
 	data := blockData{nil, funds2, nil, tmpBlock}

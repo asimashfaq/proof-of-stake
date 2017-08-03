@@ -5,40 +5,28 @@ import (
 )
 
 var (
-	//Data from the network, for the miner
-	TxsIn   chan TxInfo
-	BlockIn chan []byte
-
-	//Data from the miner, for the network
-	TxsOut   chan TxInfo
-	BlockOut chan []byte
+	//Block from the network, to the miner
+	BlockIn chan []byte = make(chan []byte)
+	//Block from the miner, to the network
+	BlockOut chan []byte = make(chan []byte)
 
 	//Data requested by miner, to allow parallelism, we have a chan for every tx type
-	FundsTxChan  chan *protocol.FundsTx
-	AccTxChan    chan *protocol.AccTx
-	ConfigTxChan chan *protocol.ConfigTx
-	BlockReqChan chan []byte
+	FundsTxChan = make(chan *protocol.FundsTx)
+	AccTxChan = make(chan *protocol.AccTx)
+	ConfigTxChan = make(chan *protocol.ConfigTx)
+
+	BlockReqChan = make(chan []byte)
 )
 
-//this is for blocks and txs that the miner successfully validated
-func receiveDataFromMiner() {
+//This is for blocks and txs that the miner successfully validated
+func receiveBlockFromMiner() {
 	for {
-		select {
-		case block := <-BlockOut:
-			toBrdcst := BuildPacket(BLOCK_BRDCST, block)
-			brdcstMsg <- toBrdcst
-		case txInfo := <-TxsOut:
-			toBrdcst := BuildPacket(txInfo.TxType, txInfo.Payload)
-			brdcstMsg <- toBrdcst
-		}
+		block := <-BlockOut
+		toBrdcst := BuildPacket(BLOCK_BRDCST, block)
+		brdcstMsg <- toBrdcst
 	}
 }
 
-//we can't broadcast incoming messages directly, need to forward them to the miner (to check if
-//the tx has already been broadcast before, whether it was a valid tx at all)
-func forwardTxToMiner(p *peer, payload []byte, brdcstType uint8) {
-	TxsIn <- TxInfo{brdcstType, payload}
-}
 func forwardBlockToMiner(p *peer, payload []byte) {
 	BlockIn <- payload
 }

@@ -15,13 +15,15 @@ import (
 var (
 	//List of ip addresses. A connection to a subset of the list will be established as soon as the network health
 	//monitor triggers.
-	iplistChan chan string
-	peers      peersStruct
-	logger     *log.Logger
-	brdcstMsg  chan []byte
-	register   chan *peer
-	disconnect chan *peer
 	localConn  string
+	peers      peersStruct
+
+	logger     *log.Logger
+
+	iplistChan = make(chan string, MIN_MINERS)
+	brdcstMsg = make(chan []byte)
+	register = make(chan *peer)
+	disconnect = make(chan *peer)
 )
 
 //we need to decode incoming transactions, therefore type is needed
@@ -35,28 +37,12 @@ func Init(connTuple string) error {
 
 	logInit()
 
-	TxsIn = make(chan TxInfo, TX_BUFFER)
-	BlockIn = make(chan []byte)
-	TxsOut = make(chan TxInfo, TX_BUFFER)
-	BlockOut = make(chan []byte)
-
-	//channels for specific miner requests
-	BlockReqChan = make(chan []byte)
-	FundsTxChan = make(chan *protocol.FundsTx)
-	AccTxChan = make(chan *protocol.AccTx)
-	ConfigTxChan = make(chan *protocol.ConfigTx)
-
 	peers.peerConns = make(map[*peer]bool)
-	brdcstMsg = make(chan []byte)
-	register = make(chan *peer)
-	disconnect = make(chan *peer)
-
-	iplistChan = make(chan string, MIN_MINERS)
 
 	go broadcastService()
 	go checkHealthService()
 	go timeService()
-	go receiveDataFromMiner()
+	go receiveBlockFromMiner()
 
 	//set localPort global, this will be the listening port for incoming connection
 	localConn = connTuple

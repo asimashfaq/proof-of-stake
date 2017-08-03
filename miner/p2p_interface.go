@@ -11,57 +11,9 @@ import (
 //Constantly listen to incoming data from the network
 func incomingData() {
 	for {
-		select {
-		case tx := <-p2p.TxsIn:
-			processTx(tx)
-		case block := <-p2p.BlockIn:
-			processBlock(block)
-		}
+		block := <-p2p.BlockIn
+		processBlock(block)
 	}
-}
-
-
-func processTx(incomingTx p2p.TxInfo) {
-
-	var tx protocol.Transaction
-
-	//Make sure the transaction can be properly decoded, verification is done at a later stage to reduce latency
-	switch incomingTx.TxType {
-	case p2p.FUNDSTX_BRDCST:
-		var fTx *protocol.FundsTx
-		fTx = fTx.Decode(incomingTx.Payload)
-		if fTx == nil {
-			return
-		}
-		tx = fTx
-	case p2p.ACCTX_BRDCST:
-		var aTx *protocol.AccTx
-		aTx = aTx.Decode(incomingTx.Payload)
-		if aTx == nil {
-			return
-		}
-		tx = aTx
-	case p2p.CONFIGTX_BRDCST:
-		var cTx *protocol.ConfigTx
-		cTx = cTx.Decode(incomingTx.Payload)
-		if cTx == nil {
-			return
-		}
-		tx = cTx
-	}
-	if storage.ReadOpenTx(tx.Hash()) != nil {
-		logger.Printf("Received transaction (%x) already in the mempool.\n", tx.Hash())
-		return
-	}
-	if storage.ReadClosedTx(tx.Hash()) != nil {
-		logger.Printf("Received transaction (%x) already validated.\n", tx.Hash())
-		return
-	}
-
-	//Write to mempool and rebroadcast
-	logger.Printf("Writing transaction (%x) in the mempool.\n", tx.Hash())
-	storage.WriteOpenTx(tx)
-	p2p.TxsOut <- incomingTx
 }
 
 func processBlock(payload []byte) {

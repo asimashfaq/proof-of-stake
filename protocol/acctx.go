@@ -122,7 +122,7 @@ func (tx AccTx) String() string {
 			"Issuer: %x\n"+
 			"Fee: %v\n"+
 			"PubKey: %x\n"+
-			"Sig: %x\n\n",
+			"Sig: %x\n",
 		tx.Issuer[0:8],
 		tx.Fee,
 		tx.Sig[0:8],

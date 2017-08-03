@@ -40,7 +40,7 @@ func Init() {
 	activeParameters = &parameterSlice[0]
 
 	currentTargetTime = new(timerange)
-	target = append(target, 14)
+	target = append(target, 13)
 
 	//Start blockchain with genesis block and 0 hash
 	//Don't validate nor broadcast
@@ -70,7 +70,9 @@ func mining() {
 		} else {
 			broadcastBlock(currentBlock)
 			err := validateBlock(currentBlock)
-			logger.Printf("Received block (%x) could not be validated: %v\n", currentBlock.Hash[0:12], err)
+			if err != nil {
+				logger.Printf("Received block (%x) could not be validated: %v\n", currentBlock.Hash[0:12], err)
+			}
 		}
 
 		//This is the same mutex that is claimed at the beginning of a block validation. The reason we do this is

@@ -1,12 +1,10 @@
 package p2p
 
+import "fmt"
+
 const HEADER_LEN = 5
 
-type Header struct {
-	Len    uint32
-	TypeID uint8
-}
-
+//Mapping constants
 const (
 	FUNDSTX_BRDCST  = 1
 	ACCTX_BRDCST    = 2
@@ -34,6 +32,20 @@ const (
 	MINER_PING = 100
 	MINER_PONG = 101
 
-	//Error codes
+	//Used to signal error
 	NOT_FOUND = 110
 )
+
+type Header struct {
+	Len    uint32
+	TypeID uint8
+}
+
+func (header Header) String() string {
+	return fmt.Sprintf(
+		"Length: %v\n"+
+			"TypeID: %v\n",
+		header.Len,
+		header.TypeID,
+	)
+}

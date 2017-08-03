@@ -143,7 +143,7 @@ func (tx ConfigTx) String() string {
 		"\n"+
 			"Id: %v\n"+
 			"Payload: %v\n"+
-			"Fee: %v\n\n",
+			"Fee: %v\n",
 		tx.Id,
 		tx.Payload,
 		tx.Fee,

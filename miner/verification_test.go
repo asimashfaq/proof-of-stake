@@ -9,10 +9,11 @@ import (
 
 func TestFundsTxVerification(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
+
+	loopMax := int(rand.Uint64() % 1000)
 	accAHash := serializeHashContent(accA.Address)
 	accBHash := serializeHashContent(accB.Address)
-	//loopMax := int(rand.Uint32() % 10000)
-	for i := 0; i < 1; i++ {
+	for i := 0; i < loopMax; i++ {
 		tx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%100000+1, rand.Uint64()%10+1, uint32(i), accAHash, accBHash, &PrivKeyA)
 		if verifyFundsTx(tx) == false {
 			t.Errorf("Tx could not be verified: \n%v", tx)
@@ -23,7 +24,7 @@ func TestFundsTxVerification(t *testing.T) {
 func TestAccTx(t *testing.T) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
 
-	//creating some root-signed new accounts
+	//Creating some root-signed new accounts
 	loopMax := int(rand.Uint64() % 1000)
 	for i := 0; i <= loopMax; i++ {
 		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
@@ -42,6 +43,8 @@ func TestConfigTx(t *testing.T) {
 	tx3, err3 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 3, 5000, rand.Uint64(), &RootPrivKey)
 	tx4, err4 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 4, 5000, rand.Uint64(), &RootPrivKey)
 	tx5, err5 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 5, 5000, rand.Uint64(), &RootPrivKey)
+
+	//Add an invalid configTx, should not be accepted
 	txfail, err6 := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), 20, 5000, rand.Uint64(), &RootPrivKey)
 
 	if (verifyConfigTx(tx) == false || err != nil) &&

@@ -1,19 +1,16 @@
 package p2p
 
-import (
-	"fmt"
-)
-
+//All incoming messages are processed here and acted upon accordingly
 func processIncomingMsg(p *peer, header *Header, payload []byte) {
 
 	switch header.TypeID {
-	//BROADCASTING
+		//BROADCASTING
 	case FUNDSTX_BRDCST:
-		forwardTxToMiner(p, payload, FUNDSTX_BRDCST)
+		processTxBrdcst(p, payload, FUNDSTX_BRDCST)
 	case ACCTX_BRDCST:
-		forwardTxToMiner(p, payload, ACCTX_BRDCST)
+		processTxBrdcst(p, payload, ACCTX_BRDCST)
 	case CONFIGTX_BRDCST:
-		forwardTxToMiner(p, payload, CONFIGTX_BRDCST)
+		processTxBrdcst(p, payload, CONFIGTX_BRDCST)
 	case BLOCK_BRDCST:
 		forwardBlockToMiner(p, payload)
 	case TIME_BRDCST:
@@ -47,13 +44,4 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 	case CONFIGTX_RES:
 		forwardTxReqToMiner(p, payload, CONFIGTX_RES)
 	}
-}
-
-func (header Header) String() string {
-	return fmt.Sprintf(
-		"Length: %v\n"+
-			"TypeID: %v\n",
-		header.Len,
-		header.TypeID,
-	)
 }

@@ -247,7 +247,7 @@ func validateBlock(b *protocol.Block) error {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				return err
 			}
-			logger.Printf("Validating block: %v\n", block)
+			logger.Printf("Validating block: %vState: %v\n", block, getState())
 			postValidation(blockDataMap[block.Hash])
 		}
 	} else {
@@ -255,13 +255,13 @@ func validateBlock(b *protocol.Block) error {
 			if err := validateBlockRollback(block); err != nil {
 				return err
 			}
-			logger.Printf("Rolled back block: %v\n", block)
+			logger.Printf("Rolled back block: %vState: %v\n", block, getState())
 		}
 		for _, block := range blocksToValidate {
 			if err := stateValidation(blockDataMap[block.Hash]); err != nil {
 				return err
 			}
-			logger.Printf("Validating block: %v\n", block)
+			logger.Printf("Validating block: %vState: %v\n",block, getState())
 			postValidation(blockDataMap[block.Hash])
 		}
 	}
@@ -507,8 +507,6 @@ func stateValidation(data blockData) error {
 		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
-
-	logger.Printf("State: \n%v\n", getState())
 
 	return nil
 }

@@ -136,7 +136,7 @@ func (tx FundsTx) String() string {
 			"TxCnt: %v\n"+
 			"From: %x\n"+
 			"To: %x\n"+
-			"Sig: %x\n\n",
+			"Sig: %x\n",
 		tx.Header,
 		tx.Amount,
 		tx.Fee,
