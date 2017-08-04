@@ -12,22 +12,17 @@ const (
 	BLOCKHEADER_SIZE = 150
 )
 
-type transaction interface {
-	verify() bool
-}
-
 type Block struct {
 	Header      byte
 	Hash        [32]byte
 	PrevHash    [32]byte
-	Nonce       [8]byte //72-bit, enough even if the network gets really large
+	Nonce       [8]byte
 	Timestamp   int64
 	MerkleRoot  [32]byte
 	Beneficiary [32]byte
 	NrFundsTx   uint16
 	NrAccTx     uint16
 	NrConfigTx  uint8
-	//this field will not be exported, this is just to avoid race conditions for the global state
 	StateCopy    map[[32]byte]*Account //won't be serialized, just keeping track of local state changes
 	FundsTxData  [][32]byte
 	AccTxData    [][32]byte
