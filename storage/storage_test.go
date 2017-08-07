@@ -39,7 +39,7 @@ func TestReadWriteDeleteTx(t *testing.T) {
 	//Restricted to 256, because the number of configTxs is stored in a uint8 in blocks
 	loopMax = 256
 	for cnt := 0; cnt < loopMax; cnt++ {
-		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, &RootPrivKey)
+		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%5+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, uint8(cnt), &RootPrivKey)
 		hashConfigSlice = append(hashConfigSlice, tx)
 		WriteOpenTx(tx)
 	}
