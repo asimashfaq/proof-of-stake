@@ -40,7 +40,7 @@ func Init() {
 	activeParameters = &parameterSlice[0]
 
 	currentTargetTime = new(timerange)
-	target = append(target, 13)
+	target = append(target, 28)
 
 	//Start blockchain with genesis block and 0 hash
 	//Don't validate nor broadcast

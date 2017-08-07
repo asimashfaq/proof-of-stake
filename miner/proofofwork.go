@@ -46,7 +46,6 @@ func proofOfWork(diff uint8, partialHash, prevHash [32]byte) ([8]byte, error) {
 		}
 		abort = false
 
-		time.Sleep(time.Millisecond)
 		binary.BigEndian.PutUint64(cntBuf[:], cnt)
 		pow = sha3.Sum256(append(cntBuf[:], partialHash[:]...))
 		//Byte check

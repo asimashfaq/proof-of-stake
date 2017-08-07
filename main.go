@@ -10,11 +10,6 @@ import (
 
 func main() {
 
-	/*storage.Init()
-	miner.Sync()
-	go miner.Init()
-	miner.InitSystem()*/
-
 	var localConn, dbname string
 
 	dbname = os.Args[1]
