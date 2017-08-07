@@ -1,6 +1,6 @@
 pkg/
 .idea/
-log*
+logs*
 *.db
 *.out
 .log*

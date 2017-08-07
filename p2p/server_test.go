@@ -16,7 +16,7 @@ func TestInitiateNewMinerConnection(t *testing.T) {
 		t.Errorf("Could not establish connection to the boostrap server\n")
 	}
 
-	//Chceck that self-connection is not allowed
+	//Check that self-connection is not allowed
 	_, err = initiateNewMinerConnection("127.0.0.1:9000")
 	if err == nil {
 		t.Errorf("Self-connection was not prevented\n")

@@ -20,7 +20,7 @@ var (
 //Entry function for the storage package
 func Init(dbname string) {
 
-	LogFile, _ := os.OpenFile("log/storage "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	LogFile, _ := os.OpenFile("logs/storage "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	logger = log.New(LogFile, "", log.LstdFlags)
 
 	var err error

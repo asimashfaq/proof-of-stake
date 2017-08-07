@@ -26,7 +26,7 @@ func Init() {
 	initRootKey()
 
 	//Set up logger
-	LogFile, _ := os.OpenFile("log/miner "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
+	LogFile, _ := os.OpenFile("logs/miner "+time.Now().String(), os.O_RDWR|os.O_CREATE, 0666)
 	logger = log.New(LogFile, "", log.LstdFlags)
 
 	parameterSlice = append(parameterSlice, parameters{
