@@ -62,6 +62,14 @@ func TestReadWriteDeleteTx(t *testing.T) {
 		}
 	}
 
+	//Read all open txs, received in random order
+	opentxs := ReadAllOpenTxs()
+
+	//Comparing the total number of txs should be enough
+	if len(opentxs) != len(hashConfigSlice)+len(hashFundsSlice)+len(hashAccSlice) {
+		t.Error("ReadAllOpenTxs() returned an invalid list of transactions\n")
+	}
+
 	//Deleting open txs
 	for _, tx := range hashFundsSlice {
 		DeleteOpenTx(tx)
@@ -93,6 +101,69 @@ func TestReadWriteDeleteTx(t *testing.T) {
 			t.Errorf("Error deleting transaction hash: %x\n", tx)
 		}
 	}
+
+	//Same with k/v-based closed tx storage
+	for _, tx := range hashAccSlice {
+		WriteClosedTx(tx)
+	}
+
+	for _, tx := range hashFundsSlice {
+		WriteClosedTx(tx)
+	}
+
+	for _, tx := range hashConfigSlice {
+		WriteClosedTx(tx)
+	}
+
+	for _, tx := range hashAccSlice {
+		if ReadClosedTx(tx.Hash()) == nil {
+			t.Errorf("Error writing to k/v storage: %x\n", tx)
+		}
+	}
+
+	for _, tx := range hashFundsSlice {
+		if ReadClosedTx(tx.Hash()) == nil {
+			t.Errorf("Error writing to k/v storage: %x\n", tx)
+		}
+	}
+
+	for _, tx := range hashConfigSlice {
+		if ReadClosedTx(tx.Hash()) == nil {
+			t.Errorf("Error writing to k/v storage: %x\n", tx)
+		}
+	}
+
+	//Delete transactions from closed storage
+	for _, tx := range hashAccSlice {
+		DeleteClosedTx(tx)
+	}
+
+	for _, tx := range hashFundsSlice {
+		DeleteClosedTx(tx)
+	}
+
+	for _, tx := range hashConfigSlice {
+		DeleteClosedTx(tx)
+	}
+
+	//Make sure all txs are actually deleted
+	for _, tx := range hashAccSlice {
+		if ReadClosedTx(tx.Hash()) != nil {
+			t.Errorf("Error deleting transaction hash: %x\n", tx)
+		}
+	}
+
+	for _, tx := range hashFundsSlice {
+		if ReadClosedTx(tx.Hash()) != nil {
+			t.Errorf("Error deleting transaction hash: %x\n", tx)
+		}
+	}
+
+	for _, tx := range hashConfigSlice {
+		if ReadClosedTx(tx.Hash()) != nil {
+			t.Errorf("Error deleting transaction hash: %x\n", tx)
+		}
+	}
 }
 
 //Disk-based k/v storage
@@ -110,7 +181,7 @@ func TestReadWriteDeleteBlock(t *testing.T) {
 	WriteOpenBlock(b3)
 
 	if ReadOpenBlock(b.Hash) == nil || ReadOpenBlock(b2.Hash) == nil || ReadOpenBlock(b3.Hash) == nil {
-		t.Error("Failed to write block to open block storage.")
+		t.Error("Failed to write block to open block storage.\n")
 	}
 
 	newb1 := ReadOpenBlock(b.Hash)
@@ -131,6 +202,16 @@ func TestReadWriteDeleteBlock(t *testing.T) {
 		ReadClosedBlock(b.Hash) == nil ||
 		ReadClosedBlock(b2.Hash) == nil ||
 		ReadClosedBlock(b3.Hash) == nil {
-		t.Error("Failed to write block to kv storage.")
+		t.Error("Failed to write block to kv storage.\n")
+	}
+
+	DeleteClosedBlock(newb1.Hash)
+	DeleteClosedBlock(newb2.Hash)
+	DeleteClosedBlock(newb3.Hash)
+
+	if ReadClosedBlock(b.Hash) != nil ||
+		ReadClosedBlock(b2.Hash) != nil ||
+		ReadClosedBlock(b3.Hash) != nil {
+		t.Error("Failed to delete block from kv storage.\n")
 	}
 }
