@@ -151,10 +151,6 @@ func parameterBoundsChecking(id uint8, payload uint64) bool {
 		if payload >= protocol.MIN_BLOCK_REWARD && payload <= protocol.MAX_BLOCK_REWARD {
 			return true
 		}
-	case protocol.TARGET_ID:
-		if payload >= protocol.MIN_TARGET && payload <= protocol.MAX_TARGET {
-			return true
-		}
 	}
 	return false
 }

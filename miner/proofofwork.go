@@ -4,7 +4,6 @@ import (
 	"errors"
 	"golang.org/x/crypto/sha3"
 	"encoding/binary"
-	"time"
 )
 
 //Tests whether the first diff bits are zero
