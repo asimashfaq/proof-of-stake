@@ -87,21 +87,21 @@ func TestMultipleBlocks(t *testing.T) {
 	createBlockWithTxs(b2)
 	finalizeBlock(b2)
 	if err := validateBlock(b2); err != nil {
-		t.Errorf("Block failed: %v\n", b2)
+		t.Errorf("Block validation failed: %v\n", err)
 	}
 
 	b3 := newBlock(b2.Hash)
 	createBlockWithTxs(b3)
 	finalizeBlock(b3)
 	if err := validateBlock(b3); err != nil {
-		t.Errorf("Block failed: %v\n", b3)
+		t.Errorf("Block validation failed: %v\n", err)
 	}
 
 	b4 := newBlock(b3.Hash)
 	createBlockWithTxs(b4)
 	finalizeBlock(b4)
 	if err := validateBlock(b4); err != nil {
-		t.Errorf("Block failed: %v\n", b4)
+		t.Errorf("Block validation failed: %v\n", err)
 	}
 }
 
@@ -145,6 +145,10 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 		accBHash := serializeHashContent(accB.Address)
 		tx, _ := protocol.ConstrFundsTx(0x01, rand.Uint64()%100+1, rand.Uint64()%100+1, uint32(cnt), accAHash, accBHash, &PrivKeyA)
 		if err := addTx(b, tx); err == nil {
+			//Might  be that we generated a block that was already generated before
+			if storage.ReadOpenTx(tx.Hash()) != nil || storage.ReadClosedTx(tx.Hash()) != nil {
+				continue
+			}
 			hashFundsSlice = append(hashFundsSlice, tx.Hash())
 			storage.WriteOpenTx(tx)
 		}
@@ -154,6 +158,9 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 	for cnt := 0; cnt < loopMax; cnt++ {
 		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
 		if err := addTx(b, tx); err == nil {
+			if storage.ReadOpenTx(tx.Hash()) != nil || storage.ReadClosedTx(tx.Hash()) != nil{
+				continue
+			}
 			hashAccSlice = append(hashAccSlice, tx.Hash())
 			storage.WriteOpenTx(tx)
 		}
@@ -164,11 +171,16 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 	for cnt := 0; cnt < loopMax; cnt++ {
 		tx, _ := protocol.ConstrConfigTx(uint8(rand.Uint32()%256), uint8(rand.Uint32()%10+1), rand.Uint64()%2342873423, rand.Uint64()%1000+1, uint8(cnt), &RootPrivKey)
 
+		if storage.ReadOpenTx(tx.Hash()) != nil || storage.ReadClosedTx(tx.Hash()) != nil {
+			continue
+		}
+
 		//don't mess with the minimum fee and block size
 		if tx.Id == 3 || tx.Id == 1 {
 			continue
 		}
 		if err := addTx(b, tx); err == nil {
+
 			hashConfigSlice = append(hashConfigSlice, tx.Hash())
 			storage.WriteOpenTx(tx)
 		}

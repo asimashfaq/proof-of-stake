@@ -142,7 +142,7 @@ func cleanAndPrepare() {
 	//Prepare system parameters
 	targetTimes = []timerange{}
 	currentTargetTime = new(timerange)
-	target = append(target, 11)
+	target = append(target, 8)
 
 	var tmpSlice []parameters
 	tmpSlice = append(tmpSlice, parameters{
