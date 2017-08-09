@@ -124,7 +124,9 @@ func prepareHandshake() ([]byte, error) {
 
 func listener(ipport string) {
 
-	listener, err := net.Listen("tcp", ipport)
+	//Listen on all interfaces, this NAT stuff easier
+	fmt.Printf("Listen on :%v\n", strings.Split(ipport,":")[1])
+	listener, err := net.Listen("tcp", ":"+strings.Split(ipport,":")[1])
 	if err != nil {
 		logger.Printf("%v\n", err)
 		return
