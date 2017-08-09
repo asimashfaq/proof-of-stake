@@ -2,7 +2,7 @@ package p2p
 
 //Package-wide constants and configuration parameters
 const (
-	BOOTSTRAP_SERVER = "13.80.151.135:8000"
+	BOOTSTRAP_SERVER = "192.41.136.199:8000"
 
 	//MIN_MINERS is a lower bound of connections. If there are less, the system actively requests miner peers
 	//from neighbors and establishes connections to them
@@ -13,7 +13,7 @@ const (
 	//In order to get a reasonable system time, there needs to be a minimal amount of times available from other peers
 	MIN_PEERS_FOR_TIME = 5
 	//Interval to check system health in seconds
-	HEALTH_CHECK_INTERVAL = 10
+	HEALTH_CHECK_INTERVAL = 30
 	//Broadcast local time to the network in seconds
 	TIME_BRDCST_INTERVAL = 20
 	//Calculate system time every UPDATE_SYS_TIME seconds
