@@ -21,7 +21,7 @@ type AccTx struct {
 	Sig    [64]byte
 }
 
-func ConstrAccTx(header byte, fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *AccTx, err error) {
+func ConstrAccTx(header byte, fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *AccTx, privKey *ecdsa.PrivateKey, err error) {
 
 	tx = new(AccTx)
 	tx.Header = header
@@ -44,13 +44,13 @@ func ConstrAccTx(header byte, fee uint64, rootPrivKey *ecdsa.PrivateKey) (tx *Ac
 
 	r, s, err := ecdsa.Sign(rand.Reader, rootPrivKey, txHash[:])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	copy(tx.Sig[32-len(r.Bytes()):32], r.Bytes())
 	copy(tx.Sig[64-len(s.Bytes()):], s.Bytes())
 
-	return tx, nil
+	return tx, newAccAddress, nil
 }
 
 func (tx *AccTx) Hash() (hash [32]byte) {

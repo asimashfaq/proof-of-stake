@@ -31,7 +31,7 @@ func TestPrepareAndSortTxs(t *testing.T) {
 
 	//Add other tx types as well to make the test more challenging
 	for cnt := 0; cnt < testsize; cnt++ {
-		tx, _ := protocol.ConstrAccTx(0x01, rand.Uint64()%100+1, &RootPrivKey)
+		tx,_,_ := protocol.ConstrAccTx(0x01, rand.Uint64()%100+1, &RootPrivKey)
 		if verifyAccTx(tx) {
 			storage.WriteOpenTx(tx)
 		}

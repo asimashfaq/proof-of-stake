@@ -12,7 +12,7 @@ func TestAccTxSerialization(t *testing.T) {
 
 	loopMax := int(rand.Uint32() % 10000)
 	for i := 1; i < loopMax; i++ {
-		tx, _ := ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
+		tx,_,_ := ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
 		data := tx.Encode()
 		var decodedTx *AccTx
 		decodedTx = decodedTx.Decode(data)

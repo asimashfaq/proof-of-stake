@@ -109,7 +109,7 @@ func TestAccTxStateChange(t *testing.T) {
 
 	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
-		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%1000, &RootPrivKey)
+		tx,_,_ := protocol.ConstrAccTx(0, rand.Uint64()%1000, &RootPrivKey)
 		accs = append(accs, tx)
 	}
 
@@ -126,7 +126,7 @@ func TestAccTxStateChange(t *testing.T) {
 
 	//Create a new root account, set the header to 0x01
 	var singleSlice []*protocol.AccTx
-	tx, _ := protocol.ConstrAccTx(0x01, rand.Uint64()%1000, &RootPrivKey)
+	tx,_,_ := protocol.ConstrAccTx(0x01, rand.Uint64()%1000, &RootPrivKey)
 	singleSlice = append(singleSlice, tx)
 	var pubKeyTmp [64]byte
 	copy(pubKeyTmp[:], tx.PubKey[:])

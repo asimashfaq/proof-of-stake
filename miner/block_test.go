@@ -156,7 +156,7 @@ func createBlockWithTxs(b *protocol.Block) ([][32]byte, [][32]byte, [][32]byte) 
 
 	loopMax = int(rand.Uint32()%testSize) + 1
 	for cnt := 0; cnt < loopMax; cnt++ {
-		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
+		tx,_,_ := protocol.ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
 		if err := addTx(b, tx); err == nil {
 			if storage.ReadOpenTx(tx.Hash()) != nil || storage.ReadClosedTx(tx.Hash()) != nil{
 				continue

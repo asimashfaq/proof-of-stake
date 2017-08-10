@@ -30,7 +30,7 @@ func TestReadWriteDeleteTx(t *testing.T) {
 
 	loopMax = testsize
 	for i := 0; i < loopMax; i++ {
-		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
+		tx,_,_ := protocol.ConstrAccTx(0, rand.Uint64()%100+1, &RootPrivKey)
 		tx.Hash()
 		WriteOpenTx(tx)
 		hashAccSlice = append(hashAccSlice, tx)

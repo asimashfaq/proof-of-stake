@@ -50,7 +50,9 @@ func checkHealthService() {
 		//iplistChan gets filled with every incoming neighborRes, they're consumed here
 		case ipaddr := <-iplistChan:
 			p, err := initiateNewMinerConnection(ipaddr)
-			logger.Printf("%v\n", err)
+			if err != nil {
+				logger.Printf("%v\n", err)
+			}
 			if p == nil || err != nil {
 				goto RETRY
 			}

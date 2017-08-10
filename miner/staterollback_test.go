@@ -94,7 +94,7 @@ func TestAccStateChangeRollback(t *testing.T) {
 	//Store accs that are to be changed and rolled back in a accTx slice
 	loopMax := int(rand.Uint32()%testSize) + 1
 	for i := 0; i < loopMax; i++ {
-		tx, _ := protocol.ConstrAccTx(0, rand.Uint64()%1000, &RootPrivKey)
+		tx,_,_ := protocol.ConstrAccTx(0, rand.Uint64()%1000, &RootPrivKey)
 		accs = append(accs, tx)
 	}
 

@@ -40,7 +40,7 @@ func Init() {
 	activeParameters = &parameterSlice[0]
 
 	currentTargetTime = new(timerange)
-	target = append(target, 28)
+	target = append(target, 26)
 
 	//Start blockchain with genesis block and 0 hash
 	//Don't validate nor broadcast
@@ -61,7 +61,7 @@ func mining() {
 		if err != nil {
 			fmt.Printf("%v\n", err)
 		} else {
-			fmt.Println("Block mined.")
+			fmt.Println("Block mined")
 		}
 		//else a block was received meanwhile that was added to the chain, all the effort was in vain :(
 		//wait for lock here only

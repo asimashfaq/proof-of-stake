@@ -59,7 +59,7 @@ func bootstrap() error {
 	//the future. initiateNewMinerConn(...) starts with MINER_PING to perform the initial handshake message
 	p, err := initiateNewMinerConnection(BOOTSTRAP_SERVER)
 	if err != nil {
-		logger.Printf("Initiating new miner connection failed: %v\n", err)
+		logger.Printf("Initiating new miner connection failed: %v", err)
 		return err
 	}
 
@@ -74,11 +74,11 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 
 	//Check if we already established a connection with that ip or if the ip belongs to us
 	if peerExists(ipport) {
-		return nil, errors.New(fmt.Sprintf("Connection with %v already established.\n", ipport))
+		return nil, errors.New(fmt.Sprintf("Connection with %v already established.", ipport))
 	}
 
 	if peerSelfConn(ipport) {
-		return nil, errors.New(fmt.Sprintf("Cannot self-connect %v.\n", ipport))
+		return nil, errors.New(fmt.Sprintf("Cannot self-connect %v.", ipport))
 	}
 
 	//Open up a tcp connection and instantiate a peer struct, wait for adding it to the peerStruct before we finalize
@@ -100,7 +100,7 @@ func initiateNewMinerConnection(ipport string) (*peer, error) {
 	//Wait for the other party to finish the handshake with the corresponding message
 	header, _, err := rcvData(p)
 	if err != nil || header.TypeID != MINER_PONG {
-		return nil, errors.New(fmt.Sprintf("Failed to complete miner handshake: %v\n", err))
+		return nil, errors.New(fmt.Sprintf("Failed to complete miner handshake: %v", err))
 	}
 
 	return p, nil
