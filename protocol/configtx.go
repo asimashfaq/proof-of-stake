@@ -34,7 +34,7 @@ const (
 )
 
 type ConfigTx struct {
-	Header  uint8
+	Header  byte
 	Id      uint8
 	Payload uint64
 	Fee     uint64
@@ -42,7 +42,7 @@ type ConfigTx struct {
 	Sig     [64]byte
 }
 
-func ConstrConfigTx(header uint8, id uint8, payload uint64, fee uint64, txCnt uint8, rootPrivKey *ecdsa.PrivateKey) (tx *ConfigTx, err error) {
+func ConstrConfigTx(header byte, id uint8, payload uint64, fee uint64, txCnt uint8, rootPrivKey *ecdsa.PrivateKey) (tx *ConfigTx, err error) {
 
 	tx = new(ConfigTx)
 	tx.Header = header
@@ -72,7 +72,7 @@ func (tx *ConfigTx) Hash() (hash [32]byte) {
 	}
 
 	txHash := struct {
-		Header  uint8
+		Header  byte
 		Id      uint8
 		Payload uint64
 		Fee     uint64
