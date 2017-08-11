@@ -397,9 +397,6 @@ func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan
 			}
 		}
 
-		if !verifyAccTx(accTx) {
-			errChan <- errors.New("AccTx could not be verified.")
-		}
 		accTxSlice[cnt] = accTx
 	}
 	errChan <- nil
@@ -432,13 +429,8 @@ func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, e
 				errChan <- errors.New("FundsTx fetch timed out.")
 				return
 			}
-
 		}
 
-		if !verifyFundsTx(fundsTx) {
-			errChan <- errors.New("FundsTx could not be verified.")
-			return
-		}
 		fundsTxSlice[cnt] = fundsTx
 	}
 	errChan <- nil
@@ -473,10 +465,6 @@ func fetchConfigTxData(block *protocol.Block, configTxSlice []*protocol.ConfigTx
 			}
 		}
 
-		if !verifyConfigTx(configTx) {
-			errChan <- errors.New("ConfigTx could not be verified.")
-			return
-		}
 		configTxSlice[cnt] = configTx
 	}
 	errChan <- nil
