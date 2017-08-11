@@ -49,7 +49,7 @@ func addTx(b *protocol.Block, tx protocol.Transaction) error {
 	//So the trade-off is effectively clean abstraction vs. tx size. Everything related to fundsTx is postponed because
 	//the txs are dependent on each other.
 	if !verify(tx) {
-		logger.Printf("Transaction could not be verified: %v\n", tx)
+		logger.Printf("Transaction could not be verified: %v", tx)
 		return errors.New("Transaction could not be verified.")
 	}
 

@@ -47,6 +47,11 @@ func verifyFundsTx(tx *protocol.FundsTx) bool {
 	accFrom := storage.State[tx.From]
 	accTo := storage.State[tx.To]
 
+	//Accounts non existant
+	if accFrom == nil || accTo == nil {
+		return false
+	}
+
 	accFromHash := serializeHashContent(accFrom.Address)
 	accToHash := serializeHashContent(accTo.Address)
 
