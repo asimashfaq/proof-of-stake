@@ -151,6 +151,7 @@ func configStateChange(configTxSlice []*protocol.ConfigTx, blockHash [32]byte) {
 		newParameters.blockHash = blockHash
 		parameterSlice = append(parameterSlice, newParameters)
 		activeParameters = &parameterSlice[len(parameterSlice)-1]
+		logger.Printf("Config parameters changed. New configuration: %v", *activeParameters)
 	}
 }
 
