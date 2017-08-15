@@ -45,6 +45,7 @@ func configStateChangeRollback(txSlice []*protocol.ConfigTx, blockHash [32]byte)
 	//remove the latest entry in the parameters slice$
 	parameterSlice = parameterSlice[:len(parameterSlice)-1]
 	activeParameters = &parameterSlice[len(parameterSlice)-1]
+	logger.Printf("Config parameters rolled back. New configuration: %v", *activeParameters)
 }
 
 func collectTxFeesRollback(accTx []*protocol.AccTx, fundsTx []*protocol.FundsTx, configTx []*protocol.ConfigTx, minerHash [32]byte) {
