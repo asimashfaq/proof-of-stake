@@ -395,6 +395,11 @@ func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, errChan
 			case <-time.After(TXFETCH_TIMEOUT * time.Second):
 				errChan <- errors.New("AccTx fetch timed out.")
 			}
+			//This check is important. A malicious miner might have sent us a tx whose hash is a different one
+			//from what we requested
+			if accTx.Hash() != txHash {
+				errChan <- errors.New("Received txHash did not correspond to our request")
+			}
 		}
 
 		accTxSlice[cnt] = accTx
@@ -429,6 +434,9 @@ func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, e
 				errChan <- errors.New("FundsTx fetch timed out.")
 				return
 			}
+			if fundsTx.Hash() != txHash {
+				errChan <- errors.New("Received txHash did not correspond to our request")
+			}
 		}
 
 		fundsTxSlice[cnt] = fundsTx
@@ -462,6 +470,9 @@ func fetchConfigTxData(block *protocol.Block, configTxSlice []*protocol.ConfigTx
 			case <-time.After(TXFETCH_TIMEOUT * time.Second):
 				errChan <- errors.New("ConfigTx fetch timed out.")
 				return
+			}
+			if configTx.Hash() != txHash {
+				errChan <- errors.New("Received txHash did not correspond to our request")
 			}
 		}
 
