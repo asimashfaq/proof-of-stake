@@ -19,6 +19,8 @@ func accStateChange(txSlice []*protocol.AccTx) error {
 		switch tx.Header {
 		case 1:
 			//First bit set, given account will be a new root account
+			//It might be cleaner to move this to the storage package (e.g., storage.Delete(...))
+			//leave it here for now (not fully convinced yet)
 			newAcc := protocol.Account{Address: tx.PubKey}
 			storage.RootKeys[sha3.Sum256(tx.PubKey[:])] = &newAcc
 			continue
