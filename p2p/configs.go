@@ -2,7 +2,7 @@ package p2p
 
 //Package-wide constants and configuration parameters
 const (
-	BOOTSTRAP_SERVER = "192.41.136.199:8000"
+	BOOTSTRAP_SERVER = "13.80.151.135:8000"
 
 	//MIN_MINERS is a lower bound of connections. If there are less, the system actively requests miner peers
 	//from neighbors and establishes connections to them
